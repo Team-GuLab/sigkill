@@ -1,39 +1,22 @@
 package com.gulab.sigkillserver.domain.room.repository;
 
 import com.gulab.sigkillserver.domain.room.model.Room;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Room Repository
+ * Room Redis Repository
+ * 방 정보 관리
  */
 @Repository
-public interface RoomRepository {
+public interface RoomRepository extends CrudRepository<Room, Long> {
 
     /**
-     * 방 목록 조회 (페이지네이션)
+     * 특정 상태의 방 목록 조회
      */
-    List<Room> findAllWithPagination(int page, int size);
-
-    /**
-     * 방 ID로 조회
-     */
-    Optional<Room> findById(Long roomId);
-
-    /**
-     * 방 저장
-     */
-    Room save(Room room);
-
-    /**
-     * 전체 방 개수
-     */
-    long count();
-
-    /**
-     * 방 존재 여부 확인
-     */
-    boolean existsById(Long roomId);
+    Page<Room> findAllByStatus(Pageable pageable, Room.RoomStatus status);
 }

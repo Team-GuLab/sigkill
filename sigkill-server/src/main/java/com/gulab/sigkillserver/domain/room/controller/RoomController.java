@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
  * Room Controller
  */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1/rooms")
 @RequiredArgsConstructor
 @Slf4j
 public class RoomController {
