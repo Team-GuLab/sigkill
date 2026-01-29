@@ -20,9 +20,12 @@ public class User {
 
     private String userName;
 
+    private Role role;
+
     @Builder
-    public User(String userId, String userName) {
+    public User(String userId, String userName, Role role) {
         this.userId = userId;
         this.userName = userName;
+        this.role = role != null ? role : Role.GUEST;
     }
 }
