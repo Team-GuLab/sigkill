@@ -15,21 +15,13 @@ public record RoomCreateResponse(
         WebSocketInfo ws
 ) {
     public static RoomCreateResponse of(Room room) {
-        WebSocketInfo wsInfo = new WebSocketInfo(
-                "/ws/rooms/" + room.getRoomId(),
-                "websocket",
-                "json"
-        );
-
         return new RoomCreateResponse(
                 room.getRoomId(),
                 room.getRoomTitle(),
                 room.getPlayerCount(),
                 room.getCapacity(),
                 room.getStatus().name(),
-                wsInfo
+                WebSocketInfo.of(room.getRoomId().toString())
         );
     }
-
-
 }

@@ -6,6 +6,7 @@ import com.gulab.sigkillserver.domain.room.dto.response.RoomAvailabilityResponse
 import com.gulab.sigkillserver.domain.room.dto.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -37,9 +38,12 @@ public class RoomController {
      * 방 생성
      */
     @PostMapping("/v1/rooms")
-    public BaseResponse<RoomCreateResponse> createRoom(@RequestBody RoomCreateRequest request) {
+    public BaseResponse<RoomCreateResponse> createRoom(
+            @RequestBody RoomCreateRequest request,
+            Principal principal
+    ) {
         log.info("POST /api/v1/rooms - title: {}", request.roomTitle());
-        RoomCreateResponse response = roomService.createRoom(request);
+        RoomCreateResponse response = roomService.createRoom(request, principal.getName());
         return BaseResponse.onSuccess(response);
     }
 
@@ -47,9 +51,12 @@ public class RoomController {
      * 방 참가 가능 여부 확인
      */
     @GetMapping("/v1/rooms/{roomId}/availability")
-    public BaseResponse<RoomAvailabilityResponse> checkRoomAvailability(@PathVariable Long roomId) {
+    public BaseResponse<RoomAvailabilityResponse> checkRoomAvailability(
+            @PathVariable Long roomId,
+            Principal principal
+    ) {
         log.info("GET /api/v1/rooms/{}/availability", roomId);
-        RoomAvailabilityResponse response = roomService.checkRoomAvailability(roomId);
+        RoomAvailabilityResponse response = roomService.checkRoomAvailability(roomId, principal.getName());
         return BaseResponse.onSuccess(response);
     }
 }

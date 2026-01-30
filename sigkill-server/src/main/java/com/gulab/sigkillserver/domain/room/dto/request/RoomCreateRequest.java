@@ -5,7 +5,6 @@ package com.gulab.sigkillserver.domain.room.dto.request;
  */
 public record RoomCreateRequest(
         String roomTitle,
-        Integer playerCount,
         Integer capacity
 ) {
 }
