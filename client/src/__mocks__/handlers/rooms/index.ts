@@ -12,9 +12,9 @@ const generateMockRooms = (page: number, size: number) => {
     const playerCount = Math.floor(Math.random() * 10) + 1;
 
     rooms.push({
-      room_id: roomId,
-      room_title: `${["JavaScript", "TypeScript", "React", "Node.js", "Python"][Math.floor(Math.random() * 5)]} 퀴즈 ${roomId}`,
-      player_count: playerCount,
+      roomId,
+      title: `${["JavaScript", "TypeScript", "React", "Node.js", "Python"][Math.floor(Math.random() * 5)]} 퀴즈 ${roomId}`,
+      playerCount: playerCount,
       capacity: 10,
       status: isPlaying ? "PLAYING" : "WAITING",
     });
@@ -48,9 +48,9 @@ export const roomHandlers = [
         rooms,
         page,
         size,
-        total_elements: totalElements,
-        total_pages: totalPages,
-        has_next: page < totalPages - 1,
+        totalElements,
+        totalPages,
+        hasNext: page < totalPages - 1,
       },
     });
   }),

@@ -1,18 +1,10 @@
-export interface RoomDto {
-  room_id: number;
-  room_title: string;
-  player_count: number;
-  capacity: number;
-  status: "WAITING" | "PLAYING";
-}
-
 export interface RoomListDto {
-  rooms: RoomDto[];
+  rooms: RoomItem[];
   page: number;
   size: number;
-  total_elements: number;
-  total_pages: number;
-  has_next: boolean;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
 }
 
 export interface RoomItem {
