@@ -5,3 +5,5 @@ export type APIResponse<T> = {
   message: string;
   result: T;
 };
+
+export type APIErrorResponse = APIResponse<null>;

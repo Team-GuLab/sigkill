@@ -1,9 +1,14 @@
-import axios from "axios";
+import axios, { AxiosError, type AxiosResponse } from "axios";
+import type { APIErrorResponse, APIResponse } from "./types";
 
-export interface ServerError {
-  code: string;
-  message: string;
-  timeStamp: string;
+export class AppError extends Error {
+  code?: string;
+  status?: number;
+  constructor(message: string, code?: string, status?: number) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
 }
 
 export const axiosInstance = axios.create({
@@ -13,10 +18,10 @@ export const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use();
 
 axiosInstance.interceptors.response.use(
-  (response) => {
+  (response: AxiosResponse<APIResponse<unknown>>) => {
     return response;
   },
-  (error) => {
+  (error: AxiosError<APIErrorResponse>) => {
     // axios 에러가 아닌 경우 그대로 reject
     if (!axios.isAxiosError(error)) {
       console.error("An unexpected error occurred", error);
@@ -25,28 +30,13 @@ axiosInstance.interceptors.response.use(
 
     const { data, status } = error.response!;
 
-    switch (status) {
-      case 400:
-        // TODO: handle 400 error
-        console.error(data);
-        break;
+    // 애플리케이션 에러로 변환하여 reject
+    const appError = new AppError(
+      data?.message ?? "요청에 실패했습니다.",
+      data?.code ?? "UNKNOWN_ERROR",
+      status,
+    );
 
-      case 401:
-        // TODO: handle 401 error
-        console.error("unauthorised");
-        break;
-
-      case 404:
-        // TODO: handle 404 error
-        console.error("/not-found");
-        break;
-
-      case 500:
-        // TODO: handle 500 error
-        console.error("/server-error");
-        break;
-    }
-
-    return Promise.reject(error);
+    return Promise.reject(appError);
   },
 );
