@@ -9,7 +9,7 @@ public record BaseResponse<T>(ZonedDateTime timeStamp, String code, String messa
     public static <T> BaseResponse<T> onSuccess(T result) {
         return new BaseResponse<>(
                 ZonedDateTime.now(),
-                "COMMON200",
+                "SUCCESS",
                 "요청이 성공적으로 처리되었습니다.",
                 result
         );
