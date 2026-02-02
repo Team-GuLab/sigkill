@@ -27,11 +27,6 @@ export const roomHandlers = [
   // 방 목록 조회 API
   http.get("/api/v1/rooms", ({ request }) => {
     const url = new URL(request.url);
-    const mode = url.searchParams.get("mode");
-
-    if (mode === "network-error") {
-      return HttpResponse.error();
-    }
 
     const page = parseInt(url.searchParams.get("page") || "0", 10);
     const size = parseInt(url.searchParams.get("size") || "6", 10);
@@ -77,4 +72,16 @@ export const roomHandlers = [
       { status: 201 },
     );
   }),
+
+  // http.post("/api/v1/rooms", () => {
+  //   return HttpResponse.json(
+  //     {
+  //       timeStamp: "2026-01-29T14:23:45.123+09:00",
+  //       code: "UNAUTHORIZED",
+  //       message: "세션이 만료되었습니다.",
+  //       result: null,
+  //     },
+  //     { status: 401 },
+  //   );
+  // }),
 ];
