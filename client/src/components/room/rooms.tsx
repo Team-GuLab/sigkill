@@ -1,0 +1,71 @@
+import { useState } from "react";
+import { useRooms } from "@/hooks/use-rooms";
+import RoomItem from "@/components/room/room-item";
+import RoomListPagination from "./room-list-pagination";
+import { ItemGroup } from "@/ui/item";
+import { EmptyData } from "@/components/common/empty-data";
+import { InboxIcon, RefreshCcwIcon } from "lucide-react";
+
+const PAGE_SIZE = 6;
+
+// 방 목록의 방 다건
+export default function Rooms() {
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const { data, refetch } = useRooms({
+    page: currentPage,
+    size: PAGE_SIZE,
+  });
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  const { totalPages, rooms } = data;
+
+  return (
+    <>
+      <section>
+        <ItemGroup className="gap-3">
+          {rooms.map((room) => (
+            <RoomItem
+              key={room.roomId}
+              roomId={room.roomId}
+              title={room.title}
+              playerCount={room.playerCount}
+              capacity={room.capacity}
+              status={room.status}
+            />
+          ))}
+        </ItemGroup>
+      </section>
+
+      {totalPages === 0 && rooms.length === 0 && (
+        <div className="mt-8">
+          <EmptyData
+            icon={<InboxIcon />}
+            title="방이 없습니다"
+            description="현재 생성된 방이 없습니다. 새로운 방을 만들어보세요."
+            buttonText="새로고침"
+            buttonIcon={<RefreshCcwIcon />}
+            onButtonClick={handleRefresh}
+          />
+        </div>
+      )}
+
+      {totalPages > 0 && (
+        <div className="mt-8">
+          <RoomListPagination
+            totalPages={totalPages}
+            currentPage={currentPage}
+            handlePageChange={handlePageChange}
+          />
+        </div>
+      )}
+    </>
+  );
+}

@@ -11,7 +11,7 @@ interface ErrorFallbackProps {
   onButtonClick?: () => void;
 }
 
-export function ErrorFallback({
+export default function ErrorFallback({
   title,
   description,
   icon,
