@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
-import RoomList from "./pages/room-list";
+import RoomListPage from "./pages/room-list-page";
 import DefaultLayout from "./layouts/default";
 
 const router = createBrowserRouter([
@@ -8,7 +8,7 @@ const router = createBrowserRouter([
     children: [
       {
         path: "/",
-        element: <RoomList />,
+        element: <RoomListPage />,
       },
     ],
   },
