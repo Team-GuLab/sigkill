@@ -19,6 +19,7 @@ export const getRoomList = async <T = RoomListDto>(
   const response = await axiosInstance.get<APIResponse<T>>(
     `/api/v1/rooms?${queryParams}`,
   );
+
   return response.data.result;
 };
 
@@ -39,4 +40,22 @@ export const createRoom = async <T = RoomItem>({
   });
 
   return response.data.result;
+};
+
+type WSSession = {
+  ws: {
+    endpoint: string;
+    protocol: "websocket";
+    message_format: "json";
+  };
+};
+export const checkRoomAvailability = async <T = WSSession>(roomId: number) => {
+  try {
+    const response = await axiosInstance.get<APIResponse<T>>(
+      `/api/v1/rooms/${roomId}/availability`,
+    );
+    return response.data.result;
+  } catch (error) {
+    throw error;
+  }
 };
