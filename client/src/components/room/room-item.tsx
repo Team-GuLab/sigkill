@@ -1,7 +1,10 @@
+import { checkRoomAvailability } from "@/api/room";
 import type { RoomItem } from "@/api/room/types";
 import { Item, ItemContent, ItemTitle, ItemActions } from "@/ui/item";
-import { Users } from "lucide-react";
 import { Badge } from "@/ui/badge";
+import { Users } from "lucide-react";
+import { AppError } from "@/api/axios";
+import { toast } from "sonner";
 
 // 방 목록 내 단건 방
 interface RoomItemProps extends RoomItem {}
@@ -12,9 +15,19 @@ export default function RoomItem({
   capacity,
   status,
 }: RoomItemProps) {
-  const disabled = status === "PLAYING" || playerCount >= capacity;
+  const disabled = status === "PLAYING";
 
-  const handleRoomItemClick = async () => {};
+  const handleRoomItemClick = async () => {
+    try {
+      await checkRoomAvailability(roomId);
+    } catch (error) {
+      if (error instanceof AppError) {
+        toast.error(error.message);
+        return;
+      }
+      toast.error("방 입장 중 에러가 발생했습니다. 잠시후 다시 시도해주세요.");
+    }
+  };
 
   return (
     <Item
