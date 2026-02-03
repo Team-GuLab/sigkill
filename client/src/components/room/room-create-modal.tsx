@@ -13,7 +13,6 @@ import { Field, FieldLabel } from "@/ui/field";
 import { useCreateRoom } from "@/hooks/room/use-create-room";
 import { useState } from "react";
 import { toast } from "sonner";
-import { AppError } from "@/api/axios";
 
 interface RoomCreateModalProps {
   open: boolean;
