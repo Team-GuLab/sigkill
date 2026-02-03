@@ -14,3 +14,7 @@ export interface RoomItem {
   capacity: number;
   status: "WAITING" | "PLAYING";
 }
+
+export interface CreateRoomParams {
+  title: string;
+}
