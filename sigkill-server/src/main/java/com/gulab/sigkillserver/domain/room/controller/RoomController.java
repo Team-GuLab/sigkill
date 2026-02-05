@@ -6,6 +6,7 @@ import com.gulab.sigkillserver.domain.room.dto.response.RoomAvailabilityResponse
 import com.gulab.sigkillserver.domain.room.dto.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.security.Principal;
@@ -43,7 +44,7 @@ public class RoomController {
      */
     @PostMapping("/rooms")
     public BaseResponse<RoomCreateResponse> createRoom(
-            @RequestBody RoomCreateRequest request,
+            @Valid @RequestBody RoomCreateRequest request,
             Principal principal
     ) {
         log.info("POST /api/v1/rooms - title: {}", request.roomTitle());
