@@ -86,44 +86,38 @@ public class RoomService {
      */
     public RoomCreateResponse createRoom(RoomCreateRequest request, String sessionId) {
         log.info("방 생성 - title: {}, capacity: {}", request.roomTitle(), request.capacity());
-        validateRoomCreateRequest(request);
+        String roomTitle = request.roomTitle().strip();
+        validateRoomCreateRequest(roomTitle, request.capacity());
 
-        String roomId = generateRoomId();
-
-        Room room = Room.create(roomId, request.roomTitle(), sessionId, request.capacity());
-
-        room = roomRepository.save(room);
-        log.info("방 생성 완료 - roomId: {}", roomId);
-        return RoomCreateResponse.of(room);
-    }
-
-    /**
-     * 4자리 랜덤 정수 생성 (1000 ~ 9999)
-     * 중복 체크하여 유니크한 ID 반환
-     */
-    private String generateRoomId() {
         int maxAttempts = 100;
-
         for (int i = 0; i < maxAttempts; i++) {
-            String roomId = String.valueOf(ThreadLocalRandom.current().nextInt(1000, 10000));
-
-            // 중복 체크
-            if (!roomRepository.existsById(roomId)) {
-                return roomId;
+            try {
+                String roomId = generateRoomId();
+                Room room = Room.create(roomId, roomTitle, sessionId, request.capacity());
+                room = roomRepository.save(room);
+                log.info("방 생성 완료 - roomId: {}", roomId);
+                return RoomCreateResponse.of(room);
+            } catch (IllegalStateException e) {
+                log.debug("Room ID 중복 발생, 재시도 중 (attempt: {}): {}", i + 1, e.getMessage());
             }
         }
 
         throw new CustomException(ROOM_CREATE_ERROR);
     }
 
-    private void validateRoomCreateRequest(RoomCreateRequest request) {
-        String roomTitle = request.roomTitle().strip();
+    /**
+     * 4자리 랜덤 정수 생성 (1000 ~ 9999)
+     */
+    private String generateRoomId() {
+        return String.valueOf(ThreadLocalRandom.current().nextInt(1000, 10000));
+    }
+
+    private void validateRoomCreateRequest(String roomTitle, int capacity) {
         if (roomTitle.isBlank() || roomTitle.length() > MAX_TITLE_LENGTH) {
             throw new CustomException(ROOM_TITLE_INVALID);
         }
 
-        if (request.capacity() != null &&
-            (request.capacity() < MIN_CAPACITY || request.capacity() > MAX_CAPACITY)) {
+        if (capacity < MIN_CAPACITY || capacity > MAX_CAPACITY) {
             throw new CustomException(ROOM_CAPACITY_INVALID);
         }
     }

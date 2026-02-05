@@ -15,7 +15,10 @@ public class RoomMemoryRepository implements RoomRepository {
 
     @Override
     public Room save(Room room) {
-        store.put(room.getRoomId(), room);
+        Room existing = store.putIfAbsent(room.getRoomId(), room);
+        if (existing != null) {
+            throw new IllegalStateException("Room ID 가 이미 존재합니다.: " + room.getRoomId());
+        }
         return room;
     }
 

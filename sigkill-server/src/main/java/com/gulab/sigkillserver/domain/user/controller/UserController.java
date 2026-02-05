@@ -22,7 +22,7 @@ public class UserController {
     /**
      * 비회원 로그인
      */
-    @PostMapping("users/guest-login")
+    @PostMapping("/users/guest-login")
     public BaseResponse<LoginResponse> loginAsGuest(HttpSession session) {
         log.info("POST /api/v1/users/guest-login - 비회원 로그인, sessionId: {}", session.getId());
         LoginResponse loginResponse = userService.loginAsGuest(session);

@@ -1,13 +1,11 @@
 package com.gulab.sigkillserver.domain.user.util;
 
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class NicknameGenerator {
     private NicknameGenerator() {
     }
-
-    private static final Random random = new Random();
 
     private static final List<String> ADJECTIVES = List.of(
             "따스한", "포근한", "은은한", "꿈꾸는", "불꽃같은", "잔잔한", "두근두근", "웃음 가득한", "이야기하는", "감성적인",
@@ -31,6 +29,7 @@ public class NicknameGenerator {
      * @return 생성된 닉네임
      */
     public static String generateRandomNickname() {
+        ThreadLocalRandom random = ThreadLocalRandom.current();
         String adjective = ADJECTIVES.get(random.nextInt(ADJECTIVES.size()));
         String character = CHARACTERS.get(random.nextInt(CHARACTERS.size()));
         return adjective + " " + character;
