@@ -11,31 +11,26 @@ import static org.mockito.Mockito.when;
 import com.gulab.sigkillserver.domain.user.dto.response.LoginResponse;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
-import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
+import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
-@DisplayName("UserService 테스트")
 class UserServiceTest {
 
-    private UserService userService;
-    private UserRepository userRepository;
-    private HttpSession mockSession;
-
-    // 테스트용 고정 데이터
     private static final String TEST_SESSION_ID = "test-session-123";
     private static final String TEST_NICKNAME = "테스트닉네임";
     private static final UserRole TEST_ROLE = UserRole.GUEST;
+    private UserService userService;
+    private UserRepository userRepository;
+    private HttpSession mockSession;
 
     @BeforeEach
     void setup() {
@@ -43,6 +38,24 @@ class UserServiceTest {
         userService = new UserService(userRepository);
         mockSession = mock(HttpSession.class);
         SecurityContextHolder.clearContext();
+    }
+
+    /**
+     * User 객체를 생성하고 저장
+     */
+    private User createAndSaveUser(String sessionId, String nickname) {
+        User user = User.create(sessionId, nickname, TEST_ROLE);
+        return userRepository.save(user);
+    }
+
+    /**
+     * 특정 세션 ID로 게스트 로그인 수행
+     */
+    private LoginResponse createGuestUserWithSession(String sessionId) {
+        HttpSession session = mock(HttpSession.class);
+        when(session.getId()).thenReturn(sessionId);
+        SecurityContextHolder.clearContext();
+        return userService.loginAsGuest(session);
     }
 
     @Nested
@@ -69,7 +82,7 @@ class UserServiceTest {
         @Test
         void 기존_세션으로_로그인_시_기존_사용자_정보를_반환한다() {
             // Given
-            User existingUser = createAndSaveUser(TEST_SESSION_ID, TEST_NICKNAME);
+            createAndSaveUser(TEST_SESSION_ID, TEST_NICKNAME);
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
 
             // When
@@ -153,9 +166,9 @@ class UserServiceTest {
             when(mockSession2.getId()).thenReturn(sessionId2);
 
             // When
-            LoginResponse response1 = userService.loginAsGuest(mockSession1);
+            userService.loginAsGuest(mockSession1);
             SecurityContextHolder.clearContext();
-            LoginResponse response2 = userService.loginAsGuest(mockSession2);
+            userService.loginAsGuest(mockSession2);
 
             // Then
             assertThat(userRepository.findAll()).hasSize(2);
@@ -167,7 +180,7 @@ class UserServiceTest {
         void 기존_사용자로_재로그인_시_닉네임이_변경되지_않는다() {
             // Given
             String originalNickname = "원래닉네임";
-            User existingUser = createAndSaveUser(TEST_SESSION_ID, originalNickname);
+            createAndSaveUser(TEST_SESSION_ID, originalNickname);
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
 
             // When
@@ -203,25 +216,5 @@ class UserServiceTest {
 
             assertThat(distinctCount).isGreaterThanOrEqualTo(2);
         }
-    }
-
-    // 헬퍼 메소드
-
-    /**
-     * User 객체를 생성하고 저장
-     */
-    private User createAndSaveUser(String sessionId, String nickname) {
-        User user = User.create(sessionId, nickname, TEST_ROLE);
-        return userRepository.save(user);
-    }
-
-    /**
-     * 특정 세션 ID로 게스트 로그인 수행
-     */
-    private LoginResponse createGuestUserWithSession(String sessionId) {
-        HttpSession session = mock(HttpSession.class);
-        when(session.getId()).thenReturn(sessionId);
-        SecurityContextHolder.clearContext();
-        return userService.loginAsGuest(session);
     }
 }
