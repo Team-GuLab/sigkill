@@ -1,10 +1,12 @@
 package com.gulab.sigkillserver.domain.room.repository;
 
 import com.gulab.sigkillserver.domain.room.model.Room;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -14,7 +16,8 @@ public class RoomMemoryRepository implements RoomRepository {
 
     @Override
     public Room save(Room room) {
-        return store.put(room.getId(), room);
+        store.put(room.getRoomId(), room);
+        return room;
     }
 
     @Override
@@ -24,9 +27,22 @@ public class RoomMemoryRepository implements RoomRepository {
 
     @Override
     public List<Room> findAll() {
-        return store.values().stream().toList();
+        return new java.util.ArrayList<>(store.values());
     }
 
+    @Override
+    public List<Room> findAll(Comparator<Room> comparator, int offset, int limit) {
+        return store.values().stream()
+                .sorted(comparator)
+                .skip(offset)
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public long count() {
+        return store.size();
+    }
 
     @Override
     public void deleteById(String roomId) {

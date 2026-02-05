@@ -12,8 +12,8 @@ import lombok.Getter;
 @Getter
 public class Room extends BaseEntity {
 
-    private final String id;
-    private final String title;
+    private final String roomId;
+    private final String roomTitle;
     private final String hostId;
     private final Set<String> playerIds;
     private final Integer capacity;
@@ -22,10 +22,10 @@ public class Room extends BaseEntity {
     /**
      * private 생성자
      */
-    private Room(String id, String title, String hostId, Integer capacity, RoomStatus status) {
+    private Room(String roomId, String roomTitle, String hostId, Integer capacity, RoomStatus status) {
         super(ZonedDateTime.now(), ZonedDateTime.now());
-        this.id = id;
-        this.title = title;
+        this.roomId = roomId;
+        this.roomTitle = roomTitle;
         this.hostId = hostId;
         this.capacity = capacity;
         this.status = status;

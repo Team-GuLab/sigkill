@@ -52,7 +52,7 @@ public class RoomController {
      */
     @GetMapping("/v1/rooms/{roomId}/availability")
     public BaseResponse<RoomAvailabilityResponse> checkRoomAvailability(
-            @PathVariable Long roomId,
+            @PathVariable String roomId,
             Principal principal
     ) {
         log.info("GET /api/v1/rooms/{}/availability", roomId);

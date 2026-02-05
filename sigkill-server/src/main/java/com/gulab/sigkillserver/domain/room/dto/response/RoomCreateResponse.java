@@ -7,9 +7,9 @@ import com.gulab.sigkillserver.domain.room.model.Room;
  * 방 생성 응답 DTO
  */
 public record RoomCreateResponse(
-        Long roomId,
+        String roomId,
         String roomTitle,
-        Integer playerCount,
+        Integer currentCapacity,
         Integer capacity,
         String status,
         WebSocketInfo ws
@@ -18,10 +18,10 @@ public record RoomCreateResponse(
         return new RoomCreateResponse(
                 room.getRoomId(),
                 room.getRoomTitle(),
-                room.getPlayerCount(),
+                room.getCurrentCapacity(),
                 room.getCapacity(),
                 room.getStatus().name(),
-                WebSocketInfo.of(room.getRoomId().toString())
+                WebSocketInfo.of(room.getRoomId())
         );
     }
 }

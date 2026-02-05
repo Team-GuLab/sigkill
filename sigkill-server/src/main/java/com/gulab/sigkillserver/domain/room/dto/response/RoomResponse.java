@@ -10,15 +10,17 @@ public record RoomResponse(
         String roomTitle,
         Integer playerCount,
         Integer capacity,
-        String status
+        String status,
+        boolean canJoin
 ) {
     public static RoomResponse of(Room room) {
         return new RoomResponse(
-                room.getId(),
-                room.getTitle(),
+                room.getRoomId(),
+                room.getRoomTitle(),
                 room.getCurrentCapacity(),
                 room.getCapacity(),
-                room.getStatus().name()
+                room.getStatus().name(),
+                room.canJoin()
         );
     }
 }
