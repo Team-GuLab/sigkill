@@ -1,7 +1,7 @@
 package com.gulab.sigkillserver.domain.user.service;
 
 import com.gulab.sigkillserver.domain.user.dto.response.LoginResponse;
-import com.gulab.sigkillserver.domain.user.model.Role;
+import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import com.gulab.sigkillserver.domain.user.util.NicknameGenerator;
@@ -32,24 +32,12 @@ public class UserService {
         String sessionId = session.getId();
 
         User user = userRepository.findById(sessionId)
-                .orElseGet(() -> {
-                    // 새 사용자 생성
-                    String nickname = NicknameGenerator.generateRandomNickname();
-                    User newUser = User.builder()
-                            .userId(sessionId)
-                            .userName(nickname)
-                            .role(Role.GUEST)
-                            .build();
-                    userRepository.save(newUser);
-                    log.info("새 비회원 사용자 생성 - sessionId: {}, nickname: {}, role: {}",
-                            sessionId, nickname, Role.GUEST.getKey());
-                    return newUser;
-                });
+                .orElseGet(() -> createUser(sessionId));
 
         // Spring Security 인증 정보 설정
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
-                        user.getUserId(),
+                        user.getSessionId(),
                         null,
                         Collections.singletonList(new SimpleGrantedAuthority(user.getRole().getKey()))
                 );
@@ -64,7 +52,16 @@ public class UserService {
                 securityContext
         );
 
-        log.info("비회원 로그인 처리 완료 - sessionId: {}, userName: {}", sessionId, user.getUserName());
-        return new LoginResponse(user.getUserName());
+        log.info("비회원 로그인 처리 완료 - sessionId: {}, userName: {}", sessionId, user.getNickname());
+        return new LoginResponse(user.getNickname());
+    }
+
+    private User createUser(String sessionId) {
+        String nickname = NicknameGenerator.generateRandomNickname();
+        User newUser = User.create(sessionId, nickname, UserRole.GUEST);
+        userRepository.save(newUser);
+        log.info("새 비회원 사용자 생성 - sessionId: {}, nickname: {}, role: {}",
+                sessionId, nickname, UserRole.GUEST.getKey());
+        return newUser;
     }
 }
