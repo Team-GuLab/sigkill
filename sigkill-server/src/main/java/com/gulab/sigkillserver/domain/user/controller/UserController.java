@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Slf4j
 public class UserController {
@@ -22,7 +22,7 @@ public class UserController {
     /**
      * 비회원 로그인
      */
-    @PostMapping("/guest-login")
+    @PostMapping("users/guest-login")
     public BaseResponse<LoginResponse> loginAsGuest(HttpSession session) {
         log.info("POST /api/v1/users/guest-login - 비회원 로그인, sessionId: {}", session.getId());
         LoginResponse loginResponse = userService.loginAsGuest(session);

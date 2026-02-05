@@ -6,18 +6,22 @@ import com.gulab.sigkillserver.domain.room.dto.response.RoomAvailabilityResponse
 import com.gulab.sigkillserver.domain.room.dto.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * Room Controller
  */
 @RestController
-@RequestMapping("/api/v1/rooms")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 public class RoomController {
 
     private final RoomService roomService;
@@ -25,10 +29,10 @@ public class RoomController {
     /**
      * 방 목록 조회
      */
-    @GetMapping("/v1/rooms")
+    @GetMapping("/rooms")
     public BaseResponse<RoomListResponse> getRooms(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "6") int size) {
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "페이지 번호는 0 이상이어야 합니다") int page,
+            @RequestParam(defaultValue = "6") @Min(value = 1, message = "페이지 크기는 1 이상이어야 합니다") @Max(value = 100, message = "페이지 크기는 100 이하여야 합니다") int size) {
         log.info("GET /api/v1/rooms - page: {}, size: {}", page, size);
         RoomListResponse response = roomService.fetchRooms(page, size);
         return BaseResponse.onSuccess(response);
@@ -37,7 +41,7 @@ public class RoomController {
     /**
      * 방 생성
      */
-    @PostMapping("/v1/rooms")
+    @PostMapping("/rooms")
     public BaseResponse<RoomCreateResponse> createRoom(
             @RequestBody RoomCreateRequest request,
             Principal principal
@@ -50,7 +54,7 @@ public class RoomController {
     /**
      * 방 참가 가능 여부 확인
      */
-    @GetMapping("/v1/rooms/{roomId}/availability")
+    @GetMapping("/rooms/{roomId}/availability")
     public BaseResponse<RoomAvailabilityResponse> checkRoomAvailability(
             @PathVariable String roomId,
             Principal principal
