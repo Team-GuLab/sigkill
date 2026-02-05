@@ -6,7 +6,7 @@ import com.gulab.sigkillserver.domain.room.model.Room;
  * 방 정보 응답 DTO
  */
 public record RoomResponse(
-        Long roomId,
+        String roomId,
         String roomTitle,
         Integer playerCount,
         Integer capacity,
@@ -14,9 +14,9 @@ public record RoomResponse(
 ) {
     public static RoomResponse of(Room room) {
         return new RoomResponse(
-                room.getRoomId(),
-                room.getRoomTitle(),
-                room.getPlayerCount(),
+                room.getId(),
+                room.getTitle(),
+                room.getCurrentCapacity(),
                 room.getCapacity(),
                 room.getStatus().name()
         );

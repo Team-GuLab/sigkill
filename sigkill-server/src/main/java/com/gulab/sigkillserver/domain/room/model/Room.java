@@ -1,48 +1,100 @@
 package com.gulab.sigkillserver.domain.room.model;
 
-import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.DEFAULT_CAPACITY;
-
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import com.gulab.sigkillserver.common.BaseEntity;
+import java.time.ZonedDateTime;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.redis.core.RedisHash;
-import org.springframework.data.redis.core.index.Indexed;
 
 /**
  * 방 정보
  */
 @Getter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@RedisHash(value = "room", timeToLive = 7200) // 2시간 TTL
-public class Room {
+public class Room extends BaseEntity {
 
-    @Id
-    private Long roomId;
-
-    private String roomTitle;
-
-    @Builder.Default
-    private Integer playerCount = 0;
-
-    @Builder.Default
-    private Integer capacity = DEFAULT_CAPACITY;
-
-    @Indexed
-    @Builder.Default
-    private RoomStatus status = RoomStatus.WAITING;
-
-    private String hostSessionId;
+    private final String id;
+    private final String title;
+    private final String hostId;
+    private final Set<String> playerIds;
+    private final Integer capacity;
+    private RoomStatus status;
 
     /**
-     * 방 상태 enum
+     * private 생성자
      */
-    public enum RoomStatus {
-        WAITING,  // 대기 중
-        INGAME    // 게임 중
+    private Room(String id, String title, String hostId, Integer capacity, RoomStatus status) {
+        super(ZonedDateTime.now(), ZonedDateTime.now());
+        this.id = id;
+        this.title = title;
+        this.hostId = hostId;
+        this.capacity = capacity;
+        this.status = status;
+        this.playerIds = ConcurrentHashMap.newKeySet();
+    }
+
+    public int getCurrentCapacity() {
+        return playerIds.size();
+    }
+
+    public void addPlayer(String playerId) {
+        playerIds.add(playerId);
+    }
+
+    public void removePlayer(String playerId) {
+        playerIds.remove(playerId);
+    }
+
+    public boolean isFull() {
+        return playerIds.size() >= capacity;
+    }
+
+    public boolean isInGame() {
+        return status == RoomStatus.INGAME;
+    }
+
+    public boolean canJoin() {
+        return !isFull() && !isInGame();
+    }
+
+    /**
+     * 새 방 생성
+     *
+     * @param id 방 ID (4자리 랜덤 숫자)
+     * @param title 방 제목
+     * @param hostId 방장 세션 ID
+     * @param capacity 최대 수용 인원
+     * @return 생성된 Room 객체
+     */
+    public static Room create(String id, String title, String hostId, Integer capacity) {
+        Room room = new Room(id, title, hostId, capacity, RoomStatus.WAITING);
+        room.addPlayer(hostId);
+        return room;
+    }
+
+    /**
+     * 플레이어 입장
+     *
+     * @param playerId 입장할 플레이어 ID
+     * @return this
+     */
+    public Room join(String playerId) {
+        if (canJoin()) {
+            this.addPlayer(playerId);
+        }
+        return this;
+    }
+
+    /**
+     * 게임 시작 (상태를 INGAME으로 변경)
+     */
+    public void startGame() {
+        this.status = RoomStatus.INGAME;
+    }
+
+    /**
+     * 게임 종료 (상태를 WAITING으로 변경)
+     */
+    public void endGame() {
+        this.status = RoomStatus.WAITING;
     }
 }

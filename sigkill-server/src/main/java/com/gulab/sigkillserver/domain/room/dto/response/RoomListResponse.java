@@ -9,7 +9,7 @@ public record RoomListResponse(
         List<RoomResponse> rooms,
         Integer page,
         Integer size,
-        Long totalElements,
+        Integer totalElements,
         Integer totalPages,
         Boolean hasNext
 ) {
