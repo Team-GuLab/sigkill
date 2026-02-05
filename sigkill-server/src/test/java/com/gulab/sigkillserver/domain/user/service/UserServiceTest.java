@@ -46,12 +46,10 @@ class UserServiceTest {
     }
 
     @Nested
-    @DisplayName("비회원 로그인 기능")
-    class LoginAsGuestTests {
+    class 비회원_로그인_기능 {
 
         @Test
-        @DisplayName("새로운 세션으로 로그인 시 사용자가 생성된다")
-        void loginAsGuest_NewUser_Success() {
+        void 새로운_세션으로_로그인_시_사용자가_생성된다() {
             // Given
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
 
@@ -62,7 +60,6 @@ class UserServiceTest {
             assertThat(response).isNotNull();
             assertThat(response.nickname()).isNotBlank();
 
-            // 사용자가 실제로 저장되었는지 확인
             Optional<User> savedUser = userRepository.findById(TEST_SESSION_ID);
             assertThat(savedUser).isPresent();
             assertThat(savedUser.get().getSessionId()).isEqualTo(TEST_SESSION_ID);
@@ -70,8 +67,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("기존 세션으로 로그인 시 기존 사용자 정보를 반환한다")
-        void loginAsGuest_ExistingUser_Success() {
+        void 기존_세션으로_로그인_시_기존_사용자_정보를_반환한다() {
             // Given
             User existingUser = createAndSaveUser(TEST_SESSION_ID, TEST_NICKNAME);
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
@@ -82,14 +78,11 @@ class UserServiceTest {
             // Then
             assertThat(response).isNotNull();
             assertThat(response.nickname()).isEqualTo(TEST_NICKNAME);
-
-            // 사용자가 중복 생성되지 않았는지 확인
             assertThat(userRepository.findAll()).hasSize(1);
         }
 
         @Test
-        @DisplayName("로그인 후 SecurityContext가 올바르게 설정된다")
-        void loginAsGuest_SecurityContextIsSet() {
+        void 로그인_후_SecurityContext가_올바르게_설정된다() {
             // Given
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
 
@@ -109,8 +102,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("로그인 후 세션에 SecurityContext가 저장된다")
-        void loginAsGuest_SessionContainsSecurityContext() {
+        void 로그인_후_세션에_SecurityContext가_저장된다() {
             // Given
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
 
@@ -125,8 +117,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("생성된 닉네임은 공백을 포함한다")
-        void loginAsGuest_NicknameContainsSpace() {
+        void 생성된_닉네임은_공백을_포함한다() {
             // Given
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
 
@@ -138,8 +129,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("생성된 사용자의 역할은 GUEST이다")
-        void loginAsGuest_UserRoleIsGuest() {
+        void 생성된_사용자의_역할은_GUEST이다() {
             // Given
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
 
@@ -153,8 +143,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("다른 세션으로 로그인 시 각각 다른 사용자가 생성된다")
-        void loginAsGuest_DifferentSessions_CreateDifferentUsers() {
+        void 다른_세션으로_로그인_시_각각_다른_사용자가_생성된다() {
             // Given
             String sessionId1 = "session-1";
             String sessionId2 = "session-2";
@@ -165,7 +154,7 @@ class UserServiceTest {
 
             // When
             LoginResponse response1 = userService.loginAsGuest(mockSession1);
-            SecurityContextHolder.clearContext(); // 컨텍스트 초기화
+            SecurityContextHolder.clearContext();
             LoginResponse response2 = userService.loginAsGuest(mockSession2);
 
             // Then
@@ -175,8 +164,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("기존 사용자로 재로그인 시 닉네임이 변경되지 않는다")
-        void loginAsGuest_ExistingUser_NicknameUnchanged() {
+        void 기존_사용자로_재로그인_시_닉네임이_변경되지_않는다() {
             // Given
             String originalNickname = "원래닉네임";
             User existingUser = createAndSaveUser(TEST_SESSION_ID, originalNickname);
@@ -193,12 +181,10 @@ class UserServiceTest {
     }
 
     @Nested
-    @DisplayName("닉네임 생성 규칙")
-    class NicknameGenerationTests {
+    class 닉네임_생성_규칙 {
 
         @Test
-        @DisplayName("여러 사용자 생성 시 각각 다른 닉네임이 생성된다")
-        void loginAsGuest_MultipleTimes_GeneratesDifferentNicknames() {
+        void 여러_사용자_생성_시_각각_다른_닉네임이_생성된다() {
             // Given & When
             LoginResponse response1 = createGuestUserWithSession("session-1");
             LoginResponse response2 = createGuestUserWithSession("session-2");
@@ -207,7 +193,6 @@ class UserServiceTest {
             LoginResponse response5 = createGuestUserWithSession("session-5");
 
             // Then
-            // 최소 2개 이상은 달라야 함 (확률적으로 모두 다를 가능성이 높음)
             long distinctCount = java.util.stream.Stream.of(
                     response1.nickname(),
                     response2.nickname(),
