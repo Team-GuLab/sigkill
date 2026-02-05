@@ -1,6 +1,7 @@
 # 테스트 코드 스타일 가이드
 
 ## 목차
+
 1. [기본 원칙](#기본-원칙)
 2. [테스트 구조](#테스트-구조)
 3. [네이밍 컨벤션](#네이밍-컨벤션)
@@ -17,11 +18,13 @@
 ## 기본 원칙
 
 ### 테스트는 문서다
+
 - 테스트 코드는 해당 기능의 동작 방식을 설명하는 살아있는 문서입니다
 - 다른 개발자가 읽고 이해할 수 있도록 명확하게 작성합니다
-- `@DisplayName`을 활용하여 테스트 의도를 명확히 표현합니다
+- 메서드명을 한글로 작성하여 테스트 의도를 명확히 표현합니다
 
 ### 독립성과 격리성
+
 - 각 테스트는 독립적으로 실행 가능해야 합니다
 - 테스트 간 실행 순서에 의존하지 않습니다
 - 공유 상태를 피하고 필요시 `@BeforeEach`로 초기화합니다
@@ -39,31 +42,28 @@
 class MemberServiceTest {
 
     @Nested
-    @DisplayName("회원 조회 기능")
-    class FindMemberTests {
+    class 회원_조회_기능 {
 
         @Test
-        @DisplayName("이메일로 회원 조회 시 정상적으로 반환한다")
-        void findMemberByEmail_Success() {
+        void 이메일로_회원_조회에_성공한다() {
             // 테스트 코드
         }
 
         @Test
-        @DisplayName("존재하지 않는 이메일로 조회 시 예외가 발생한다")
-        void findMemberByEmail_NotFound() {
+        void 존재하지_않는_이메일로_조회_시_예외가_발생한다() {
             // 테스트 코드
         }
     }
 
     @Nested
-    @DisplayName("회원 저장 기능")
-    class SaveMemberTests {
+    class 회원_저장_기능 {
         // 저장 관련 테스트들
     }
 }
 ```
 
 **장점:**
+
 - 관련된 테스트들을 논리적으로 그룹화
 - 테스트 리포트의 가독성 향상
 - 각 그룹별로 공통 setup이 필요한 경우 분리 가능
@@ -74,39 +74,32 @@ class MemberServiceTest {
 
 ### 테스트 메소드명
 
-**형식:** `[기능]_[시나리오]` 또는 `[기능]_[조건]_[결과]`
+**형식:** `[기능]_[조건]_[결과]` 또는 `[기능에_성공한다]` 스타일
+
+메서드명을 한글로 작성하여 테스트 의도를 명확히 표현합니다. 가독성을 위해 언더스코어로 단어를 구분합니다.
 
 ```java
 // 좋은 예시
 @Test
-void findMemberByEmail_Success()
+void 이메일로_회원_조회에_성공한다()
 
 @Test
-void saveMember_DuplicateID_ThrowsException()
+void 중복된_ID로_저장_시_예외가_발생한다()
 
 @Test
-void fetchPhotos_PaginationWorks()
+void 페이징이_정상적으로_작동한다()
 
 @Test
-void createInviteCode_AlreadyFamilyMember_ThrowsException()
+void 이미_가족_멤버인_사용자로_초대코드_생성_시_예외가_발생한다()
 ```
 
-**권장 접미사:**
-- `_Success`: 정상 동작하는 경우
-- `_NotFound`: 리소스를 찾을 수 없는 경우
-- `_ThrowsException`: 예외가 발생하는 경우
-- `_Works`: 특정 기능이 정상 동작하는지 확인
-- `_ReturnsEmpty`: 빈 결과를 반환하는 경우
+**권장 패턴:**
 
-### @DisplayName 사용
-
-메소드명은 영어로, `@DisplayName`은 한글로 작성하여 이중으로 설명:
-
-```java
-@Test
-@DisplayName("이미 존재하는 ID로 저장 시 예외가 발생한다")
-void saveMember_DuplicateID()
-```
+- `~에_성공한다`: 정상 동작하는 경우
+- `~를_찾을_수_없을_때_예외가_발생한다`: 리소스를 찾을 수 없는 경우
+- `~_시_예외가_발생한다`: 예외가 발생하는 경우
+- `~이_정상적으로_작동한다`: 특정 기능이 정상 동작하는지 확인
+- `~을_반환한다`: 빈 결과를 반환하는 경우
 
 ---
 
@@ -116,8 +109,7 @@ void saveMember_DuplicateID()
 
 ```java
 @Test
-@DisplayName("사진을 정상적으로 조회한다")
-void getPhoto_Success() {
+void 사진을_정상적으로_조회한다() {
     // Given - 테스트 준비 단계
     Member member = saveTestMember();
     Family family = createAndSaveFamilyWithMember(member);
@@ -136,16 +128,19 @@ void getPhoto_Success() {
 ### 각 단계별 가이드
 
 **Given (준비):**
+
 - 테스트에 필요한 데이터와 상태를 준비
 - 헬퍼 메소드를 활용하여 간결하게 작성
 - 필요한 경우 변수에 설명적인 이름 사용
 
 **When (실행):**
+
 - 테스트하려는 실제 동작을 수행
 - 가능한 한 줄로 표현
 - 결과값이 있다면 명확한 변수명에 저장
 
 **Then (검증):**
+
 - 예상한 결과가 나왔는지 검증
 - 여러 assertion을 사용하여 다양한 측면을 검증
 - 필요한 경우 DB나 외부 상태도 확인
@@ -172,6 +167,7 @@ class MemberServiceTest {
 ```
 
 **장점:**
+
 - 테스트 데이터의 일관성 유지
 - 변경이 필요할 때 한 곳만 수정
 - 테스트 의도가 더 명확해짐
@@ -208,6 +204,7 @@ private Member saveTestMember() {
 ```
 
 **네이밍 규칙:**
+
 - `createXxx()`: 객체만 생성
 - `saveXxx()`: 생성 후 저장까지
 - `createAndSaveXxx()`: 생성 후 저장을 명시적으로 표현
@@ -291,8 +288,7 @@ assertThat(timestamp).isBefore(after);
 
 ```java
 @Test
-@DisplayName("존재하지 않는 이메일로 조회 시 예외가 발생한다")
-void findMemberByEmail_NotFound() {
+void 존재하지_않는_이메일로_조회_시_예외가_발생한다() {
     // Given
     String nonExistentEmail = "notfound@example.com";
 
@@ -308,8 +304,7 @@ void findMemberByEmail_NotFound() {
 
 ```java
 @Test
-@DisplayName("이름이 2자 미만인 경우 예외가 발생한다")
-void saveMember_NameTooShort() {
+void 이름이_2자_미만인_경우_예외가_발생한다() {
     // Given
     String shortName = "김";
     String newUid = "new-uid-short";
@@ -342,8 +337,7 @@ assertThatThrownBy(() -> service.doSomething())
 
 ```java
 @Test
-@DisplayName("회원을 정상적으로 저장한다")
-void saveMember_Success() {
+void 회원을_정상적으로_저장한다() {
     // Given
     String newUid = "new-uid-456";
     String newName = "새멤버";
@@ -368,28 +362,22 @@ void saveMember_Success() {
 
 ```java
 @Nested
-@DisplayName("회원 저장 기능")
-class SaveMemberTests {
+class 회원_저장_기능 {
 
     @Test
-    @DisplayName("새로운 회원 정보 저장 시 정상적으로 저장된다")
-    void saveMember_Success() { /* ... */ }
+    void 새로운_회원_정보_저장에_성공한다() { /* ... */ }
 
     @Test
-    @DisplayName("이미 존재하는 ID로 저장 시 예외가 발생한다")
-    void saveMember_DuplicateID() { /* ... */ }
+    void 이미_존재하는_ID로_저장_시_예외가_발생한다() { /* ... */ }
 
     @Test
-    @DisplayName("이미 존재하는 이름으로 저장 시 예외가 발생한다")
-    void saveMember_DuplicateName() { /* ... */ }
+    void 이미_존재하는_이름으로_저장_시_예외가_발생한다() { /* ... */ }
 
     @Test
-    @DisplayName("이름이 2자 미만인 경우 예외가 발생한다")
-    void saveMember_NameTooShort() { /* ... */ }
+    void 이름이_2자_미만인_경우_예외가_발생한다() { /* ... */ }
 
     @Test
-    @DisplayName("이름이 12자를 초과하는 경우 예외가 발생한다")
-    void saveMember_NameTooLong() { /* ... */ }
+    void 이름이_12자를_초과하는_경우_예외가_발생한다() { /* ... */ }
 }
 ```
 
@@ -399,14 +387,12 @@ class SaveMemberTests {
 
 ```java
 @Test
-@DisplayName("이름이 2자에서 12자 사이인 경우 정상적으로 저장된다")
-void saveMember_ValidNameLength() {
+void 이름이_2자에서_12자_사이인_경우_정상적으로_저장된다() {
     // 최소값(2자), 최대값(12자), 그 사이 값 테스트
 }
 
 @Test
-@DisplayName("페이징이 정상적으로 작동한다")
-void fetchPhotos_PaginationWorks() {
+void 페이징이_정상적으로_작동한다() {
     // 첫 페이지, 중간 페이지, 마지막 페이지 테스트
 }
 ```
@@ -417,8 +403,7 @@ null, 빈 문자열, 빈 컬렉션 등 특수한 경우를 테스트:
 
 ```java
 @Test
-@DisplayName("특수값(null, 빈값 등)이 있는 회원도 정상적으로 DTO로 변환된다")
-void convertToDTO_WithSpecialValues() {
+void 특수값이_있는_회원도_정상적으로_DTO로_변환된다() {
     // Given
     Member specialMember = Member.builder()
             .uid("special-uid")
@@ -457,8 +442,7 @@ private void verifyAllReactionCountsAreZero(ReactionDTO reactionDTO) {
 
 // 사용
 @Test
-@DisplayName("가족 정보를 정상적으로 조회한다")
-void getFamily_Success() {
+void 가족_정보를_정상적으로_조회한다() {
     // Given & When
     FamilyResponse response = familyService.getFamily(family.getId(), member.getUid());
 
@@ -535,14 +519,14 @@ void setup() {
 ```java
 // 좋은 예시 - 각각 분리
 @Test
-void saveMember_Success() { /* 저장 성공 */ }
+void 회원_저장에_성공한다() { /* 저장 성공 */ }
 
 @Test
-void saveMember_DuplicateID() { /* 중복 ID 실패 */ }
+void 중복된_ID로_저장_시_예외가_발생한다() { /* 중복 ID 실패 */ }
 
 // 나쁜 예시 - 여러 시나리오 혼재
 @Test
-void saveMember_AllCases() {
+void 회원_저장의_모든_케이스를_테스트한다() {
     // 성공 케이스와 실패 케이스를 한 테스트에 모두 포함
 }
 ```
@@ -556,8 +540,8 @@ void saveMember_AllCases() {
 3. 헬퍼 메소드
 4. @BeforeEach / @AfterEach
 5. @Nested 클래스들
-   - 성공 케이스를 먼저
-   - 실패 케이스를 나중에
+    - 성공 케이스를 먼저
+    - 실패 케이스를 나중에
 
 ### 3. 주석 최소화
 
@@ -566,7 +550,7 @@ void saveMember_AllCases() {
 ```java
 // 나쁜 예시
 @Test
-void test1() {
+void 테스트() {
     // 멤버를 생성한다
     Member member = new Member();
     // 멤버를 저장한다
@@ -577,8 +561,7 @@ void test1() {
 
 // 좋은 예시
 @Test
-@DisplayName("멤버를 정상적으로 저장한다")
-void saveMember_Success() {
+void 멤버를_정상적으로_저장한다() {
     // Given
     Member member = createTestMember();
 
@@ -608,16 +591,16 @@ void saveMember_Success() {
 
 새로운 테스트를 작성할 때 다음 사항을 확인하세요:
 
-- [ ] `@DisplayName`으로 테스트 의도를 명확히 표현했는가?
+- [ ] 메서드명이 한글로 명확하게 표현되어 있는가? (예: `메서드명에_성공한다`)
 - [ ] Given-When-Then 패턴을 따르고 있는가?
-- [ ] 테스트 메소드명이 규칙을 따르는가? (`[기능]_[시나리오]`)
+- [ ] 테스트 메소드명이 규칙을 따르는가? (`[기능]_[조건]_[결과]`)
 - [ ] 성공 케이스와 실패 케이스를 모두 다루는가?
 - [ ] 경계값과 특수값을 테스트하는가?
 - [ ] 각 테스트는 독립적으로 실행 가능한가?
 - [ ] 헬퍼 메소드로 중복을 제거했는가?
 - [ ] AssertJ를 활용하여 가독성 높은 assertion을 작성했는가?
 - [ ] 예외 테스트 시 에러 코드까지 검증하는가?
-- [ ] 테스트 이름만 보고도 무엇을 테스트하는지 알 수 있는가?
+- [ ] 메소드명만 보고도 무엇을 테스트하는지 알 수 있는가?
 
 ---
 
