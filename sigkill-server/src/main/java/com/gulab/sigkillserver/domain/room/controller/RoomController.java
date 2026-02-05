@@ -54,7 +54,7 @@ public class RoomController {
             Principal principal
     ) {
         log.info("POST /api/v1/rooms - title: {}", request.roomTitle());
-        RoomCreateResponse response = roomService.createRoom(request.roomTitle().strip(), request.capacity(),
+        RoomCreateResponse response = roomService.createRoom(request.roomTitle(), request.capacity(),
                 principal.getName());
         return BaseResponse.onSuccess(response);
     }

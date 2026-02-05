@@ -47,6 +47,7 @@ public class RoomService {
 
         Comparator<Room> comparator = Comparator.comparing(Room::canJoin).reversed()
                 .thenComparing(Room::getCreatedAt, Comparator.reverseOrder());
+        // TODO: updatedAt 기준 정렬로 변경
 
         int totalCount = (int) roomRepository.count();
         int totalPages = (totalCount + size - 1) / size;
@@ -95,6 +96,7 @@ public class RoomService {
      * 방 생성
      */
     public RoomCreateResponse createRoom(String roomTitle, int capacity, String sessionId) {
+        roomTitle = roomTitle.strip();
         log.info("방 생성 - title: {}, capacity: {}", roomTitle, capacity);
         validateRoomCreateRequest(roomTitle, capacity);
 
