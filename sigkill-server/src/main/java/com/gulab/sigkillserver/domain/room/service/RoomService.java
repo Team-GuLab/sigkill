@@ -44,40 +44,38 @@ public class RoomService {
     public RoomListResponse fetchRooms(int page, int size) {
         log.info("방 목록 조회 - page: {}, size: {}", page, size);
 
-        // 1순위: 입장 가능한 방(canJoin=true) 먼저, 2순위: 최신 생성 순
         Comparator<Room> comparator = Comparator.comparing(Room::canJoin).reversed()
                 .thenComparing(Room::getCreatedAt, Comparator.reverseOrder());
 
-        long totalCount = roomRepository.count();
+        int totalCount = (int) roomRepository.count();
+        int totalPages = (totalCount + size - 1) / size;
         int offset = page * size;
 
         // 페이지 범위 초과 시 빈 리스트 반환
         if (offset >= totalCount) {
-            int totalPages = (int) ((totalCount + size - 1) / size);
             return new RoomListResponse(
                     Collections.emptyList(),
                     page,
                     size,
-                    (int) totalCount,
+                    totalCount,
                     totalPages,
                     false
             );
         }
 
         // Repository에서 정렬 및 페이징 처리
-        List<Room> pagedRooms = roomRepository.findAll(comparator, offset, size);
-        List<RoomResponse> pagedRoomResponses = pagedRooms.stream()
+        List<RoomResponse> roomResponses = roomRepository.findAll(comparator, offset, size)
+                .stream()
                 .map(RoomResponse::of)
                 .toList();
 
-        int totalPages = (int) ((totalCount + size - 1) / size);
         boolean hasNext = (offset + size) < totalCount;
 
         return new RoomListResponse(
-                pagedRoomResponses,
+                roomResponses,
                 page,
                 size,
-                (int) totalCount,
+                totalCount,
                 totalPages,
                 hasNext
         );
