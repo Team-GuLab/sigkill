@@ -32,7 +32,7 @@ public class Room extends BaseEntity {
         this.playerIds = ConcurrentHashMap.newKeySet();
     }
 
-    public int getCurrentCapacity() {
+    public int getPlayerCount() {
         return playerIds.size();
     }
 

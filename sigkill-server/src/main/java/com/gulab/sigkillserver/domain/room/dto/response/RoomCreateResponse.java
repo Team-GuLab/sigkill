@@ -9,7 +9,7 @@ import com.gulab.sigkillserver.domain.room.model.Room;
 public record RoomCreateResponse(
         String roomId,
         String roomTitle,
-        Integer currentCapacity,
+        Integer playerCount,
         Integer capacity,
         String status,
         WebSocketInfo ws
@@ -18,7 +18,7 @@ public record RoomCreateResponse(
         return new RoomCreateResponse(
                 room.getRoomId(),
                 room.getRoomTitle(),
-                room.getCurrentCapacity(),
+                room.getPlayerCount(),
                 room.getCapacity(),
                 room.getStatus().name(),
                 WebSocketInfo.of(room.getRoomId())

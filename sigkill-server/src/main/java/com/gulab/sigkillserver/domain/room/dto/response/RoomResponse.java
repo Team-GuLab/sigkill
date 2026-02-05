@@ -17,7 +17,7 @@ public record RoomResponse(
         return new RoomResponse(
                 room.getRoomId(),
                 room.getRoomTitle(),
-                room.getCurrentCapacity(),
+                room.getPlayerCount(),
                 room.getCapacity(),
                 room.getStatus().name(),
                 room.canJoin()

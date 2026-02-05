@@ -9,11 +9,11 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_F
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_IN_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_TITLE_INVALID;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.room.dto.WebSocketInfo;
-import com.gulab.sigkillserver.domain.room.dto.request.RoomCreateRequest;
 import com.gulab.sigkillserver.domain.room.dto.response.RoomAvailabilityResponse;
 import com.gulab.sigkillserver.domain.room.dto.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.response.RoomListResponse;
@@ -43,6 +43,7 @@ public class RoomService {
      */
     public RoomListResponse fetchRooms(int page, int size) {
         log.info("방 목록 조회 - page: {}, size: {}", page, size);
+        validatePaginationParameters(page, size);
 
         Comparator<Room> comparator = Comparator.comparing(Room::canJoin).reversed()
                 .thenComparing(Room::getCreatedAt, Comparator.reverseOrder());
@@ -81,19 +82,27 @@ public class RoomService {
         );
     }
 
+    private void validatePaginationParameters(int page, int size) {
+        if (page < 0) {
+            throw new CustomException(ROOM_PAGING_PARAMETER_INVALID);
+        }
+        if (size <= 0 || size > 100) {
+            throw new CustomException(ROOM_PAGING_PARAMETER_INVALID);
+        }
+    }
+
     /**
      * 방 생성
      */
-    public RoomCreateResponse createRoom(RoomCreateRequest request, String sessionId) {
-        log.info("방 생성 - title: {}, capacity: {}", request.roomTitle(), request.capacity());
-        String roomTitle = request.roomTitle().strip();
-        validateRoomCreateRequest(roomTitle, request.capacity());
+    public RoomCreateResponse createRoom(String roomTitle, int capacity, String sessionId) {
+        log.info("방 생성 - title: {}, capacity: {}", roomTitle, capacity);
+        validateRoomCreateRequest(roomTitle, capacity);
 
         int maxAttempts = 100;
         for (int i = 0; i < maxAttempts; i++) {
             try {
                 String roomId = generateRoomId();
-                Room room = Room.create(roomId, roomTitle, sessionId, request.capacity());
+                Room room = Room.create(roomId, roomTitle, sessionId, capacity);
                 room = roomRepository.save(room);
                 log.info("방 생성 완료 - roomId: {}", roomId);
                 return RoomCreateResponse.of(room);
@@ -132,6 +141,7 @@ public class RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
 
+        // TODO: 동시성 문제 해결
         if (room.isInGame()) {
             throw new CustomException(ROOM_IN_GAME);
         }
