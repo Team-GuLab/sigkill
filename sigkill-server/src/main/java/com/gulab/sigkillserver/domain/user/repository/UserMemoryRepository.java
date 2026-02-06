@@ -15,7 +15,7 @@ public class UserMemoryRepository implements UserRepository {
 
     @Override
     public User save(User user) {
-        store.put(user.getSessionId(), user);
+        store.put(user.getId(), user);
         return user;
     }
 

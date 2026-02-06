@@ -8,12 +8,12 @@ import lombok.Getter;
 @Getter
 public class User {
 
-    private final String sessionId;
+    private final String id;
     private final String nickname;
     private final UserRole role;
 
-    private User(String sessionId, String nickname, UserRole userRole) {
-        this.sessionId = sessionId;
+    private User(String id, String nickname, UserRole userRole) {
+        this.id = id;
         this.nickname = nickname;
         this.role = userRole;
     }

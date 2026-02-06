@@ -75,7 +75,7 @@ class UserServiceTest {
 
             Optional<User> savedUser = userRepository.findById(TEST_SESSION_ID);
             assertThat(savedUser).isPresent();
-            assertThat(savedUser.get().getSessionId()).isEqualTo(TEST_SESSION_ID);
+            assertThat(savedUser.get().getId()).isEqualTo(TEST_SESSION_ID);
             assertThat(savedUser.get().getRole()).isEqualTo(UserRole.GUEST);
         }
 
