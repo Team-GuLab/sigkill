@@ -1,0 +1,260 @@
+package com.gulab.sigkillserver.domain.room.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.gulab.sigkillserver.common.exception.CustomException;
+import com.gulab.sigkillserver.domain.room.dto.response.RoomListResponse;
+import com.gulab.sigkillserver.domain.room.dto.response.RoomResponse;
+import com.gulab.sigkillserver.domain.room.model.Room;
+import com.gulab.sigkillserver.domain.room.model.RoomStatus;
+import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
+import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
+import java.util.HashSet;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+class RoomServiceTest {
+
+    // 테스트용 고정 데이터
+    private static final String TEST_ROOM_ID = "1234";
+    private static final String TEST_ROOM_TITLE = "테스트 방";
+    private static final String TEST_HOST_ID = "test-host-session-id";
+    private static final String TEST_PLAYER_ID = "test-player-session-id";
+    private static final Integer TEST_CAPACITY = 10;
+    private RoomService roomService;
+    private RoomRepository roomRepository;
+
+    @BeforeEach
+    void setup() {
+        roomRepository = new RoomMemoryRepository();
+        roomService = new RoomService(roomRepository);
+    }
+
+    @Nested
+    class FetchRoomsTests {
+
+        @Test
+        void 방_목록을_정상적으로_조회한다() {
+            // given
+            Room room1 = Room.create("1111", "방1", "test-host-id-1", 6);
+            Room room2 = Room.create("2222", "방2", "test-host-id-2", 6);
+            roomRepository.save(room1);
+            roomRepository.save(room2);
+
+            int page = 0;
+            int size = 10;
+
+            // when
+            RoomListResponse response = roomService.fetchRooms(page, size);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.rooms()).hasSize(2);
+            assertThat(response.totalPages()).isEqualTo(1);
+            assertThat(response.totalElements()).isEqualTo(2);
+            assertThat(response.hasNext()).isFalse();
+            assertThat(response.page()).isEqualTo(page);
+            assertThat(response.size()).isEqualTo(size);
+
+            RoomResponse roomResponse = response.rooms().getFirst();
+            assertThat(roomResponse.roomId()).isIn("1111", "2222");
+            assertThat(roomResponse.roomTitle()).isIn("방1", "방2");
+            assertThat(roomResponse.canJoin()).isTrue();
+            assertThat(roomResponse.capacity()).isEqualTo(6);
+            assertThat(roomResponse.status()).isEqualTo("WAITING");
+            assertThat(roomResponse.playerCount()).isOne();
+        }
+
+        @Test
+        void 방이_없을_때_빈_리스트를_반환한다() {
+            // given
+            int page = 0;
+            int size = 10;
+
+            // when
+            RoomListResponse response = roomService.fetchRooms(page, size);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.rooms()).isEmpty();
+            assertThat(response.totalPages()).isZero();
+            assertThat(response.totalElements()).isZero();
+            assertThat(response.hasNext()).isFalse();
+            assertThat(response.page()).isEqualTo(page);
+            assertThat(response.size()).isEqualTo(size);
+        }
+
+        @Test
+        void 페이징이_정상적으로_작동한다() {
+            // given
+            for (int i = 0; i < 25; i++) {
+                Room room = Room.create(String.format("%04d", i), "방" + i, "test-host-id-" + i, 6);
+                roomRepository.save(room);
+            }
+            int page = 0;
+            int size = 10;
+
+            // when
+            RoomListResponse response = roomService.fetchRooms(page, size);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.rooms()).hasSize(10);
+            assertThat(response.totalPages()).isEqualTo(3);
+            assertThat(response.totalElements()).isEqualTo(25);
+            assertThat(response.hasNext()).isTrue();
+
+            Set<String> roomIds = new HashSet<>();
+            response.rooms().forEach(room -> roomIds.add(room.roomId()));
+
+            page = 1;
+            response = roomService.fetchRooms(page, size);
+            response.rooms().forEach(room -> roomIds.add(room.roomId()));
+
+            page = 2;
+            response = roomService.fetchRooms(page, size);
+            assertThat(response.hasNext()).isFalse();
+            response.rooms().forEach(room -> roomIds.add(room.roomId()));
+            assertThat(roomIds).hasSize(25);
+        }
+
+        @Test
+        void 입장_가능한_방이_먼저_정렬되고_최신순으로_조회된다() {
+            // given
+            Room room1 = Room.create("1111", "방1", "test-host-id-1", 6); // 입장 가능
+            Room room2 = Room.create("2222", "방2", "test-host-id-2", 6); // 입장 불가 (풀)
+            for (int i = 0; i < 6; i++) {
+                room2.addPlayer("player-" + i);
+            }
+            Room room3 = Room.create("3333", "방3", "test-host-id-3", 6); // 입장 가능
+            Room room4 = Room.create("4444", "방4", "test-host-id-4", 6); // 입장 불가 (게임 중)
+
+            room4.startGame();
+
+            roomRepository.save(room1);
+            roomRepository.save(room2);
+            roomRepository.save(room3);
+            roomRepository.save(room4);
+
+            int page = 0;
+            int size = 10;
+
+            // when
+            RoomListResponse response = roomService.fetchRooms(page, size);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.rooms()).hasSize(4);
+            assertThat(response.rooms().get(0).roomId()).isEqualTo("3333"); // 입장 가능한 방 중에 최신 방이 먼저 옴
+            assertThat(response.rooms().get(1).roomId()).isEqualTo("1111");
+            assertThat(response.rooms().get(2).roomId()).isEqualTo("4444"); // 그 다음 입장 불가 방
+            assertThat(response.rooms().get(3).roomId()).isEqualTo("2222");
+        }
+
+        @Test
+        void 페이징_변수가_유효하지_않을_경우_예외를_발생한다() {
+            assertThatThrownBy(() -> roomService.fetchRooms(-1, 0))
+                    .isInstanceOf(CustomException.class);
+            assertThatThrownBy(() -> roomService.fetchRooms(0, -1))
+                    .isInstanceOf(CustomException.class);
+        }
+    }
+
+    @Nested
+    class CreateRoomTests {
+
+        @Test
+        void 방을_정상적으로_생성한다() {
+            // given when
+            roomService.createRoom("방1", 6, TEST_HOST_ID);
+
+            // then
+            roomRepository.findById(TEST_ROOM_ID).ifPresent(room -> {
+                assertThat(room.getRoomId()).matches("\\d{4}");
+                assertThat(room.getRoomTitle()).isEqualTo("방1");
+                assertThat(room.getCapacity()).isEqualTo(6);
+                assertThat(room.getHostId()).isEqualTo(TEST_HOST_ID);
+                assertThat(room.getPlayerCount()).isEqualTo(1);
+                assertThat(room.getPlayerIds()).contains(TEST_HOST_ID);
+                assertThat(room.getStatus()).isEqualTo(RoomStatus.WAITING);
+            });
+        }
+
+        @Test
+        void 제목이_유효하지_않을경우_예외가_발생한다() {
+            assertThatThrownBy(() -> roomService.createRoom("   ", TEST_CAPACITY, TEST_HOST_ID))
+                    .isInstanceOf(CustomException.class);
+            String longTitle = "A".repeat(101);
+            assertThatThrownBy(() -> roomService.createRoom(longTitle, TEST_CAPACITY, TEST_HOST_ID))
+                    .isInstanceOf(CustomException.class);
+        }
+
+        @Test
+        void 수용_인원수가_유효하지_않을경우_예외가_발생한다() {
+            assertThatThrownBy(() -> roomService.createRoom(TEST_ROOM_TITLE, 1, TEST_HOST_ID))
+                    .isInstanceOf(CustomException.class);
+            assertThatThrownBy(() -> roomService.createRoom(TEST_ROOM_TITLE, 11, TEST_HOST_ID))
+                    .isInstanceOf(CustomException.class);
+        }
+    }
+
+    @Nested
+    class CheckRoomAvailabilityTests {
+
+        @Test
+        void 입장_가능한_방의_WebSocket_정보를_반환한다() {
+            // given
+            Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_HOST_ID, TEST_CAPACITY);
+            roomRepository.save(room);
+
+            // when
+            var response = roomService.checkRoomAvailability(TEST_ROOM_ID, TEST_PLAYER_ID);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.ws()).isNotNull();
+        }
+
+        @Test
+        void 존재하지_않는_방일_경우_예외를_발생한다() {
+            assertThatThrownBy(() -> roomService.checkRoomAvailability("9999", TEST_PLAYER_ID))
+                    .isInstanceOf(CustomException.class);
+        }
+
+        @Test
+        void 방_아이디가_유효하지_않을경우_예외를_발생한다() {
+            assertThatThrownBy(() -> roomService.checkRoomAvailability("12AB", TEST_PLAYER_ID))
+                    .isInstanceOf(CustomException.class);
+            assertThatThrownBy(() -> roomService.checkRoomAvailability("10000", TEST_PLAYER_ID))
+                    .isInstanceOf(CustomException.class);
+        }
+
+        @Test
+        void 게임_중인_방일_경우_예외를_발생한다() {
+            // given
+            Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_HOST_ID, TEST_CAPACITY);
+            room.startGame();
+            roomRepository.save(room);
+
+            // when then
+            assertThatThrownBy(() -> roomService.checkRoomAvailability(TEST_ROOM_ID, TEST_PLAYER_ID))
+                    .isInstanceOf(CustomException.class);
+        }
+
+        @Test
+        void 가득_찬_방일_경우_예외를_발생한다() {
+            // given
+            Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_HOST_ID, TEST_CAPACITY);
+            for (int i = 1; i < TEST_CAPACITY; i++) {
+                room.addPlayer("player-" + i);
+            }
+            roomRepository.save(room);
+            // when then
+            assertThatThrownBy(() -> roomService.checkRoomAvailability(TEST_ROOM_ID, TEST_PLAYER_ID))
+                    .isInstanceOf(CustomException.class);
+        }
+    }
+}
