@@ -1,7 +1,6 @@
 package com.gulab.sigkillserver.domain.room.model;
 
 import com.gulab.sigkillserver.common.BaseEntity;
-import java.time.ZonedDateTime;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
@@ -23,7 +22,6 @@ public class Room extends BaseEntity {
      * private 생성자
      */
     private Room(String roomId, String roomTitle, String hostId, Integer capacity, RoomStatus status) {
-        super(ZonedDateTime.now(), ZonedDateTime.now());
         this.roomId = roomId;
         this.roomTitle = roomTitle;
         this.hostId = hostId;

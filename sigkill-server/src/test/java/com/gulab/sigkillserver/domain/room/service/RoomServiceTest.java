@@ -135,13 +135,9 @@ class RoomServiceTest {
             room4.startGame();
 
             roomRepository.save(room1);
-            System.out.println("Saved room1 at " + room1.getCreatedAt());
             roomRepository.save(room2);
-            System.out.println("Saved room2 at " + room2.getCreatedAt());
             roomRepository.save(room3);
-            System.out.println("Saved room3 at " + room3.getCreatedAt());
             roomRepository.save(room4);
-            System.out.println("Saved room4 at " + room4.getCreatedAt());
 
             int page = 0;
             int size = 10;

@@ -8,7 +8,7 @@ public class RoomConstants {
     /**
      * 기본 방 정원
      */
-    public static final int DEFAULT_CAPACITY = 10;
+    public static final int DEFAULT_CAPACITY = 6;
 
     /**
      * 최소 방 정원
