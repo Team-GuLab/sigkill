@@ -12,7 +12,7 @@ public interface RoomRepository {
     Optional<Room> findById(String roomId);
 
     List<Room> findAll();
-
+    
     /**
      * 정렬 및 페이징된 방 목록 조회
      *

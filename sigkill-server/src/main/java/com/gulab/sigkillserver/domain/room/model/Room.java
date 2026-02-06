@@ -32,6 +32,21 @@ public class Room extends BaseEntity {
         this.playerIds = ConcurrentHashMap.newKeySet();
     }
 
+    /**
+     * 새 방 생성
+     *
+     * @param id       방 ID (4자리 랜덤 숫자)
+     * @param title    방 제목
+     * @param hostId   방장 세션 ID
+     * @param capacity 최대 수용 인원
+     * @return 생성된 Room 객체
+     */
+    public static Room create(String id, String title, String hostId, Integer capacity) {
+        Room room = new Room(id, title, hostId, capacity, RoomStatus.WAITING);
+        room.addPlayer(hostId);
+        return room;
+    }
+
     public int getPlayerCount() {
         return playerIds.size();
     }
@@ -54,21 +69,6 @@ public class Room extends BaseEntity {
 
     public boolean canJoin() {
         return !isFull() && !isInGame();
-    }
-
-    /**
-     * 새 방 생성
-     *
-     * @param id 방 ID (4자리 랜덤 숫자)
-     * @param title 방 제목
-     * @param hostId 방장 세션 ID
-     * @param capacity 최대 수용 인원
-     * @return 생성된 Room 객체
-     */
-    public static Room create(String id, String title, String hostId, Integer capacity) {
-        Room room = new Room(id, title, hostId, capacity, RoomStatus.WAITING);
-        room.addPlayer(hostId);
-        return room;
     }
 
     /**

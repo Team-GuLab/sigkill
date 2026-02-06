@@ -1,14 +1,12 @@
 package com.gulab.sigkillserver.domain.user.repository;
 
 import com.gulab.sigkillserver.domain.user.model.User;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Repository;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.stereotype.Repository;
 
 @Repository
 public class UserMemoryRepository implements UserRepository {
