@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.domain.room.service;
 
+import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.DEFAULT_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TITLE_LENGTH;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
@@ -95,16 +96,17 @@ public class RoomService {
     /**
      * 방 생성
      */
-    public RoomCreateResponse createRoom(String roomTitle, int capacity, String sessionId) {
+    public RoomCreateResponse createRoom(String roomTitle, Integer capacity, String sessionId) {
         roomTitle = roomTitle.strip();
-        log.info("방 생성 - title: {}, capacity: {}", roomTitle, capacity);
-        validateRoomCreateRequest(roomTitle, capacity);
+        int resolvedCapacity = capacity != null ? capacity : DEFAULT_CAPACITY;
+        log.info("방 생성 - title: {}, capacity: {}", roomTitle, resolvedCapacity);
+        validateRoomCreateRequest(roomTitle, resolvedCapacity);
 
         int maxAttempts = 100;
         for (int i = 0; i < maxAttempts; i++) {
             try {
                 String roomId = generateRoomId();
-                Room room = Room.create(roomId, roomTitle, sessionId, capacity);
+                Room room = Room.create(roomId, roomTitle, sessionId, resolvedCapacity);
                 room = roomRepository.save(room);
                 log.info("방 생성 완료 - roomId: {}", roomId);
                 return RoomCreateResponse.of(room);

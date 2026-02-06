@@ -9,9 +9,4 @@ public record RoomCreateRequest(
         @NotBlank String roomTitle,
         Integer capacity
 ) {
-    public RoomCreateRequest {
-        if (capacity == null) {
-            capacity = 6;  // 기본값
-        }
-    }
 }
