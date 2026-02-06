@@ -1,4 +1,4 @@
-package com.gulab.sigkillserver.domain.room.dto.response;
+package com.gulab.sigkillserver.domain.room.dto.rest.response;
 
 import java.util.List;
 

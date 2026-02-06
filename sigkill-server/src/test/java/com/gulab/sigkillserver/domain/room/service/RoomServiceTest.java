@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
-import com.gulab.sigkillserver.domain.room.dto.response.RoomListResponse;
-import com.gulab.sigkillserver.domain.room.dto.response.RoomResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.model.RoomStatus;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;

@@ -1,6 +1,6 @@
-package com.gulab.sigkillserver.domain.room.dto.response;
+package com.gulab.sigkillserver.domain.room.dto.rest.response;
 
-import com.gulab.sigkillserver.domain.room.dto.WebSocketInfo;
+import com.gulab.sigkillserver.domain.room.dto.rest.WebSocketInfo;
 import com.gulab.sigkillserver.domain.room.model.Room;
 
 /**

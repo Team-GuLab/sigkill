@@ -1,6 +1,6 @@
 package com.gulab.sigkillserver.domain.user.service;
 
-import com.gulab.sigkillserver.domain.user.dto.response.LoginResponse;
+import com.gulab.sigkillserver.domain.user.dto.rest.response.LoginResponse;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;

@@ -1,4 +1,4 @@
-package com.gulab.sigkillserver.domain.room.dto;
+package com.gulab.sigkillserver.domain.room.dto.rest;
 
 public record WebSocketInfo(
         String endpoint,

@@ -14,11 +14,11 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_P
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_TITLE_INVALID;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
-import com.gulab.sigkillserver.domain.room.dto.WebSocketInfo;
-import com.gulab.sigkillserver.domain.room.dto.response.RoomAvailabilityResponse;
-import com.gulab.sigkillserver.domain.room.dto.response.RoomCreateResponse;
-import com.gulab.sigkillserver.domain.room.dto.response.RoomListResponse;
-import com.gulab.sigkillserver.domain.room.dto.response.RoomResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.WebSocketInfo;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import java.util.Collections;
