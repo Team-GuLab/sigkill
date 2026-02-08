@@ -8,17 +8,17 @@ import lombok.Getter;
 @Getter
 public class User {
 
-    private final String id;
+    private final String userId;
     private final String nickname;
     private final UserRole role;
 
-    private User(String id, String nickname, UserRole userRole) {
-        this.id = id;
+    private User(String userId, String nickname, UserRole userRole) {
+        this.userId = userId;
         this.nickname = nickname;
         this.role = userRole;
     }
 
-    public static User create(String sessionId, String nickname, UserRole userRole) {
-        return new User(sessionId, nickname, userRole);
+    public static User create(String userId, String nickname, UserRole userRole) {
+        return new User(userId, nickname, userRole);
     }
 }

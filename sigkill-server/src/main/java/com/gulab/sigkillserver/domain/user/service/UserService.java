@@ -36,7 +36,7 @@ public class UserService {
         // Spring Security 인증 정보 설정
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
-                        user.getId(),
+                        user.getUserId(),
                         null,
                         Collections.singletonList(new SimpleGrantedAuthority(user.getRole().getKey()))
                 );
