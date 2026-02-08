@@ -1,10 +1,10 @@
 package com.gulab.sigkillserver.domain.room.controller;
 
 import com.gulab.sigkillserver.common.BaseResponse;
-import com.gulab.sigkillserver.domain.room.dto.request.RoomCreateRequest;
-import com.gulab.sigkillserver.domain.room.dto.response.RoomAvailabilityResponse;
-import com.gulab.sigkillserver.domain.room.dto.response.RoomCreateResponse;
-import com.gulab.sigkillserver.domain.room.dto.response.RoomListResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.request.RoomCreateRequest;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;

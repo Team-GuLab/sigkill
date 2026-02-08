@@ -8,7 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.gulab.sigkillserver.domain.user.dto.response.LoginResponse;
+import com.gulab.sigkillserver.domain.user.dto.rest.response.LoginResponse;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
@@ -75,7 +75,7 @@ class UserServiceTest {
 
             Optional<User> savedUser = userRepository.findById(TEST_SESSION_ID);
             assertThat(savedUser).isPresent();
-            assertThat(savedUser.get().getSessionId()).isEqualTo(TEST_SESSION_ID);
+            assertThat(savedUser.get().getUserId()).isEqualTo(TEST_SESSION_ID);
             assertThat(savedUser.get().getRole()).isEqualTo(UserRole.GUEST);
         }
 

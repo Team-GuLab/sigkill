@@ -1,4 +1,4 @@
-package com.gulab.sigkillserver.domain.room.dto.request;
+package com.gulab.sigkillserver.domain.room.dto.rest.request;
 
 import jakarta.validation.constraints.NotBlank;
 
