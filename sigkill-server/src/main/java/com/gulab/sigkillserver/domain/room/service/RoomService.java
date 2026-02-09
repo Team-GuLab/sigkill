@@ -14,7 +14,6 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_P
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_TITLE_INVALID;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
-import com.gulab.sigkillserver.domain.room.dto.rest.WebSocketInfo;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
@@ -161,7 +160,7 @@ public class RoomService {
         }
 
         // TODO: 플레이어가 이미 다른 방에 접속했을 경우 처리
-        return new RoomAvailabilityResponse(WebSocketInfo.of(room.getRoomId()));
+        return new RoomAvailabilityResponse(room.getRoomId(), true);
     }
 
     private void validateRoomId(String roomId) {
@@ -193,7 +192,7 @@ public class RoomService {
     /**
      * 호스트 변경
      */
-    public PlayerLeftEvent changeHost(String roomId, String newHostId, String previousHostId) {
+    private PlayerLeftEvent changeHost(String roomId, String newHostId, String previousHostId) {
         return null;
     }
 
