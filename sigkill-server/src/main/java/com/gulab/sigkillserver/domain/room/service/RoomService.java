@@ -19,8 +19,13 @@ import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityRes
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
+import com.gulab.sigkillserver.domain.room.dto.service.JoinRoomResult;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
+import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -38,6 +43,7 @@ import org.springframework.stereotype.Service;
 public class RoomService {
 
     private final RoomRepository roomRepository;
+    private final UserRepository userRepository;
 
     /**
      * 방 목록 조회
@@ -168,5 +174,40 @@ public class RoomService {
         if (roomIdInt < 1000 || roomIdInt > 9999) {
             throw new CustomException(ROOM_NUMBER_ERROR);
         }
+    }
+
+    /**
+     * 플레이어 방 참가
+     */
+    public JoinRoomResult joinRoom(String roomId, String sessionId) {
+        return null;
+    }
+
+    /**
+     * 플레이어 방 퇴장
+     */
+    public PlayerLeftEvent leaveRoom(String roomId, String sessionId) {
+        return null;
+    }
+
+    /**
+     * 호스트 변경
+     */
+    public PlayerLeftEvent changeHost(String roomId, String newHostId, String previousHostId) {
+        return null;
+    }
+
+    /**
+     * 플레이어 준비 완료
+     */
+    public PlayerReadyEvent readyPlayer(String roomId, String sessionId) {
+        return null;
+    }
+
+    /**
+     * 플레이어 준비 취소
+     */
+    public PlayerUnreadyEvent unreadyPlayer(String roomId, String sessionId) {
+        return null;
     }
 }
