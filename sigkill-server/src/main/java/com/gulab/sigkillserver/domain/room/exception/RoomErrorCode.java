@@ -22,8 +22,10 @@ public enum RoomErrorCode implements CustomErrorCodeInterface {
     ROOM_CREATE_ERROR("방 생성에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR),
     ROOM_NUMBER_ERROR("방 번호는 4자리 정수여야 합니다", HttpStatus.BAD_REQUEST),
     ROOM_PAGING_PARAMETER_INVALID("페이지 번호와 페이지 크기는 0 이상의 정수여야 합니다", HttpStatus.BAD_REQUEST),
-    ALREADY_HOST("이미 호스트인 플레이어는 호스트로 변경할 수 없습니다", HttpStatus.BAD_REQUEST),
-    ROOM_ID_ALREADY_EXISTS("이미 존재하는 방 ID입니다", HttpStatus.CONFLICT);
+    ROOM_ID_ALREADY_EXISTS("이미 존재하는 방 ID입니다", HttpStatus.CONFLICT),
+    PLAYER_ALREADY_HOST("이미 호스트인 플레이어는 호스트로 변경할 수 없습니다", HttpStatus.BAD_REQUEST),
+    PLAYER_ID_ALREADY_EXISTS("이미 존재하는 플레이어 ID입니다", HttpStatus.CONFLICT),
+    PLAYER_NOT_FOUND("플레이어를 찾을 수 없습니다", HttpStatus.NOT_FOUND);
 
     private final String message;
     private final HttpStatus httpStatus;
