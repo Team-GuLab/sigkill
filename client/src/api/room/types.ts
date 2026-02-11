@@ -8,13 +8,28 @@ export interface RoomListDto {
 }
 
 export interface RoomItem {
-  roomId: number;
-  title: string;
+  roomId: string;
+  roomTitle: string;
+  hostId: string;
   playerCount: number;
   capacity: number;
   status: "WAITING" | "PLAYING";
+  canJoin: boolean;
 }
 
+// 방 생성 시 필요한 데이터
 export interface CreateRoomParams {
-  title: string;
+  roomTitle: RoomItem["roomTitle"];
+}
+
+export interface Player {
+  playerId: string;
+  nickname: string;
+  status: "READY" | "NOT_READY";
+}
+
+export interface RoomJoinResponse {
+  type: "PLAYER_JOIN";
+  room: Omit<RoomItem, "playerCount" | "canJoin">;
+  players: Player[];
 }

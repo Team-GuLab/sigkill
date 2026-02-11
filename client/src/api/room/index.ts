@@ -27,14 +27,14 @@ const PLAYER_COUNT = 0;
 const CAPACITY = 10;
 
 export const createRoom = async <T = RoomItem>({
-  title,
+  roomTitle,
 }: CreateRoomParams): Promise<T> => {
   const response = await axiosInstance.post<
     APIResponse<T>,
     AxiosResponse<APIResponse<T>>,
-    Pick<RoomItem, "title" | "playerCount" | "capacity">
+    Pick<RoomItem, "roomTitle" | "playerCount" | "capacity">
   >(`/api/v1/rooms`, {
-    title,
+    roomTitle,
     playerCount: PLAYER_COUNT,
     capacity: CAPACITY,
   });
@@ -42,18 +42,16 @@ export const createRoom = async <T = RoomItem>({
   return response.data.result;
 };
 
-type WSSession = {
-  ws: {
-    endpoint: string;
-    protocol: "websocket";
-    message_format: "json";
-  };
-};
-export const checkRoomAvailability = async <T = WSSession>(roomId: number) => {
+export const checkRoomAvailability = async <
+  T = { roomId: string; canJoin: boolean },
+>(
+  roomId: string,
+): Promise<T> => {
   try {
     const response = await axiosInstance.get<APIResponse<T>>(
       `/api/v1/rooms/${roomId}/availability`,
     );
+
     return response.data.result;
   } catch (error) {
     throw error;

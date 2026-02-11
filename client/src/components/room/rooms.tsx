@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRooms } from "@/hooks/use-rooms";
+import { useRooms } from "@/hooks/room/use-rooms";
 import RoomItem from "@/components/room/room-item";
 import RoomListPagination from "./room-list-pagination";
 import { ItemGroup } from "@/ui/item";
@@ -31,15 +31,8 @@ export default function Rooms() {
     <>
       <section>
         <ItemGroup className="gap-3">
-          {rooms.map((room) => (
-            <RoomItem
-              key={room.roomId}
-              roomId={room.roomId}
-              title={room.title}
-              playerCount={room.playerCount}
-              capacity={room.capacity}
-              status={room.status}
-            />
+          {rooms.map(room => (
+            <RoomItem {...room} />
           ))}
         </ItemGroup>
       </section>

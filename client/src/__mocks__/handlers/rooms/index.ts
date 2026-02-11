@@ -17,15 +17,17 @@ const getMockRooms = (): RoomItem[] => {
   for (let i = 0; i < TOTAL_ELEMENTS; i++) {
     const roomId = i + 1;
     const isPlaying = Math.random() > 0.7;
-    // const playerCount = Math.floor(Math.random() * 10) + 1;
-    const playerCount = 10;
+    const playerCount = Math.floor(Math.random() * 10) + 1;
+    // const playerCount = 10;
 
     rooms.push({
-      roomId,
-      title: `${topics[Math.floor(Math.random() * topics.length)]} 퀴즈 ${roomId}`,
+      roomId: roomId.toString(),
+      roomTitle: `${topics[Math.floor(Math.random() * topics.length)]} 퀴즈 ${roomId}`,
+      hostId: "1234",
       playerCount,
       capacity: 10,
       status: isPlaying ? "PLAYING" : "WAITING",
+      canJoin: isPlaying ? false : true,
     });
   }
 
@@ -41,9 +43,9 @@ const getPaginatedRooms = (page: number, size: number): RoomItem[] => {
 };
 
 // roomId로 방 찾기
-const findRoomById = (roomId: number): RoomItem | undefined => {
+const findRoomById = (roomId: string): RoomItem | undefined => {
   const allRooms = getMockRooms();
-  return allRooms.find((room) => room.roomId === roomId);
+  return allRooms.find(room => room.roomId === roomId);
 };
 
 export const roomHandlers = [
@@ -113,7 +115,7 @@ export const roomHandlers = [
   // }),
 
   http.get("/api/v1/rooms/:roomId/availability", ({ params }) => {
-    const selectedRoom = findRoomById(Number(params.roomId));
+    const selectedRoom = findRoomById(params.roomId as string);
 
     // 방이 존재하지 않는 경우
     if (!selectedRoom) {
@@ -159,11 +161,8 @@ export const roomHandlers = [
       code: "COMMON001",
       message: "요청이 성공적으로 처리되었습니다.",
       result: {
-        ws: {
-          endpoint: "/ws/rooms/1234",
-          protocol: "websocket",
-          message_format: "json",
-        },
+        roomId: selectedRoom.roomId,
+        canJoin: true,
       },
     });
   }),
