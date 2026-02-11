@@ -14,29 +14,18 @@ public interface UserRepository {
      */
     User save(User user);
 
-
     /**
      * ID로 사용자 조회
      */
-    Optional<User> findById(String userId);
+    Optional<User> findById(Long userId);
+
+    /**
+     * Session ID로 사용자 조회
+     */
+    Optional<User> findBySessionId(String sessionId);
 
     /**
      * 모든 사용자 조회
      */
     List<User> findAll();
-
-    /**
-     * ID로 사용자 삭제
-     */
-    void deleteById(String userId);
-
-    /**
-     * 사용자 존재 여부 확인
-     */
-    boolean existsById(String userId);
-
-    /**
-     * 모든 사용자 삭제
-     */
-    void deleteAll();
 }
