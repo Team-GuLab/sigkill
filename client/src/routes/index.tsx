@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 import RoomListPage from "./pages/room-list-page";
 import DefaultLayout from "./layouts/default";
+import WaitingRoom from "./pages/waiting-room";
 
 const router = createBrowserRouter([
   {
@@ -9,6 +10,10 @@ const router = createBrowserRouter([
       {
         path: "/",
         element: <RoomListPage />,
+      },
+      {
+        path: "/waiting-room/:roomId",
+        element: <WaitingRoom />,
       },
     ],
   },
