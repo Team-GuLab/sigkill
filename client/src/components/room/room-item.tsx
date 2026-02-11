@@ -5,22 +5,42 @@ import { Badge } from "@/ui/badge";
 import { Users } from "lucide-react";
 import { AppError } from "@/api/axios";
 import { toast } from "sonner";
+import {
+  connectWebSocket,
+  disconnectWebSocket,
+} from "@/app/config/web-socket-client";
+import { joinWaitingRoom } from "@/api/room/join-waiting-room";
+import { useNavigate } from "react-router";
 
 // 방 목록 내 단건 방
 interface RoomItemProps extends RoomItem {}
 export default function RoomItem({
   roomId,
-  title,
+  roomTitle,
   playerCount,
   capacity,
   status,
 }: RoomItemProps) {
   const disabled = status === "PLAYING";
 
+  const navigate = useNavigate();
+
   const handleRoomItemClick = async () => {
     try {
-      await checkRoomAvailability(roomId);
+      const { canJoin } = await checkRoomAvailability(roomId);
+
+      if (!canJoin) {
+        throw new Error();
+      }
+
+      await connectWebSocket();
+
+      await joinWaitingRoom(roomId, data => {
+        toast.success(`방 "${data.room.roomTitle}"에 입장했습니다!`);
+        navigate(`/waiting-room/${roomId}`);
+      });
     } catch (error) {
+      disconnectWebSocket();
       if (error instanceof AppError) {
         toast.error(error.message);
         return;
@@ -32,20 +52,20 @@ export default function RoomItem({
   return (
     <Item
       variant="outline"
-      className={`rounded-full bg-card shadow-sm ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+      className={`bg-card rounded-full shadow-sm ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
       onClick={handleRoomItemClick}
     >
       <ItemContent className="min-w-0">
-        <ItemTitle className="flex items-center gap-2 min-w-0">
-          <span className="shrink-0 w-16 text-muted-foreground">#{roomId}</span>
+        <ItemTitle className="flex min-w-0 items-center gap-2">
+          <span className="text-muted-foreground w-16 shrink-0">#{roomId}</span>
 
-          <span className="min-w-0 text-foreground font-semibold overflow-hidden text-ellipsis">
-            {title}
+          <span className="text-foreground min-w-0 overflow-hidden font-semibold text-ellipsis">
+            {roomTitle}
           </span>
         </ItemTitle>
       </ItemContent>
       <ItemActions>
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex items-center gap-1 text-sm">
           <Users className="size-4" />
           <span>
             {playerCount}/{capacity}
