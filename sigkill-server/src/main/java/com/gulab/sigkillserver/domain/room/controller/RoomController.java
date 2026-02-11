@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Min;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,9 +39,10 @@ public class RoomController {
      */
     @GetMapping("/rooms")
     public BaseResponse<RoomListResponse> getRooms(
+            @AuthenticationPrincipal Long userId,
             @RequestParam(defaultValue = "0") @Min(value = 0, message = "페이지 번호는 0 이상이어야 합니다") int page,
             @RequestParam(defaultValue = "6") @Min(value = 1, message = "페이지 크기는 1 이상이어야 합니다") @Max(value = 100, message = "페이지 크기는 100 이하여야 합니다") int size) {
-        log.info("GET /api/v1/rooms - page: {}, size: {}", page, size);
+        log.info("GET /api/v1/rooms - userId: {}, page: {}, size: {}", userId, page, size);
         RoomListResponse response = roomService.fetchRooms(page, size);
         return BaseResponse.onSuccess(response);
     }
@@ -50,10 +52,11 @@ public class RoomController {
      */
     @PostMapping("/rooms")
     public BaseResponse<RoomCreateResponse> createRoom(
+            @AuthenticationPrincipal Long userId,
             @Valid @RequestBody RoomCreateRequest request,
             Principal principal
     ) {
-        log.info("POST /api/v1/rooms - title: {}", request.roomTitle());
+        log.info("POST /api/v1/rooms - userId: {}, title: {}", userId, request.roomTitle());
         RoomCreateResponse response = roomService.createRoom(request.roomTitle(), request.capacity(),
                 principal.getName());
         return BaseResponse.onSuccess(response);
@@ -64,10 +67,11 @@ public class RoomController {
      */
     @GetMapping("/rooms/{roomId}/availability")
     public BaseResponse<RoomAvailabilityResponse> checkRoomAvailability(
+            @AuthenticationPrincipal Long userId,
             @PathVariable String roomId,
             Principal principal
     ) {
-        log.info("GET /api/v1/rooms/{}/availability", roomId);
+        log.info("GET /api/v1/rooms/{}/availability - userId: {}", userId, roomId);
         RoomAvailabilityResponse response = roomService.checkRoomAvailability(roomId, principal.getName());
         return BaseResponse.onSuccess(response);
     }
