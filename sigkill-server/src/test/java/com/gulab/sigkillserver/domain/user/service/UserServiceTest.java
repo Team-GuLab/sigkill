@@ -73,9 +73,10 @@ class UserServiceTest {
             assertThat(response).isNotNull();
             assertThat(response.nickname()).isNotBlank();
 
-            Optional<User> savedUser = userRepository.findById(TEST_SESSION_ID);
+            Optional<User> savedUser = userRepository.findBySessionId(TEST_SESSION_ID);
             assertThat(savedUser).isPresent();
-            assertThat(savedUser.get().getUserId()).isEqualTo(TEST_SESSION_ID);
+            assertThat(savedUser.get().getUserId()).isNotNull();
+            assertThat(savedUser.get().getSessionId()).isEqualTo(TEST_SESSION_ID);
             assertThat(savedUser.get().getRole()).isEqualTo(UserRole.GUEST);
         }
 
@@ -108,7 +109,9 @@ class UserServiceTest {
 
             Authentication authentication = securityContext.getAuthentication();
             assertThat(authentication).isNotNull();
-            assertThat(authentication.getPrincipal()).isEqualTo(TEST_SESSION_ID);
+
+            User savedUser = userRepository.findBySessionId(TEST_SESSION_ID).orElseThrow();
+            assertThat(authentication.getPrincipal()).isEqualTo(savedUser.getUserId());
             assertThat(authentication.getAuthorities())
                     .extracting("authority")
                     .contains(UserRole.GUEST.getKey());
@@ -150,7 +153,7 @@ class UserServiceTest {
             userService.loginAsGuest(mockSession);
 
             // Then
-            User savedUser = userRepository.findById(TEST_SESSION_ID).orElseThrow();
+            User savedUser = userRepository.findBySessionId(TEST_SESSION_ID).orElseThrow();
             assertThat(savedUser.getRole()).isEqualTo(UserRole.GUEST);
             assertThat(savedUser.getRole().getKey()).isEqualTo("ROLE_GUEST");
         }
@@ -172,8 +175,8 @@ class UserServiceTest {
 
             // Then
             assertThat(userRepository.findAll()).hasSize(2);
-            assertThat(userRepository.findById(sessionId1)).isPresent();
-            assertThat(userRepository.findById(sessionId2)).isPresent();
+            assertThat(userRepository.findBySessionId(sessionId1)).isPresent();
+            assertThat(userRepository.findBySessionId(sessionId2)).isPresent();
         }
 
         @Test
@@ -188,7 +191,7 @@ class UserServiceTest {
 
             // Then
             assertThat(response.nickname()).isEqualTo(originalNickname);
-            User user = userRepository.findById(TEST_SESSION_ID).orElseThrow();
+            User user = userRepository.findBySessionId(TEST_SESSION_ID).orElseThrow();
             assertThat(user.getNickname()).isEqualTo(originalNickname);
         }
     }
