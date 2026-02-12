@@ -136,3 +136,90 @@ com.gulab.sigkillserver.domain
 
 ### Principal 사용법
 - Controller에서 `Principal principal` 주입 시 `principal.getName()`으로 세션 ID 조회
+
+## Redis 데이터 구조
+
+### 동적 데이터
+
+#### User
+**Key:** `user:{sessionId}`
+
+| 필드명 | 설명 | 타입 |
+| --- | --- | --- |
+| userId | 유저 아이디 | BIGINT |
+| nickname | 닉네임 | STRING |
+| sessionId | 세션 아이디 | STRING |
+
+**TTL:** 세션 만료 시 자동 삭제
+
+#### Room
+**Key:** `room:{roomId}`
+
+| 필드명 | 설명 | 타입 |
+| --- | --- | --- |
+| roomId | 방 아이디 | STRING |
+| roomTitle | 방 제목 | STRING |
+| capacity | 수용 가능 인원 | INT |
+| status | 방 상태 | WAITING / INGAME |
+
+**TTL:** 방 폭파 시 명시적 삭제
+
+#### Player
+**Key:** `player:{roomId}:{userId}`
+
+| 필드명 | 설명 | 타입 |
+| --- | --- | --- |
+| playerId | 플레이어 아이디 | BIGINT |
+| userId | 유저 아이디 | BIGINT |
+| roomId | 방 아이디 | STRING |
+| role | 역할 | HOST / GUEST |
+| readyStatus | 준비 상태 | WAITING / READY |
+| gameStatus | 게임 상태 | ALIVE / DEAD / NOT_GAME |
+| score | 점수 | BIGINT |
+
+**TTL:** 방 폭파 시 명시적 삭제
+
+#### Game
+**Key:** `game:{roomId}`
+
+| 필드명 | 설명 | 타입 |
+| --- | --- | --- |
+| gameId | 게임 아이디 | BIGINT |
+| roomId | 방 아이디 | STRING |
+| status | 게임 상태 | IN_PROGRESS / FINISHED |
+| currentQuizOrder | 현재 퀴즈 순서 | INT |
+| quizStartTime | 퀴즈 시작 시간 | LONG (epoch ms) |
+| quizIds | 출제 퀴즈 목록 | List\<BIGINT\> |
+
+**TTL:** 게임 종료 후 명시적 삭제 (결과 조회 필요 시 유예 시간 부여)
+
+#### SelectedChoice
+**Key:** `selected:{gameId}:{userId}`
+
+| 필드명 | 설명 | 타입 |
+| --- | --- | --- |
+| quizId | 퀴즈 아이디 | BIGINT |
+| choiceId | 선택한 선지 아이디 | BIGINT |
+
+**TTL:** 게임 종료 후 명시적 삭제
+
+### 정적 데이터
+
+퀴즈 데이터는 DB 불필요. JSON 파일 또는 하드코딩으로 관리
+
+```json
+[
+  {
+    "quizId": 1,
+    "question": "문제 내용",
+    "explanation": "해설 내용",
+    "correctChoiceId": 2,
+    "choices": [
+      { "choiceId": 1, "text": "선지 1" },
+      { "choiceId": 2, "text": "선지 2" },
+      { "choiceId": 3, "text": "선지 3" },
+      { "choiceId": 4, "text": "선지 4" }
+    ]
+  }
+]
+```
