@@ -18,7 +18,7 @@ import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityRes
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
-import com.gulab.sigkillserver.domain.room.dto.service.JoinRoomResult;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
@@ -101,17 +101,17 @@ public class RoomService {
     /**
      * 방 생성
      */
-    public RoomCreateResponse createRoom(String roomTitle, Integer capacity, String sessionId) {
+    public RoomCreateResponse createRoom(String roomTitle, Integer capacity, Long userId) {
         roomTitle = roomTitle.strip();
         int resolvedCapacity = capacity != null ? capacity : DEFAULT_CAPACITY;
-        log.info("방 생성 - title: {}, capacity: {}", roomTitle, resolvedCapacity);
+        log.info("방 생성 - title: {}, capacity: {}, userId: {}", roomTitle, resolvedCapacity, userId);
         validateRoomCreateRequest(roomTitle, resolvedCapacity);
 
         int maxAttempts = 100;
         for (int i = 0; i < maxAttempts; i++) {
             try {
                 String roomId = generateRoomId();
-                Room room = Room.create(roomId, roomTitle, sessionId, resolvedCapacity);
+                Room room = Room.create(roomId, roomTitle, userId, resolvedCapacity);
                 room = roomRepository.save(room);
                 log.info("방 생성 완료 - roomId: {}", roomId);
                 return RoomCreateResponse.of(room);
@@ -143,8 +143,8 @@ public class RoomService {
     /**
      * 방 참가 가능 여부 확인
      */
-    public RoomAvailabilityResponse checkRoomAvailability(String roomId, String sessionId) {
-        log.info("방 참가 가능 여부 확인 - roomId: {}", roomId);
+    public RoomAvailabilityResponse checkRoomAvailability(String roomId, Long userId) {
+        log.info("방 참가 가능 여부 확인 - roomId: {}, userId: {}", roomId, userId);
         validateRoomId(roomId);
 
         Room room = roomRepository.findById(roomId)
@@ -178,35 +178,35 @@ public class RoomService {
     /**
      * 플레이어 방 참가
      */
-    public JoinRoomResult joinRoom(String roomId, String sessionId) {
+    public PlayerJoinEvent joinRoom(String roomId, Long userId) {
         return null;
     }
 
     /**
      * 플레이어 방 퇴장
      */
-    public PlayerLeftEvent leaveRoom(String roomId, String sessionId) {
+    public PlayerLeftEvent leaveRoom(String roomId, Long userId) {
         return null;
     }
 
     /**
      * 호스트 변경
      */
-    private PlayerLeftEvent changeHost(String roomId, String newHostId, String previousHostId) {
+    private PlayerLeftEvent changeHost(String roomId, Long newHostId, Long previousHostId) {
         return null;
     }
 
     /**
      * 플레이어 준비 완료
      */
-    public PlayerReadyEvent readyPlayer(String roomId, String sessionId) {
+    public PlayerReadyEvent readyPlayer(String roomId, Long userId) {
         return null;
     }
 
     /**
      * 플레이어 준비 취소
      */
-    public PlayerUnreadyEvent unreadyPlayer(String roomId, String sessionId) {
+    public PlayerUnreadyEvent unreadyPlayer(String roomId, Long userId) {
         return null;
     }
 }
