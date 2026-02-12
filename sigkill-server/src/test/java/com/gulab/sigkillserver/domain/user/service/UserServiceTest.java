@@ -71,11 +71,13 @@ class UserServiceTest {
 
             // Then
             assertThat(response).isNotNull();
+            assertThat(response.userId()).isNotNull();
             assertThat(response.nickname()).isNotBlank();
 
             Optional<User> savedUser = userRepository.findBySessionId(TEST_SESSION_ID);
             assertThat(savedUser).isPresent();
             assertThat(savedUser.get().getUserId()).isNotNull();
+            assertThat(savedUser.get().getUserId()).isEqualTo(response.userId());
             assertThat(savedUser.get().getSessionId()).isEqualTo(TEST_SESSION_ID);
             assertThat(savedUser.get().getRole()).isEqualTo(UserRole.GUEST);
         }
@@ -83,7 +85,7 @@ class UserServiceTest {
         @Test
         void 기존_세션으로_로그인_시_기존_사용자_정보를_반환한다() {
             // Given
-            createAndSaveUser(TEST_SESSION_ID, TEST_NICKNAME);
+            User existingUser = createAndSaveUser(TEST_SESSION_ID, TEST_NICKNAME);
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
 
             // When
@@ -91,6 +93,7 @@ class UserServiceTest {
 
             // Then
             assertThat(response).isNotNull();
+            assertThat(response.userId()).isEqualTo(existingUser.getUserId());
             assertThat(response.nickname()).isEqualTo(TEST_NICKNAME);
             assertThat(userRepository.findAll()).hasSize(1);
         }
@@ -169,29 +172,32 @@ class UserServiceTest {
             when(mockSession2.getId()).thenReturn(sessionId2);
 
             // When
-            userService.loginAsGuest(mockSession1);
+            LoginResponse response1 = userService.loginAsGuest(mockSession1);
             SecurityContextHolder.clearContext();
-            userService.loginAsGuest(mockSession2);
+            LoginResponse response2 = userService.loginAsGuest(mockSession2);
 
             // Then
             assertThat(userRepository.findAll()).hasSize(2);
             assertThat(userRepository.findBySessionId(sessionId1)).isPresent();
             assertThat(userRepository.findBySessionId(sessionId2)).isPresent();
+            assertThat(response1.userId()).isNotEqualTo(response2.userId());
         }
 
         @Test
         void 기존_사용자로_재로그인_시_닉네임이_변경되지_않는다() {
             // Given
             String originalNickname = "원래닉네임";
-            createAndSaveUser(TEST_SESSION_ID, originalNickname);
+            User existingUser = createAndSaveUser(TEST_SESSION_ID, originalNickname);
             when(mockSession.getId()).thenReturn(TEST_SESSION_ID);
 
             // When
             LoginResponse response = userService.loginAsGuest(mockSession);
 
             // Then
+            assertThat(response.userId()).isEqualTo(existingUser.getUserId());
             assertThat(response.nickname()).isEqualTo(originalNickname);
             User user = userRepository.findBySessionId(TEST_SESSION_ID).orElseThrow();
+            assertThat(user.getUserId()).isEqualTo(existingUser.getUserId());
             assertThat(user.getNickname()).isEqualTo(originalNickname);
         }
     }

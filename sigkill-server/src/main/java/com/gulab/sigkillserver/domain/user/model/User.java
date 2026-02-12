@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.domain.user.model;
 
+import com.gulab.sigkillserver.common.BaseEntity;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,7 +11,7 @@ import lombok.With;
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class User {
+public class User extends BaseEntity {
 
     @With
     private Long userId;
