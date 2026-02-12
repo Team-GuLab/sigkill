@@ -183,17 +183,8 @@ public class RoomService {
                 .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
 
         // TODO: 동시성 문제 해결
-        if (room.isInGame()) {
-            throw new CustomException(ROOM_IN_GAME);
-        }
-
-        if (isRoomFull(room)) {
-            throw new CustomException(ROOM_FULL);
-        }
-
-        if (playerRepository.findById(userId).isPresent()) {
-            throw new CustomException(USER_ALREADY_IN_ROOM);
-        }
+        validateCanJoinRoom(userId, room);
+        
         return new RoomAvailabilityResponse(room.getRoomId(), true);
     }
 
@@ -220,6 +211,8 @@ public class RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
 
+        validateCanJoinRoom(userId, room);
+
         Player player = Player.create(
                 userId,
                 roomId,
@@ -233,6 +226,18 @@ public class RoomService {
                 .map(PlayerInfo::of)
                 .toList();
         return PlayerJoinEvent.of(room, playerInfos);
+    }
+
+    private void validateCanJoinRoom(Long userId, Room room) {
+        if (room.isInGame()) {
+            throw new CustomException(ROOM_IN_GAME);
+        }
+        if (isRoomFull(room)) {
+            throw new CustomException(ROOM_FULL);
+        }
+        if (playerRepository.findById(userId).isPresent()) {
+            throw new CustomException(USER_ALREADY_IN_ROOM);
+        }
     }
 
     /**
