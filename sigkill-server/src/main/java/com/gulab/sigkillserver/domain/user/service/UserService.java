@@ -51,15 +51,16 @@ public class UserService {
                 securityContext
         );
 
-        log.info("비회원 로그인 처리 완료 - sessionId: {}, userName: {}", sessionId, user.getNickname());
-        return new LoginResponse(user.getNickname());
+        log.info("비회원 로그인 처리 완료 - userId: {}, sessionId: {}, userName: {}", user.getUserId(), sessionId,
+                user.getNickname());
+        return new LoginResponse(user.getUserId(), user.getNickname());
     }
 
     private User createUser(String sessionId) {
         String nickname = NicknameGenerator.generateRandomNickname();
         User newUser = User.create(sessionId, nickname, UserRole.GUEST);
         newUser = userRepository.save(newUser);
-        log.info("새 비회원 사용자 생성 - id: {} sessionId: {}, nickname: {}, role: {}",
+        log.info("새 비회원 사용자 생성 - userId: {} sessionId: {}, nickname: {}, role: {}",
                 newUser.getUserId(), sessionId, nickname, UserRole.GUEST.getKey());
         return newUser;
     }

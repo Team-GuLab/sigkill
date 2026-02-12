@@ -9,7 +9,6 @@ import com.gulab.sigkillserver.domain.room.service.RoomService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -53,12 +52,10 @@ public class RoomController {
     @PostMapping("/rooms")
     public BaseResponse<RoomCreateResponse> createRoom(
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody RoomCreateRequest request,
-            Principal principal
+            @Valid @RequestBody RoomCreateRequest request
     ) {
         log.info("POST /api/v1/rooms - userId: {}, title: {}", userId, request.roomTitle());
-        RoomCreateResponse response = roomService.createRoom(request.roomTitle(), request.capacity(),
-                principal.getName());
+        RoomCreateResponse response = roomService.createRoom(request.roomTitle(), request.capacity(), userId);
         return BaseResponse.onSuccess(response);
     }
 
@@ -68,11 +65,10 @@ public class RoomController {
     @GetMapping("/rooms/{roomId}/availability")
     public BaseResponse<RoomAvailabilityResponse> checkRoomAvailability(
             @AuthenticationPrincipal Long userId,
-            @PathVariable String roomId,
-            Principal principal
+            @PathVariable String roomId
     ) {
-        log.info("GET /api/v1/rooms/{}/availability - userId: {}", userId, roomId);
-        RoomAvailabilityResponse response = roomService.checkRoomAvailability(roomId, principal.getName());
+        log.info("GET /api/v1/rooms/{}/availability - userId: {}", roomId, userId);
+        RoomAvailabilityResponse response = roomService.checkRoomAvailability(roomId, userId);
         return BaseResponse.onSuccess(response);
     }
 }
