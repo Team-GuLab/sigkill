@@ -1,8 +1,6 @@
 package com.gulab.sigkillserver.domain.room.model;
 
 import com.gulab.sigkillserver.common.BaseEntity;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 
 /**
@@ -14,7 +12,6 @@ public class Room extends BaseEntity {
     private final String roomId;
     private final String roomTitle;
     private final Long hostId;
-    private final Set<Long> playerIds;
     private final Integer capacity;
     private RoomStatus status;
 
@@ -27,7 +24,6 @@ public class Room extends BaseEntity {
         this.hostId = hostId;
         this.capacity = capacity;
         this.status = status;
-        this.playerIds = ConcurrentHashMap.newKeySet();
     }
 
     /**
@@ -40,46 +36,11 @@ public class Room extends BaseEntity {
      * @return 생성된 Room 객체
      */
     public static Room create(String id, String title, Long hostId, Integer capacity) {
-        Room room = new Room(id, title, hostId, capacity, RoomStatus.WAITING);
-        room.addPlayer(hostId);
-        return room;
-    }
-
-    public int getPlayerCount() {
-        return playerIds.size();
-    }
-
-    public void addPlayer(Long playerId) {
-        playerIds.add(playerId);
-    }
-
-    public void removePlayer(Long playerId) {
-        playerIds.remove(playerId);
-    }
-
-    public boolean isFull() {
-        return playerIds.size() >= capacity;
+        return new Room(id, title, hostId, capacity, RoomStatus.WAITING);
     }
 
     public boolean isInGame() {
         return status == RoomStatus.INGAME;
-    }
-
-    public boolean canJoin() {
-        return !isFull() && !isInGame();
-    }
-
-    /**
-     * 플레이어 입장
-     *
-     * @param playerId 입장할 플레이어 User ID
-     * @return this
-     */
-    public Room join(Long playerId) {
-        if (canJoin()) {
-            this.addPlayer(playerId);
-        }
-        return this;
     }
 
     /**
