@@ -16,8 +16,8 @@ public record RoomCreateResponse(
         return new RoomCreateResponse(
                 room.getRoomId(),
                 room.getRoomTitle(),
-                room.getPlayerCount(),
                 room.getCapacity(),
+                1, // 생성 직후이므로 플레이어 수는 1명
                 room.getStatus().name()
         );
     }
