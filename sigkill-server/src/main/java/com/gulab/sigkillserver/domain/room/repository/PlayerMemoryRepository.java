@@ -38,10 +38,27 @@ public class PlayerMemoryRepository implements PlayerRepository {
         }
     }
 
+    @Override public List<Player> findAll() {
+        return store.values().stream().toList();
+    }
+
     @Override
     public List<Player> findAllByRoomId(String roomId) {
         return store.values().stream()
                 .filter(p -> p.getRoomId().equals(roomId))
                 .toList();
+    }
+
+    @Override
+    public int countByRoomId(String roomId) {
+        return (int) store.values().stream()
+                .filter(p -> p.getRoomId().equals(roomId))
+                .count();
+    }
+
+    @Override
+    public boolean existsByRoomIdAndUserId(String roomId, Long userId) {
+        Player player = store.get(userId);
+        return player != null && player.getRoomId().equals(roomId);
     }
 }

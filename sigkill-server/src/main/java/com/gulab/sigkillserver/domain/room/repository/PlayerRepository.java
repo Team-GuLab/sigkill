@@ -12,8 +12,20 @@ public interface PlayerRepository {
 
     void deleteById(Long playerId);
 
+    List<Player> findAll();
+
     /**
      * 방 안에 있는 플레이어 다 찾기
      */
     List<Player> findAllByRoomId(String roomId);
+
+    /**
+     * 방의 플레이어 수 조회
+     */
+    int countByRoomId(String roomId);
+
+    /**
+     * 특정 방에 특정 유저가 있는지 확인
+     */
+    boolean existsByRoomIdAndUserId(String roomId, Long userId);
 }
