@@ -14,16 +14,16 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class PlayerMemoryRepository implements PlayerRepository {
 
-    private final Map<String, Player> store = new ConcurrentHashMap<>();
+    private final Map<Long, Player> store = new ConcurrentHashMap<>();
 
     @Override
-    public Optional<Player> findById(String playerId) {
-        return Optional.ofNullable(store.get(playerId));
+    public Optional<Player> findById(Long userId) {
+        return Optional.ofNullable(store.get(userId));
     }
 
     @Override
     public Player create(Player player) {
-        Player existing = store.putIfAbsent(player.getPlayerId(), player);
+        Player existing = store.putIfAbsent(player.getUserId(), player);
         if (existing != null) {
             throw new CustomException(PLAYER_ID_ALREADY_EXISTS);
         }
@@ -31,8 +31,8 @@ public class PlayerMemoryRepository implements PlayerRepository {
     }
 
     @Override
-    public void deleteById(String playerId) {
-        Player removed = store.remove(playerId);
+    public void deleteById(Long userId) {
+        Player removed = store.remove(userId);
         if (removed == null) {
             throw new CustomException(PLAYER_NOT_FOUND);
         }

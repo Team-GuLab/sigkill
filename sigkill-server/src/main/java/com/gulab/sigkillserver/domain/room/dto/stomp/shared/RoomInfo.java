@@ -6,7 +6,7 @@ import com.gulab.sigkillserver.domain.room.model.RoomStatus;
 public record RoomInfo(
         String roomId,
         String roomTitle,
-        String hostId,
+        Long hostId,
         int capacity,
         RoomStatus status
 ) {
