@@ -12,6 +12,8 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_N
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_TITLE_INVALID;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_ALREADY_IN_ROOM;
+import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_NOT_FOUND;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
@@ -22,13 +24,20 @@ import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
+import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerInfo;
+import com.gulab.sigkillserver.domain.room.model.Player;
+import com.gulab.sigkillserver.domain.room.model.PlayerRole;
 import com.gulab.sigkillserver.domain.room.model.Room;
+import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
+import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,6 +52,7 @@ public class RoomService {
 
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final PlayerRepository playerRepository;
 
     /**
      * 방 목록 조회
@@ -51,7 +61,7 @@ public class RoomService {
         log.info("방 목록 조회 - page: {}, size: {}", page, size);
         validatePaginationParameters(page, size);
 
-        Comparator<Room> comparator = Comparator.comparing(Room::canJoin).reversed()
+        Comparator<Room> comparator = Comparator.comparing(this::canJoinRoom).reversed()
                 .thenComparing(Room::getCreatedAt, Comparator.reverseOrder());
         // TODO: updatedAt 기준 정렬로 변경
 
@@ -71,10 +81,16 @@ public class RoomService {
             );
         }
 
+        Map<String, Long> playerCountMap = playerRepository.findAll().stream()
+                .collect(Collectors.groupingBy(Player::getRoomId, Collectors.counting()));
+
         // Repository에서 정렬 및 페이징 처리
         List<RoomResponse> roomResponses = roomRepository.findAll(comparator, offset, size)
                 .stream()
-                .map(RoomResponse::of)
+                .map(room -> {
+                    int playerCount = playerCountMap.getOrDefault(room.getRoomId(), 0L).intValue();
+                    return RoomResponse.of(room, playerCount);
+                })
                 .toList();
 
         boolean hasNext = (offset + size) < totalCount;
@@ -87,6 +103,14 @@ public class RoomService {
                 totalPages,
                 hasNext
         );
+    }
+
+    private boolean isRoomFull(Room room) {
+        return playerRepository.countByRoomId(room.getRoomId()) >= room.getCapacity();
+    }
+
+    private boolean canJoinRoom(Room room) {
+        return !room.isInGame() && !isRoomFull(room);
     }
 
     private void validatePaginationParameters(int page, int size) {
@@ -107,13 +131,21 @@ public class RoomService {
         log.info("방 생성 - title: {}, capacity: {}, userId: {}", roomTitle, resolvedCapacity, userId);
         validateRoomCreateRequest(roomTitle, resolvedCapacity);
 
+        User host = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(USER_NOT_FOUND));
+
         int maxAttempts = 100;
         for (int i = 0; i < maxAttempts; i++) {
             try {
                 String roomId = generateRoomId();
+
                 Room room = Room.create(roomId, roomTitle, userId, resolvedCapacity);
                 room = roomRepository.save(room);
-                log.info("방 생성 완료 - roomId: {}", roomId);
+
+                Player hostPlayer = Player.create(userId, roomId, host.getNickname(), PlayerRole.HOST);
+                playerRepository.create(hostPlayer);
+
+                log.info("방 생성 완료 - roomId: {}, hostId: {}", roomId, userId);
                 return RoomCreateResponse.of(room);
             } catch (IllegalStateException e) {
                 log.debug("Room ID 중복 발생, 재시도 중 (attempt: {}): {}", i + 1, e.getMessage());
@@ -155,11 +187,13 @@ public class RoomService {
             throw new CustomException(ROOM_IN_GAME);
         }
 
-        if (room.isFull()) {
+        if (isRoomFull(room)) {
             throw new CustomException(ROOM_FULL);
         }
 
-        // TODO: 플레이어가 이미 다른 방에 접속했을 경우 처리
+        if (playerRepository.findById(userId).isPresent()) {
+            throw new CustomException(USER_ALREADY_IN_ROOM);
+        }
         return new RoomAvailabilityResponse(room.getRoomId(), true);
     }
 
@@ -179,7 +213,26 @@ public class RoomService {
      * 플레이어 방 참가
      */
     public PlayerJoinEvent joinRoom(String roomId, Long userId) {
-        return null;
+        validateRoomId(roomId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(USER_NOT_FOUND));
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
+
+        Player player = Player.create(
+                userId,
+                roomId,
+                user.getNickname(),
+                PlayerRole.GUEST
+        );
+        playerRepository.create(player);
+
+        List<Player> playersInRoom = playerRepository.findAllByRoomId(roomId);
+        List<PlayerInfo> playerInfos = playersInRoom.stream()
+                .map(PlayerInfo::of)
+                .toList();
+        return PlayerJoinEvent.of(room, playerInfos);
     }
 
     /**
