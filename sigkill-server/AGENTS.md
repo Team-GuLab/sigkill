@@ -1,30 +1,41 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Spring Boot Java 21 project. Build scripts in `build.gradle` and `settings.gradle`; helper docs live in `docs/` (coding and test style guides, STOMP specs).
-- Source resides in `src/main/java/com/gulab/sigkillserver/` with `config/` (websocket, security, redis), `common/` (base entities, responses, exception handling), and domain packages (`room`, `quiz`, `user`, `game`) each containing `controller`, `service`, `repository`, `dto`, `model`, and `exception` subpackages.
-- Application resources are under `src/main/resources/` (`application.yml`, `static/`, `templates/`). Tests sit in `src/test/java/com/gulab/sigkillserver/`, organized by domain service.
+- `src/main/java/com/gulab/sigkillserver`: main application code.
+  - `config/`: security and STOMP/WebSocket configuration.
+  - `common/`: shared response wrappers, base entities, and exception handlers.
+  - `domain/user` and `domain/room`: domain modules with `controller`, `service`, `repository`, `model`, `dto`, and `exception` packages.
+- `src/main/resources/application.yml`: runtime configuration (session and Redis settings).
+- `src/test/java/com/gulab/sigkillserver`: service and application tests.
+- `docs/`: coding/test style guides and STOMP specifications.
 
 ## Build, Test, and Development Commands
-- `./gradlew clean build` — compile and run all checks, producing an executable JAR.
-- `./gradlew test` — execute JUnit 5 test suite with AssertJ and Spring Security test support.
-- `./gradlew bootRun` — start the API/WebSocket server locally; ensure Redis (localhost:6379) is running.
-- `./gradlew bootJar` — build only the application JAR for deployment.
+- `./gradlew bootRun`: start the server locally.
+- `./gradlew test`: run all tests (JUnit 5).
+- `./gradlew test --tests "com.gulab.sigkillserver.domain.room.service.RoomServiceTest"`: run a single test class.
+- `./gradlew clean build`: clean, compile, test, and package.
+- Swagger (after startup): `http://localhost:8080/swagger-ui/index.html`.
 
 ## Coding Style & Naming Conventions
-- Follow `docs/CODING_STYLE_GUIDE.md`: 4-space indentation, Lombok for boilerplate, constructors + builders for entities, and clean separation by layer/domain.
-- Class naming patterns: `{Domain}Controller`, `{Domain}Service`, `{Domain}Repository`, DTOs as `{Noun}Request`/`{Noun}Response`, exceptions grouped by domain-specific error codes.
-- Prefer records for simple DTOs, `@RequiredArgsConstructor` for dependency injection, and `BaseResponse` for consistent API payloads. Keep business logic in services; controllers remain thin.
+- Java 21, 4-space indentation, and no wildcard imports.
+- Keep package-by-domain boundaries; put shared logic under `common`.
+- Naming rules:
+  - `*Controller`, `*Service`, `*Repository` for layers.
+  - DTOs as `*Request`, `*Response`, and domain-specific `dto/stomp/*` for WebSocket payloads.
+  - Domain error enums as `*ErrorCode`; throw `CustomException` for business errors.
+- Prefer immutable DTOs (`record`) and builder/constructor-based model creation.
 
 ## Testing Guidelines
-- Tests use JUnit 5 with AssertJ fluent assertions; Spring Boot test slices where possible. Refer to `docs/TEST_STYLE_GUIDE.md` for structure.
-- Name test methods descriptively in Korean with underscores (e.g., `이메일로_회원_조회에_성공한다`). Use `@Nested` classes per feature and Given/When/Then comments to document intent.
-- Place fixtures/helpers near the test class; keep tests isolated and independent of order.
+- Use JUnit 5 + Spring Boot Test + AssertJ.
+- Structure tests with `@Nested` and explicit `Given/When/Then` comments.
+- Test names should be descriptive with underscore-separated phrases (Korean naming is used in this repository).
+- Cover happy paths, error paths, and boundary cases; aim for very high coverage on critical business logic.
 
 ## Commit & Pull Request Guidelines
-- Commit messages follow `type: #issue summary` (e.g., `refactor: #8 RoomService 메서드 개선`). Keep commits scoped and reversible.
-- PRs should describe the change, link related issues, note migration/config impacts (e.g., Redis, session cookies), and include screenshots or OpenAPI samples for user-facing updates.
-
-## Security & Configuration Tips
-- Configure secrets and environment-specific values via environment variables or profiles; avoid committing credentials. Update `application.yml` for prod-safe settings (e.g., `server.servlet.session.cookie.secure=true`).
-- WebSocket/STOMP behavior and message schemas are documented in `docs/STOMP_GUIDE.md` and `docs/STOMP_MESSAGE_SPEC.md`; keep changes aligned with those specs.
+- Follow observed commit format: `feat|fix|refactor|test|docs|chore: #<issue> <summary>`.
+  - Example: `refactor: #8 RoomService 메서드의 sessionId를 userId로 변경`.
+- PRs should include:
+  - concise change summary and rationale,
+  - linked issue (for example, `#8`),
+  - test evidence (key `./gradlew test` results),
+  - API/WebSocket request-response examples when behavior changes.
