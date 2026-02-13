@@ -1,6 +1,7 @@
 package com.gulab.sigkillserver.domain.room.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
@@ -189,10 +190,22 @@ class RoomServiceTest {
 
         @Test
         void 페이징_변수가_유효하지_않을_경우_예외를_발생한다() {
-            assertThatThrownBy(() -> roomService.fetchRooms(-1, 0))
+            assertThatThrownBy(() -> roomService.fetchRooms(-1, 10))
+                    .isInstanceOf(CustomException.class);
+            assertThatThrownBy(() -> roomService.fetchRooms(0, 0))
                     .isInstanceOf(CustomException.class);
             assertThatThrownBy(() -> roomService.fetchRooms(0, -1))
                     .isInstanceOf(CustomException.class);
+            assertThatThrownBy(() -> roomService.fetchRooms(0, 101))
+                    .isInstanceOf(CustomException.class);
+        }
+
+        @Test
+        void 페이징_경계값은_정상적으로_조회된다() {
+            assertThatCode(() -> roomService.fetchRooms(0, 1))
+                    .doesNotThrowAnyException();
+            assertThatCode(() -> roomService.fetchRooms(0, 100))
+                    .doesNotThrowAnyException();
         }
     }
 
@@ -222,21 +235,38 @@ class RoomServiceTest {
         }
 
         @Test
-        void 제목이_유효하지_않을경우_예외가_발생한다() {
+        void 제목_경계값을_검증한다() {
             User host = createAndSaveUser("test-session", "호스트");
             assertThatThrownBy(() -> roomService.createRoom("   ", TEST_CAPACITY, host.getUserId()))
                     .isInstanceOf(CustomException.class);
-            String longTitle = "A".repeat(101);
-            assertThatThrownBy(() -> roomService.createRoom(longTitle, TEST_CAPACITY, host.getUserId()))
+
+            String maxLengthTitle = "A".repeat(20);
+            User boundaryHost = createAndSaveUser("test-session-boundary", "호스트2");
+            assertThatCode(() -> roomService.createRoom(maxLengthTitle, TEST_CAPACITY, boundaryHost.getUserId()))
+                    .doesNotThrowAnyException();
+
+            String overMaxLengthTitle = "A".repeat(21);
+            User overLimitHost = createAndSaveUser("test-session-over-limit", "호스트3");
+            assertThatThrownBy(() -> roomService.createRoom(overMaxLengthTitle, TEST_CAPACITY, overLimitHost.getUserId()))
                     .isInstanceOf(CustomException.class);
         }
 
         @Test
-        void 수용_인원수가_유효하지_않을경우_예외가_발생한다() {
+        void 수용_인원수_경계값을_검증한다() {
             User host = createAndSaveUser("test-session", "호스트");
             assertThatThrownBy(() -> roomService.createRoom(TEST_ROOM_TITLE, 1, host.getUserId()))
                     .isInstanceOf(CustomException.class);
-            assertThatThrownBy(() -> roomService.createRoom(TEST_ROOM_TITLE, 11, host.getUserId()))
+
+            User minCapacityHost = createAndSaveUser("test-session-min-capacity", "호스트2");
+            assertThatCode(() -> roomService.createRoom(TEST_ROOM_TITLE, 2, minCapacityHost.getUserId()))
+                    .doesNotThrowAnyException();
+
+            User maxCapacityHost = createAndSaveUser("test-session-max-capacity", "호스트3");
+            assertThatCode(() -> roomService.createRoom(TEST_ROOM_TITLE, 10, maxCapacityHost.getUserId()))
+                    .doesNotThrowAnyException();
+
+            User overCapacityHost = createAndSaveUser("test-session-over-capacity", "호스트4");
+            assertThatThrownBy(() -> roomService.createRoom(TEST_ROOM_TITLE, 11, overCapacityHost.getUserId()))
                     .isInstanceOf(CustomException.class);
         }
     }
@@ -303,6 +333,34 @@ class RoomServiceTest {
 
             // when then
             assertThatThrownBy(() -> roomService.checkRoomAvailability(TEST_ROOM_ID, guest.getUserId()))
+                    .isInstanceOf(CustomException.class);
+        }
+
+        @Test
+        void 이미_같은_방에_참가중인_유저는_입장_가능_확인시_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트");
+            User guest = createAndSaveUser("guest-session", "게스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+            roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
+
+            // when then
+            assertThatThrownBy(() -> roomService.checkRoomAvailability(TEST_ROOM_ID, guest.getUserId()))
+                    .isInstanceOf(CustomException.class);
+        }
+
+        @Test
+        void 이미_다른_방에_참가중인_유저는_입장_가능_확인시_예외를_발생한다() {
+            // given
+            User host1 = createAndSaveUser("host-session-1", "호스트1");
+            User host2 = createAndSaveUser("host-session-2", "호스트2");
+            User guest = createAndSaveUser("guest-session", "게스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host1);
+            createAndSaveRoomWithHost("9999", "다른 방", TEST_CAPACITY, host2);
+            roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
+
+            // when then
+            assertThatThrownBy(() -> roomService.checkRoomAvailability("9999", guest.getUserId()))
                     .isInstanceOf(CustomException.class);
         }
     }
