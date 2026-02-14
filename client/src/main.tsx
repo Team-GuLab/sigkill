@@ -7,10 +7,10 @@ import { enableMocking } from "./__mocks__";
 
 enableMocking().then(() => {
   createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-      <TanstackQueryClientProvider>
-        <Router />
-      </TanstackQueryClientProvider>
-    </StrictMode>,
+    // <StrictMode>
+    <TanstackQueryClientProvider>
+      <Router />
+    </TanstackQueryClientProvider>,
+    // </StrictMode>,
   );
 });
