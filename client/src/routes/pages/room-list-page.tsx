@@ -36,35 +36,33 @@ export default function RoomListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto max-w-md">
-        <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-foreground">방 목록</h1>
-          <Button className="cursor-pointer" onClick={handleButtonClick}>
-            방 생성
-          </Button>
-        </header>
-        <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
-          <Suspense
-            fallback={
-              <div className="h-100 flex items-center justify-center">
-                <Spinner />
-              </div>
-            }
-          >
-            <Rooms />
-          </Suspense>
-        </ErrorBoundary>
+    <>
+      <header className="mb-6 flex items-center justify-between">
+        <h1 className="text-foreground text-xl font-bold">방 목록</h1>
+        <Button className="cursor-pointer" onClick={handleButtonClick}>
+          방 생성
+        </Button>
+      </header>
+      <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
+        <Suspense
+          fallback={
+            <div className="flex h-100 items-center justify-center">
+              <Spinner />
+            </div>
+          }
+        >
+          <Rooms />
+        </Suspense>
+      </ErrorBoundary>
 
-        {showModal &&
-          createPortal(
-            <RoomCreateModal
-              open={showModal}
-              onOpenChange={() => setShowModal(false)}
-            />,
-            document.getElementById("modal-root")!,
-          )}
-      </div>
-    </div>
+      {showModal &&
+        createPortal(
+          <RoomCreateModal
+            open={showModal}
+            onOpenChange={() => setShowModal(false)}
+          />,
+          document.getElementById("modal-root")!,
+        )}
+    </>
   );
 }
