@@ -10,7 +10,6 @@ export interface RoomListDto {
 export interface RoomItem {
   roomId: string;
   roomTitle: string;
-  hostId: string;
   playerCount: number;
   capacity: number;
   status: "WAITING" | "PLAYING";
@@ -23,12 +22,12 @@ export interface CreateRoomParams {
 }
 
 export interface Player {
-  playerId: string;
+  playerId: number;
   nickname: string;
   status: "READY" | "NOT_READY";
 }
 
-export interface RoomJoinResponse {
+export interface PlayerJoinResponse {
   type: "PLAYER_JOIN";
   room: Omit<RoomItem, "playerCount" | "canJoin">;
   players: Player[];

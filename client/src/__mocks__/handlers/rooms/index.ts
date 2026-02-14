@@ -23,7 +23,6 @@ const getMockRooms = (): RoomItem[] => {
     rooms.push({
       roomId: roomId.toString(),
       roomTitle: `${topics[Math.floor(Math.random() * topics.length)]} 퀴즈 ${roomId}`,
-      hostId: "1234",
       playerCount,
       capacity: 10,
       status: isPlaying ? "PLAYING" : "WAITING",
