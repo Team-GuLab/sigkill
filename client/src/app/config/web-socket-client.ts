@@ -42,9 +42,9 @@ export const connectWebSocket = async (): Promise<void> => {
   });
 };
 
-export const disconnectWebSocket = () => {
+export const disconnectWebSocket = async () => {
   if (client.active) {
-    client.deactivate();
+    await client.deactivate();
   }
 };
 
