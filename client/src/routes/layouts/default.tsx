@@ -7,7 +7,11 @@ export default function DefaultLayout() {
     <>
       <Header />
       <Toaster />
-      <Outlet />
+      <div className="bg-background min-h-screen px-4 py-8">
+        <div className="mx-auto max-w-md">
+          <Outlet />
+        </div>
+      </div>
     </>
   );
 }
