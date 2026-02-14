@@ -5,11 +5,6 @@ import { Badge } from "@/ui/badge";
 import { Users } from "lucide-react";
 import { AppError } from "@/api/axios";
 import { toast } from "sonner";
-import {
-  connectWebSocket,
-  disconnectWebSocket,
-} from "@/app/config/web-socket-client";
-import { joinWaitingRoom } from "@/api/room/join-waiting-room";
 import { useNavigate } from "react-router";
 
 // 방 목록 내 단건 방
@@ -33,14 +28,8 @@ export default function RoomItem({
         throw new Error();
       }
 
-      await connectWebSocket();
-
-      await joinWaitingRoom(roomId, data => {
-        toast.success(`방 "${data.room.roomTitle}"에 입장했습니다!`);
-        navigate(`/waiting-room/${roomId}`);
-      });
+      navigate(`/waiting-room/${roomId}`);
     } catch (error) {
-      disconnectWebSocket();
       if (error instanceof AppError) {
         toast.error(error.message);
         return;
