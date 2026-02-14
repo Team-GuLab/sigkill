@@ -5,14 +5,13 @@ const client = new Client({
   reconnectDelay: 0, // TODO: 이후 상황에 따라 변경 필요
 });
 
-export const connectWebSocket = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    // 이미 연결된 경우 바로 성공 처리
-    if (client.connected) {
-      resolve();
-      return;
-    }
+export const connectWebSocket = async (): Promise<void> => {
+  // 안전한 재연결을 위한 이미 활성화된 상태라면 연결 해제 선행
+  if (client.active) {
+    await client.deactivate();
+  }
 
+  return new Promise((resolve, reject) => {
     client.onConnect = () => {
       console.log("Connected to WebSocket");
       resolve();
@@ -29,6 +28,14 @@ export const connectWebSocket = (): Promise<void> => {
     client.onWebSocketError = event => {
       console.error("WebSocket error", event);
       reject(new Error("WebSocket connection failed"));
+    };
+
+    client.onDisconnect = frame => {
+      console.log("Disconnected successfully");
+    };
+
+    client.onWebSocketClose = event => {
+      console.log("WebSocket closed. Code:", event.code);
     };
 
     client.activate();
