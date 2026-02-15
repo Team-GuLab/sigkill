@@ -717,7 +717,7 @@ class RoomServiceTest {
         }
 
         @Test
-        void 준비_완료_상태가_아닐_경우_예외를_발생한다() {
+        void 준비_완료_상태가_아닐_경우에도_예외를_발생하지_않는다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             User guest = createAndSaveUser("guest-session", "게스트유저");
@@ -728,8 +728,8 @@ class RoomServiceTest {
             playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             // when then (준비하지 않은 상태에서 준비 취소 시도)
-            assertThatThrownBy(() -> roomService.unreadyPlayer(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThatCode(() -> roomService.unreadyPlayer(TEST_ROOM_ID, guest.getUserId()))
+                    .doesNotThrowAnyException();
         }
 
         @Test

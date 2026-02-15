@@ -324,7 +324,15 @@ public class RoomService {
      * 플레이어 준비 취소
      */
     public PlayerUnreadyEvent unreadyPlayer(String roomId, Long userId) {
-        return null;
+        Player player = getPlayerOrThrow(userId);
+        Room room = getRoomOrThrow(roomId);
+        validatePlayerInRoom(player, room);
+        validatePlayerNotHost(player, room);
+        validateRoomNotInGame(room);
+
+        player.unready();
+
+        return PlayerUnreadyEvent.of(player);
     }
 
     private Room getRoomOrThrow(String roomId) {
