@@ -10,7 +10,6 @@ import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomResponseType;
 import com.gulab.sigkillserver.domain.room.model.Player;
-import com.gulab.sigkillserver.domain.room.model.PlayerRole;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.model.RoomStatus;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
@@ -59,7 +58,7 @@ class RoomServiceTest {
     private Room createAndSaveRoomWithHost(String roomId, String roomTitle, Integer capacity, User host) {
         Room room = Room.create(roomId, roomTitle, host.getUserId(), capacity);
         roomRepository.save(room);
-        playerRepository.create(Player.create(host.getUserId(), roomId, host.getNickname(), PlayerRole.HOST));
+        playerRepository.create(Player.create(host.getUserId(), roomId, host.getNickname()));
         return room;
     }
 
@@ -165,7 +164,7 @@ class RoomServiceTest {
             // 호스트 포함 총 6명으로 방을 가득 채움
             for (int i = 0; i < 5; i++) {
                 User player = createAndSaveUser("player-2-" + i, "플레이어" + i);
-                playerRepository.create(Player.create(player.getUserId(), room2.getRoomId(), player.getNickname(), PlayerRole.GUEST));
+                playerRepository.create(Player.create(player.getUserId(), room2.getRoomId(), player.getNickname()));
             }
 
             createAndSaveRoomWithHost("3333", "방3", 6, host3); // 입장 가능
@@ -328,7 +327,7 @@ class RoomServiceTest {
             // 나머지 플레이어들 추가하여 방을 가득 채움
             for (int i = 1; i < TEST_CAPACITY; i++) {
                 User player = createAndSaveUser("player-" + i, "플레이어" + i);
-                playerRepository.create(Player.create(player.getUserId(), room.getRoomId(), player.getNickname(), PlayerRole.GUEST));
+                playerRepository.create(Player.create(player.getUserId(), room.getRoomId(), player.getNickname()));
             }
 
             // when then
@@ -440,7 +439,7 @@ class RoomServiceTest {
             // 호스트 포함 방을 가득 채움
             for (int i = 1; i < TEST_CAPACITY; i++) {
                 User player = createAndSaveUser("player-" + i, "플레이어" + i);
-                playerRepository.create(Player.create(player.getUserId(), room.getRoomId(), player.getNickname(), PlayerRole.GUEST));
+                playerRepository.create(Player.create(player.getUserId(), room.getRoomId(), player.getNickname()));
             }
 
             // when then
@@ -472,8 +471,8 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             // when
             var result = roomService.leaveRoom(TEST_ROOM_ID, guest.getUserId());
@@ -502,7 +501,7 @@ class RoomServiceTest {
             User guest2 = createAndSaveUser("guest-session-2", "게스트유저2");
 
             createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
-            playerRepository.create(Player.create(guest1.getUserId(), TEST_ROOM_ID, guest1.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(guest1.getUserId(), TEST_ROOM_ID, guest1.getNickname()));
 
             // when then
             assertThatThrownBy(() -> roomService.leaveRoom(TEST_ROOM_ID, guest2.getUserId()))
@@ -517,16 +516,16 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest1.getUserId(), TEST_ROOM_ID, guest1.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest1.getUserId(), TEST_ROOM_ID, guest1.getNickname()));
 
             // when
             roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
 
             // then
-            // 호스트가 변경되었는지 확인 (Player의 role 확인)
-            Player newHost = playerRepository.findById(guest1.getUserId()).get();
-            assertThat(newHost.getRole()).isEqualTo(PlayerRole.HOST);
+            // 호스트가 변경되었는지 확인 (Room의 hostId 확인)
+            Room updatedRoom = roomRepository.findById(TEST_ROOM_ID).orElseThrow();
+            assertThat(updatedRoom.getHostId()).isEqualTo(guest1.getUserId());
         }
 
         @Test
@@ -536,7 +535,7 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
 
             // when
             roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
@@ -557,8 +556,8 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             // when
             var result = roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
@@ -590,8 +589,8 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             // when then
             assertThatThrownBy(() -> roomService.readyPlayer(TEST_ROOM_ID, otherPlayer.getUserId()))
@@ -605,7 +604,7 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
 
             // when then
             assertThatThrownBy(() -> roomService.readyPlayer(TEST_ROOM_ID, host.getUserId()))
@@ -620,8 +619,8 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
 
@@ -639,8 +638,8 @@ class RoomServiceTest {
             room.startGame();
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             // when then
             assertThatThrownBy(() -> roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId()))
@@ -658,8 +657,8 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
 
@@ -692,8 +691,8 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
 
@@ -709,7 +708,7 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
 
             // when then
             assertThatThrownBy(() -> roomService.unreadyPlayer(TEST_ROOM_ID, host.getUserId()))
@@ -724,8 +723,8 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             // when then (준비하지 않은 상태에서 준비 취소 시도)
             assertThatThrownBy(() -> roomService.unreadyPlayer(TEST_ROOM_ID, guest.getUserId()))
@@ -740,8 +739,8 @@ class RoomServiceTest {
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname(), PlayerRole.HOST));
-            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname(), PlayerRole.GUEST));
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
             room.startGame();

@@ -27,7 +27,6 @@ import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerInfo;
 import com.gulab.sigkillserver.domain.room.model.Player;
-import com.gulab.sigkillserver.domain.room.model.PlayerRole;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
@@ -147,7 +146,7 @@ public class RoomService {
                 Room room = Room.create(roomId, roomTitle, userId, resolvedCapacity);
                 room = roomRepository.save(room);
 
-                Player hostPlayer = Player.create(userId, roomId, host.getNickname(), PlayerRole.HOST);
+                Player hostPlayer = Player.create(userId, roomId, host.getNickname());
                 playerRepository.create(hostPlayer);
 
                 log.info("방 생성 완료 - roomId: {}, hostId: {}", roomId, userId);
@@ -216,12 +215,7 @@ public class RoomService {
 
         validateCanJoinRoom(userId, room);
 
-        Player player = Player.create(
-                userId,
-                roomId,
-                user.getNickname(),
-                PlayerRole.GUEST
-        );
+        Player player = Player.create(userId, roomId, user.getNickname());
         playerRepository.create(player);
 
         List<Player> playersInRoom = playerRepository.findAllByRoomId(roomId);
@@ -259,7 +253,7 @@ public class RoomService {
 
         playerRepository.deleteById(userId);
 
-        if (player.getRole() == PlayerRole.HOST) {
+        if (room.getHostId().equals(userId)) {
             changeHost(room);
         }
 
@@ -279,7 +273,6 @@ public class RoomService {
         Player newHost = playerRepository.findAllByRoomId(room.getRoomId()).stream()
                 .min(Comparator.comparing(Player::getCreatedAt))
                 .orElseThrow(() -> new CustomException(PLAYER_NOT_FOUND));
-        newHost.changeToHost();
         room.changeHost(newHost.getUserId());
     }
 
