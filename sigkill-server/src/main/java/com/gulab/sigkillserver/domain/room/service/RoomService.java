@@ -4,6 +4,7 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.DEFAULT
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TITLE_LENGTH;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
@@ -280,7 +281,43 @@ public class RoomService {
      * 플레이어 준비 완료
      */
     public PlayerReadyEvent readyPlayer(String roomId, Long userId) {
-        return null;
+        Player player = getPlayerOrThrow(userId);
+        Room room = getRoomOrThrow(roomId);
+        validatePlayerInRoom(player, room);
+        validatePlayerNotHost(player, room);
+        validateRoomNotInGame(room);
+
+        player.ready();
+
+        boolean isAllReady = isAllGuestsReady(room);
+
+        return PlayerReadyEvent.of(player, isAllReady);
+    }
+
+    private void validateRoomNotInGame(Room room) {
+        if (room.isInGame()) {
+            throw new CustomException(ROOM_IN_GAME);
+        }
+    }
+
+    private boolean isAllGuestsReady(Room room) {
+        List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
+        for (var p : players) {
+            if (room.getHostId().equals(p.getUserId())) {
+                continue; // 호스트는 준비 상태가 없음
+            }
+
+            if (!p.isReady()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void validatePlayerNotHost(Player player, Room room) {
+        if (room.getHostId().equals(player.getUserId())) {
+            throw new CustomException(HOST_CANNOT_READY); // 호스트는 준비 상태가 없음
+        }
     }
 
     /**

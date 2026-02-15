@@ -19,6 +19,7 @@ public enum RoomErrorCode implements CustomErrorCodeInterface {
     ROOM_NOT_FOUND("방을 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     ROOM_FULL("방이 가득 찼습니다", HttpStatus.CONFLICT),
     ROOM_IN_GAME("이미 게임이 진행 중인 방입니다", HttpStatus.CONFLICT),
+    HOST_CANNOT_READY("방장은 준비 상태를 변경할 수 없습니다", HttpStatus.BAD_REQUEST),
     ROOM_CREATE_ERROR("방 생성에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR),
     ROOM_NUMBER_ERROR("방 번호는 4자리 정수여야 합니다", HttpStatus.BAD_REQUEST),
     ROOM_PAGING_PARAMETER_INVALID("페이지 번호와 페이지 크기는 0 이상의 정수여야 합니다", HttpStatus.BAD_REQUEST),

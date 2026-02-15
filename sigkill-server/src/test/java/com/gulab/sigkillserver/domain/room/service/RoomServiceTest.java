@@ -246,7 +246,8 @@ class RoomServiceTest {
 
             String overMaxLengthTitle = "A".repeat(21);
             User overLimitHost = createAndSaveUser("test-session-over-limit", "호스트3");
-            assertThatThrownBy(() -> roomService.createRoom(overMaxLengthTitle, TEST_CAPACITY, overLimitHost.getUserId()))
+            assertThatThrownBy(
+                    () -> roomService.createRoom(overMaxLengthTitle, TEST_CAPACITY, overLimitHost.getUserId()))
                     .isInstanceOf(CustomException.class);
         }
 
@@ -567,7 +568,7 @@ class RoomServiceTest {
             assertThat(result.type()).isEqualTo(RoomResponseType.PLAYER_READY);
             assertThat(result.player().userId()).isEqualTo(guest.getUserId());
             assertThat(result.player().nickname()).isEqualTo("게스트유저");
-            assertThat(result.allReady()).isFalse(); // 호스트는 준비 상태가 아님
+            assertThat(result.allReady()).isTrue(); // 호스트는 준비 상태가 아니여도 모든 게스트가 준비 상태이므로 true
         }
 
         @Test
@@ -612,7 +613,7 @@ class RoomServiceTest {
         }
 
         @Test
-        void 이미_준비_완료_상태일_경우_예외를_발생한다() {
+        void 이미_준비_완료_상태일_경우에도_예외를_발생하지_않는다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             User guest = createAndSaveUser("guest-session", "게스트유저");
@@ -625,8 +626,8 @@ class RoomServiceTest {
             roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
 
             // when then
-            assertThatThrownBy(() -> roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThatCode(() -> roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId()))
+                    .doesNotThrowAnyException();
         }
 
         @Test
