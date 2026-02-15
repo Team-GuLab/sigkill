@@ -4,6 +4,7 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.DEFAULT
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TITLE_LENGTH;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
@@ -179,12 +180,11 @@ public class RoomService {
         log.info("방 참가 가능 여부 확인 - roomId: {}, userId: {}", roomId, userId);
         validateRoomId(roomId);
 
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
+        Room room = getRoomOrThrow(roomId);
 
         // TODO: 동시성 문제 해결
         validateCanJoinRoom(userId, room);
-        
+
         return new RoomAvailabilityResponse(room.getRoomId(), true);
     }
 
@@ -208,8 +208,7 @@ public class RoomService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(USER_NOT_FOUND));
 
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
+        Room room = getRoomOrThrow(roomId);
 
         validateCanJoinRoom(userId, room);
 
@@ -244,6 +243,9 @@ public class RoomService {
      * 플레이어 방 퇴장
      */
     public PlayerLeftEvent leaveRoom(String roomId, Long userId) {
+        Player player = getPlayerOrThrow(userId);
+        Room room = getRoomOrThrow(roomId);
+
         return null;
     }
 
@@ -266,5 +268,15 @@ public class RoomService {
      */
     public PlayerUnreadyEvent unreadyPlayer(String roomId, Long userId) {
         return null;
+    }
+
+    private Room getRoomOrThrow(String roomId) {
+        return roomRepository.findById(roomId)
+                .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
+    }
+
+    private Player getPlayerOrThrow(Long userId) {
+        return playerRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(PLAYER_NOT_FOUND));
     }
 }
