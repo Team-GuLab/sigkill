@@ -25,6 +25,7 @@ export interface Player {
   userId: number;
   nickname: string;
   status: "READY" | "NOT_READY";
+  role: "HOST" | "GUEST";
 }
 
 // 웹소켓 메시지 타입들
@@ -53,8 +54,8 @@ export interface PlayerUnreadyMessage {
 export interface HostChangedMessage {
   type: "HOST_CHANGED";
   newHost: Player;
-  previousHost: Player;
-  reason: "HOST_LEFT"
+  oldHost: Player;
+  reason: "HOST_LEFT";
 }
 
 // 모든 웹소켓 메시지 타입
