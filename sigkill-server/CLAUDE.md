@@ -95,6 +95,7 @@ com.gulab.sigkillserver.domain
 - 방 제목: 2~20자, 한글/영문/공백만 허용
 - 방 인원: MIN_CAPACITY ~ MAX_CAPACITY (RoomConstants)
 - 호스트는 방 생성자 세션 ID로 지정
+- 방장 권한의 단일 소스는 `Room.hostId`이며, `Player` 엔티티에는 role을 두지 않음
 
 ### 방 목록 조회 (RoomService.fetchRooms)
 - `WAITING` 상태 방만 조회, 페이지네이션 적용
@@ -159,6 +160,7 @@ com.gulab.sigkillserver.domain
 | --- | --- | --- |
 | roomId | 방 아이디 | STRING |
 | roomTitle | 방 제목 | STRING |
+| hostId | 방장 유저 아이디 | BIGINT |
 | capacity | 수용 가능 인원 | INT |
 | status | 방 상태 | WAITING / INGAME |
 
@@ -172,7 +174,6 @@ com.gulab.sigkillserver.domain
 | playerId | 플레이어 아이디 | BIGINT |
 | userId | 유저 아이디 | BIGINT |
 | roomId | 방 아이디 | STRING |
-| role | 역할 | HOST / GUEST |
 | readyStatus | 준비 상태 | WAITING / READY |
 | gameStatus | 게임 상태 | ALIVE / DEAD / NOT_GAME |
 | score | 점수 | BIGINT |
