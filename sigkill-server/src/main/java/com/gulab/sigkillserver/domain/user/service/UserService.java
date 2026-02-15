@@ -30,8 +30,7 @@ public class UserService {
         // 세션 ID를 userId로 사용
         String sessionId = session.getId();
 
-        User user = userRepository.findBySessionId(sessionId)
-                .orElseGet(() -> createUser(sessionId));
+        User user = getUserBySessionIdOrCreate(sessionId);
 
         // Spring Security 인증 정보 설정
         UsernamePasswordAuthenticationToken authentication =
@@ -63,5 +62,10 @@ public class UserService {
         log.info("새 비회원 사용자 생성 - userId: {} sessionId: {}, nickname: {}, role: {}",
                 newUser.getUserId(), sessionId, nickname, UserRole.GUEST.getKey());
         return newUser;
+    }
+
+    private User getUserBySessionIdOrCreate(String sessionId) {
+        return userRepository.findBySessionId(sessionId)
+                .orElseGet(() -> createUser(sessionId));
     }
 }
