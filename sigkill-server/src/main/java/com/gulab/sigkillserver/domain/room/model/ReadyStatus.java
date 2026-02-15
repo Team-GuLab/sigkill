@@ -1,6 +1,6 @@
 package com.gulab.sigkillserver.domain.room.model;
 
-public enum RoomPlayerStatus {
+public enum ReadyStatus {
     READY,
     NOT_READY
 }
