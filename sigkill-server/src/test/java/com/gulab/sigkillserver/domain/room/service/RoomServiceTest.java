@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
+import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
+import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
@@ -21,6 +23,7 @@ import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
 import java.util.HashSet;
 import java.util.Set;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -60,6 +63,13 @@ class RoomServiceTest {
         roomRepository.save(room);
         playerRepository.create(Player.create(host.getUserId(), roomId, host.getNickname()));
         return room;
+    }
+
+    private void assertThrowsCustomExceptionWithCode(ThrowingCallable callable, String expectedCode) {
+        assertThatThrownBy(callable)
+                .isInstanceOf(CustomException.class)
+                .satisfies(throwable ->
+                        assertThat(((CustomException) throwable).getErrorCode().getCode()).isEqualTo(expectedCode));
     }
 
     @Nested
@@ -189,14 +199,18 @@ class RoomServiceTest {
 
         @Test
         void 페이징_변수가_유효하지_않을_경우_예외를_발생한다() {
-            assertThatThrownBy(() -> roomService.fetchRooms(-1, 10))
-                    .isInstanceOf(CustomException.class);
-            assertThatThrownBy(() -> roomService.fetchRooms(0, 0))
-                    .isInstanceOf(CustomException.class);
-            assertThatThrownBy(() -> roomService.fetchRooms(0, -1))
-                    .isInstanceOf(CustomException.class);
-            assertThatThrownBy(() -> roomService.fetchRooms(0, 101))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.fetchRooms(-1, 10),
+                    RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID.name());
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.fetchRooms(0, 0),
+                    RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID.name());
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.fetchRooms(0, -1),
+                    RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID.name());
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.fetchRooms(0, 101),
+                    RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID.name());
         }
 
         @Test
@@ -236,8 +250,9 @@ class RoomServiceTest {
         @Test
         void 제목_경계값을_검증한다() {
             User host = createAndSaveUser("test-session", "호스트");
-            assertThatThrownBy(() -> roomService.createRoom("   ", TEST_CAPACITY, host.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.createRoom("   ", TEST_CAPACITY, host.getUserId()),
+                    RoomErrorCode.ROOM_TITLE_INVALID.name());
 
             String maxLengthTitle = "A".repeat(20);
             User boundaryHost = createAndSaveUser("test-session-boundary", "호스트2");
@@ -246,16 +261,17 @@ class RoomServiceTest {
 
             String overMaxLengthTitle = "A".repeat(21);
             User overLimitHost = createAndSaveUser("test-session-over-limit", "호스트3");
-            assertThatThrownBy(
-                    () -> roomService.createRoom(overMaxLengthTitle, TEST_CAPACITY, overLimitHost.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.createRoom(overMaxLengthTitle, TEST_CAPACITY, overLimitHost.getUserId()),
+                    RoomErrorCode.ROOM_TITLE_INVALID.name());
         }
 
         @Test
         void 수용_인원수_경계값을_검증한다() {
             User host = createAndSaveUser("test-session", "호스트");
-            assertThatThrownBy(() -> roomService.createRoom(TEST_ROOM_TITLE, 1, host.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.createRoom(TEST_ROOM_TITLE, 1, host.getUserId()),
+                    RoomErrorCode.ROOM_CAPACITY_INVALID.name());
 
             User minCapacityHost = createAndSaveUser("test-session-min-capacity", "호스트2");
             assertThatCode(() -> roomService.createRoom(TEST_ROOM_TITLE, 2, minCapacityHost.getUserId()))
@@ -266,8 +282,9 @@ class RoomServiceTest {
                     .doesNotThrowAnyException();
 
             User overCapacityHost = createAndSaveUser("test-session-over-capacity", "호스트4");
-            assertThatThrownBy(() -> roomService.createRoom(TEST_ROOM_TITLE, 11, overCapacityHost.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.createRoom(TEST_ROOM_TITLE, 11, overCapacityHost.getUserId()),
+                    RoomErrorCode.ROOM_CAPACITY_INVALID.name());
         }
     }
 
@@ -292,17 +309,20 @@ class RoomServiceTest {
         @Test
         void 존재하지_않는_방일_경우_예외를_발생한다() {
             User guest = createAndSaveUser("guest-session", "게스트");
-            assertThatThrownBy(() -> roomService.checkRoomAvailability("9999", guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.checkRoomAvailability("9999", guest.getUserId()),
+                    RoomErrorCode.ROOM_NOT_FOUND.name());
         }
 
         @Test
         void 방_아이디가_유효하지_않을경우_예외를_발생한다() {
             User guest = createAndSaveUser("guest-session", "게스트");
-            assertThatThrownBy(() -> roomService.checkRoomAvailability("12AB", guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
-            assertThatThrownBy(() -> roomService.checkRoomAvailability("10000", guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.checkRoomAvailability("12AB", guest.getUserId()),
+                    RoomErrorCode.ROOM_NUMBER_ERROR.name());
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.checkRoomAvailability("10000", guest.getUserId()),
+                    RoomErrorCode.ROOM_NUMBER_ERROR.name());
         }
 
         @Test
@@ -314,8 +334,9 @@ class RoomServiceTest {
             room.startGame();
 
             // when then
-            assertThatThrownBy(() -> roomService.checkRoomAvailability(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.checkRoomAvailability(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_IN_GAME.name());
         }
 
         @Test
@@ -332,8 +353,9 @@ class RoomServiceTest {
             }
 
             // when then
-            assertThatThrownBy(() -> roomService.checkRoomAvailability(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.checkRoomAvailability(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_FULL.name());
         }
 
         @Test
@@ -345,8 +367,9 @@ class RoomServiceTest {
             roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
 
             // when then
-            assertThatThrownBy(() -> roomService.checkRoomAvailability(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.checkRoomAvailability(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.USER_ALREADY_IN_ROOM.name());
         }
 
         @Test
@@ -360,8 +383,9 @@ class RoomServiceTest {
             roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
 
             // when then
-            assertThatThrownBy(() -> roomService.checkRoomAvailability("9999", guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.checkRoomAvailability("9999", guest.getUserId()),
+                    RoomErrorCode.USER_ALREADY_IN_ROOM.name());
         }
     }
 
@@ -398,8 +422,9 @@ class RoomServiceTest {
             // given
             User guest = createAndSaveUser("guest-session", "게스트유저");
 
-            assertThatThrownBy(() -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_NOT_FOUND.name());
         }
 
         @Test
@@ -411,8 +436,9 @@ class RoomServiceTest {
             roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
 
             // when then
-            assertThatThrownBy(() -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.USER_ALREADY_IN_ROOM.name());
         }
 
         @Test
@@ -426,8 +452,9 @@ class RoomServiceTest {
             roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
 
             // when then
-            assertThatThrownBy(() -> roomService.joinRoom("9999", guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom("9999", guest.getUserId()),
+                    RoomErrorCode.USER_ALREADY_IN_ROOM.name());
         }
 
         @Test
@@ -444,8 +471,9 @@ class RoomServiceTest {
             }
 
             // when then
-            assertThatThrownBy(() -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_FULL.name());
         }
 
         @Test
@@ -457,8 +485,9 @@ class RoomServiceTest {
             room.startGame();
 
             // when then
-            assertThatThrownBy(() -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_IN_GAME.name());
         }
     }
 
@@ -490,8 +519,9 @@ class RoomServiceTest {
             User guest = createAndSaveUser("guest-session", "게스트유저");
 
             // when then
-            assertThatThrownBy(() -> roomService.leaveRoom(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.leaveRoom(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_NOT_FOUND.name());
         }
 
         @Test
@@ -505,8 +535,9 @@ class RoomServiceTest {
             playerRepository.create(Player.create(guest1.getUserId(), TEST_ROOM_ID, guest1.getNickname()));
 
             // when then
-            assertThatThrownBy(() -> roomService.leaveRoom(TEST_ROOM_ID, guest2.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.leaveRoom(TEST_ROOM_ID, guest2.getUserId()),
+                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
         }
 
         @Test
@@ -577,8 +608,9 @@ class RoomServiceTest {
             User guest = createAndSaveUser("guest-session", "게스트유저");
 
             // when then
-            assertThatThrownBy(() -> roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_NOT_FOUND.name());
         }
 
         @Test
@@ -594,8 +626,9 @@ class RoomServiceTest {
             playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             // when then
-            assertThatThrownBy(() -> roomService.readyPlayer(TEST_ROOM_ID, otherPlayer.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.readyPlayer(TEST_ROOM_ID, otherPlayer.getUserId()),
+                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
         }
 
         @Test
@@ -608,8 +641,9 @@ class RoomServiceTest {
             playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
 
             // when then
-            assertThatThrownBy(() -> roomService.readyPlayer(TEST_ROOM_ID, host.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.readyPlayer(TEST_ROOM_ID, host.getUserId()),
+                    RoomErrorCode.HOST_CANNOT_READY.name());
         }
 
         @Test
@@ -643,8 +677,9 @@ class RoomServiceTest {
             playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
 
             // when then
-            assertThatThrownBy(() -> roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_IN_GAME.name());
         }
     }
 
@@ -679,8 +714,9 @@ class RoomServiceTest {
             User guest = createAndSaveUser("guest-session", "게스트유저");
 
             // when then
-            assertThatThrownBy(() -> roomService.unreadyPlayer(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.unreadyPlayer(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_NOT_FOUND.name());
         }
 
         @Test
@@ -698,8 +734,9 @@ class RoomServiceTest {
             roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
 
             // when then
-            assertThatThrownBy(() -> roomService.unreadyPlayer(TEST_ROOM_ID, otherPlayer.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.unreadyPlayer(TEST_ROOM_ID, otherPlayer.getUserId()),
+                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
         }
 
         @Test
@@ -712,8 +749,9 @@ class RoomServiceTest {
             playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
 
             // when then
-            assertThatThrownBy(() -> roomService.unreadyPlayer(TEST_ROOM_ID, host.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.unreadyPlayer(TEST_ROOM_ID, host.getUserId()),
+                    RoomErrorCode.HOST_CANNOT_READY.name());
         }
 
         @Test
@@ -747,8 +785,9 @@ class RoomServiceTest {
             room.startGame();
 
             // when then
-            assertThatThrownBy(() -> roomService.unreadyPlayer(TEST_ROOM_ID, guest.getUserId()))
-                    .isInstanceOf(CustomException.class);
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.unreadyPlayer(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ROOM_IN_GAME.name());
         }
     }
 }
