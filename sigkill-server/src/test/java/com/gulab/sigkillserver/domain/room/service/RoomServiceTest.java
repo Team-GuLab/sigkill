@@ -539,8 +539,9 @@ class RoomServiceTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.type()).isEqualTo(RoomResponseType.PLAYER_LEFT);
-            assertThat(result.player().userId()).isEqualTo(guest.getUserId());
+            assertThat(result.playerLeftEvent().type()).isEqualTo(RoomResponseType.PLAYER_LEFT);
+            assertThat(result.playerLeftEvent().player().userId()).isEqualTo(guest.getUserId());
+            assertThat(result.hostChangedEvent()).isNull();
         }
 
         @Test
@@ -582,7 +583,7 @@ class RoomServiceTest {
         }
 
         @Test
-        void 호스트가_퇴장할_경우_다음_플레이어가_호스트가_된다() {
+        void 호스트가_퇴장할_경우_HostChangedEvent를_반환하고_다음_플레이어가_호스트가_된다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             User guest1 = createAndSaveUser("guest-session-1", "게스트유저1");
@@ -593,10 +594,17 @@ class RoomServiceTest {
             playerRepository.create(Player.create(guest1.getUserId(), TEST_ROOM_ID, guest1.getNickname()));
 
             // when
-            roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
+            var result = roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
 
             // then
-            // 호스트가 변경되었는지 확인 (Room의 hostId 확인)
+            assertThat(result.playerLeftEvent().type()).isEqualTo(RoomResponseType.PLAYER_LEFT);
+            assertThat(result.playerLeftEvent().player().userId()).isEqualTo(host.getUserId());
+            assertThat(result.hostChangedEvent()).isNotNull();
+            assertThat(result.hostChangedEvent().type()).isEqualTo(RoomResponseType.HOST_CHANGED);
+            assertThat(result.hostChangedEvent().oldHost().userId()).isEqualTo(host.getUserId());
+            assertThat(result.hostChangedEvent().newHost().userId()).isEqualTo(guest1.getUserId());
+            assertThat(result.hostChangedEvent().reason()).isEqualTo("HOST_LEFT");
+
             Room updatedRoom = roomRepository.findById(TEST_ROOM_ID).orElseThrow();
             assertThat(updatedRoom.getHostId()).isEqualTo(guest1.getUserId());
         }
@@ -611,9 +619,12 @@ class RoomServiceTest {
             playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
 
             // when
-            roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
+            var result = roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
 
             // then
+            assertThat(result.playerLeftEvent().type()).isEqualTo(RoomResponseType.PLAYER_LEFT);
+            assertThat(result.playerLeftEvent().player().userId()).isEqualTo(host.getUserId());
+            assertThat(result.hostChangedEvent()).isNull();
             assertThat(roomRepository.findById(TEST_ROOM_ID)).isEmpty();
             assertThat(playerRepository.countByRoomId(TEST_ROOM_ID)).isZero();
         }

@@ -6,7 +6,7 @@ import com.gulab.sigkillserver.domain.room.model.Player;
 public record HostChangedEvent(
         RoomResponseType type,
         PlayerInfo newHost,
-        PlayerInfo previousHost,
+        PlayerInfo oldHost,
         String reason
 ) {
     public static HostChangedEvent of(Player newHost, Player previousHost, String reason) {

@@ -22,6 +22,8 @@ import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityRes
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
+import com.gulab.sigkillserver.domain.room.dto.service.LeaveRoomResult;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
@@ -51,6 +53,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class RoomService {
 
+    private static final String HOST_CHANGED_REASON_HOST_LEFT = "HOST_LEFT";
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final PlayerRepository playerRepository;
@@ -239,24 +242,26 @@ public class RoomService {
     /**
      * 플레이어 방 퇴장
      */
-    public PlayerLeftEvent leaveRoom(String roomId, Long userId) {
+    public LeaveRoomResult leaveRoom(String roomId, Long userId) {
         Room room = getRoomOrThrow(roomId);
         Player player = getPlayerOrThrow(userId);
         validatePlayerInRoom(player, room);
+        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player);
 
         if (getPlayerCountInRoom(roomId) <= 1) {
             roomRepository.deleteById(roomId);
             playerRepository.deleteById(userId);
-            return PlayerLeftEvent.of(player);
+            return LeaveRoomResult.of(playerLeftEvent);
         }
 
         playerRepository.deleteById(userId);
 
         if (room.getHostId().equals(userId)) {
-            changeHost(room);
+            HostChangedEvent hostChangedEvent = changeHost(room, player);
+            return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
         }
 
-        return PlayerLeftEvent.of(player);
+        return LeaveRoomResult.of(playerLeftEvent);
     }
 
     private void validatePlayerInRoom(Player player, Room room) {
@@ -268,11 +273,12 @@ public class RoomService {
     /**
      * 호스트 변경
      */
-    private void changeHost(Room room) {
+    private HostChangedEvent changeHost(Room room, Player previousHost) {
         Player newHost = playerRepository.findAllByRoomId(room.getRoomId()).stream()
                 .min(Comparator.comparing(Player::getCreatedAt))
                 .orElseThrow(() -> new CustomException(PLAYER_NOT_FOUND));
         room.changeHost(newHost.getUserId());
+        return HostChangedEvent.of(newHost, previousHost, HOST_CHANGED_REASON_HOST_LEFT);
     }
 
     /**
