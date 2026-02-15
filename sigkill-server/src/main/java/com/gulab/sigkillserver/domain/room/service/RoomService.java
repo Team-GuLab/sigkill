@@ -107,7 +107,11 @@ public class RoomService {
     }
 
     private boolean isRoomFull(Room room) {
-        return playerRepository.countByRoomId(room.getRoomId()) >= room.getCapacity();
+        return getPlayerCountInRoom(room.getRoomId()) >= room.getCapacity();
+    }
+
+    private int getPlayerCountInRoom(String roomId) {
+        return playerRepository.countByRoomId(roomId);
     }
 
     private boolean canJoinRoom(Room room) {
@@ -245,15 +249,38 @@ public class RoomService {
     public PlayerLeftEvent leaveRoom(String roomId, Long userId) {
         Player player = getPlayerOrThrow(userId);
         Room room = getRoomOrThrow(roomId);
+        validatePlayerInRoom(player, room);
 
-        return null;
+        if (getPlayerCountInRoom(roomId) <= 1) {
+            roomRepository.deleteById(roomId);
+            playerRepository.deleteById(userId);
+            return PlayerLeftEvent.of(player);
+        }
+
+        playerRepository.deleteById(userId);
+
+        if (player.getRole() == PlayerRole.HOST) {
+            changeHost(room);
+        }
+
+        return PlayerLeftEvent.of(player);
+    }
+
+    private void validatePlayerInRoom(Player player, Room room) {
+        if (!player.getRoomId().equals(room.getRoomId())) {
+            throw new CustomException(PLAYER_NOT_FOUND);
+        }
     }
 
     /**
      * 호스트 변경
      */
-    private PlayerLeftEvent changeHost(String roomId, Long newHostId, Long previousHostId) {
-        return null;
+    private void changeHost(Room room) {
+        Player newHost = playerRepository.findAllByRoomId(room.getRoomId()).stream()
+                .min(Comparator.comparing(Player::getCreatedAt))
+                .orElseThrow(() -> new CustomException(PLAYER_NOT_FOUND));
+        newHost.changeToHost();
+        room.changeHost(newHost.getUserId());
     }
 
     /**

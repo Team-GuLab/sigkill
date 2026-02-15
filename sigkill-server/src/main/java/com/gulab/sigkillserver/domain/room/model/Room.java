@@ -11,8 +11,8 @@ public class Room extends BaseEntity {
 
     private final String roomId;
     private final String roomTitle;
-    private final Long hostId;
     private final Integer capacity;
+    private Long hostId;
     private RoomStatus status;
 
     /**
@@ -55,5 +55,12 @@ public class Room extends BaseEntity {
      */
     public void endGame() {
         this.status = RoomStatus.WAITING;
+    }
+
+    /**
+     * 호스트 변경
+     */
+    public void changeHost(Long newHostId) {
+        this.hostId = newHostId;
     }
 }
