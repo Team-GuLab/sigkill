@@ -18,6 +18,7 @@ import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
+import com.gulab.sigkillserver.domain.user.exception.UserErrorCode;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
@@ -34,6 +35,7 @@ class RoomServiceTest {
     private static final String TEST_ROOM_ID = "1234";
     private static final String TEST_ROOM_TITLE = "테스트 방";
     private static final Integer TEST_CAPACITY = 10;
+    private static final Long NON_EXISTENT_USER_ID = -1L;
     private RoomService roomService;
     private RoomRepository roomRepository;
     private UserMemoryRepository userRepository;
@@ -248,6 +250,13 @@ class RoomServiceTest {
         }
 
         @Test
+        void 존재하지_않는_유저로_방을_생성할_경우_예외를_발생한다() {
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.createRoom(TEST_ROOM_TITLE, TEST_CAPACITY, NON_EXISTENT_USER_ID),
+                    UserErrorCode.USER_NOT_FOUND.name());
+        }
+
+        @Test
         void 제목_경계값을_검증한다() {
             User host = createAndSaveUser("test-session", "호스트");
             assertThrowsCustomExceptionWithCode(
@@ -302,6 +311,16 @@ class RoomServiceTest {
             var response = roomService.checkRoomAvailability(TEST_ROOM_ID, guest.getUserId());
 
             // then
+            assertThat(response.roomId()).isEqualTo(TEST_ROOM_ID);
+            assertThat(response.canJoin()).isTrue();
+        }
+
+        @Test
+        void 존재하지_않는_유저여도_입장_가능_여부는_조회된다() {
+            User host = createAndSaveUser("host-session", "호스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+
+            var response = roomService.checkRoomAvailability(TEST_ROOM_ID, NON_EXISTENT_USER_ID);
             assertThat(response.roomId()).isEqualTo(TEST_ROOM_ID);
             assertThat(response.canJoin()).isTrue();
         }
@@ -418,6 +437,17 @@ class RoomServiceTest {
         }
 
         @Test
+        void 존재하지_않는_유저일_경우_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom(TEST_ROOM_ID, NON_EXISTENT_USER_ID),
+                    UserErrorCode.USER_NOT_FOUND.name());
+        }
+
+        @Test
         void 존재하지_않는_방일_경우_예외를_발생한다() {
             // given
             User guest = createAndSaveUser("guest-session", "게스트유저");
@@ -514,6 +544,17 @@ class RoomServiceTest {
         }
 
         @Test
+        void 존재하지_않는_유저일_경우_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.leaveRoom(TEST_ROOM_ID, NON_EXISTENT_USER_ID),
+                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
+        }
+
+        @Test
         void 존재하지_않는_방일_경우_예외를_발생한다() {
             // given
             User guest = createAndSaveUser("guest-session", "게스트유저");
@@ -600,6 +641,17 @@ class RoomServiceTest {
             assertThat(result.player().userId()).isEqualTo(guest.getUserId());
             assertThat(result.player().nickname()).isEqualTo("게스트유저");
             assertThat(result.allReady()).isTrue(); // 호스트는 준비 상태가 아니여도 모든 게스트가 준비 상태이므로 true
+        }
+
+        @Test
+        void 존재하지_않는_유저일_경우_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.readyPlayer(TEST_ROOM_ID, NON_EXISTENT_USER_ID),
+                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
         }
 
         @Test
@@ -706,6 +758,17 @@ class RoomServiceTest {
             assertThat(result.type()).isEqualTo(RoomResponseType.PLAYER_UNREADY);
             assertThat(result.player().userId()).isEqualTo(guest.getUserId());
             assertThat(result.player().nickname()).isEqualTo("게스트유저");
+        }
+
+        @Test
+        void 존재하지_않는_유저일_경우_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.unreadyPlayer(TEST_ROOM_ID, NON_EXISTENT_USER_ID),
+                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
         }
 
         @Test
