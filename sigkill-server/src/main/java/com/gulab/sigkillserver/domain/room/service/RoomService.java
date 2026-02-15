@@ -242,8 +242,8 @@ public class RoomService {
      * 플레이어 방 퇴장
      */
     public PlayerLeftEvent leaveRoom(String roomId, Long userId) {
-        Player player = getPlayerOrThrow(userId);
         Room room = getRoomOrThrow(roomId);
+        Player player = getPlayerOrThrow(userId);
         validatePlayerInRoom(player, room);
 
         if (getPlayerCountInRoom(roomId) <= 1) {
@@ -281,8 +281,8 @@ public class RoomService {
      * 플레이어 준비 완료
      */
     public PlayerReadyEvent readyPlayer(String roomId, Long userId) {
-        Player player = getPlayerOrThrow(userId);
         Room room = getRoomOrThrow(roomId);
+        Player player = getPlayerOrThrow(userId);
         validatePlayerInRoom(player, room);
         validatePlayerNotHost(player, room);
         validateRoomNotInGame(room);
@@ -324,8 +324,8 @@ public class RoomService {
      * 플레이어 준비 취소
      */
     public PlayerUnreadyEvent unreadyPlayer(String roomId, Long userId) {
-        Player player = getPlayerOrThrow(userId);
         Room room = getRoomOrThrow(roomId);
+        Player player = getPlayerOrThrow(userId);
         validatePlayerInRoom(player, room);
         validatePlayerNotHost(player, room);
         validateRoomNotInGame(room);
