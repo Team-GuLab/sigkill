@@ -136,8 +136,7 @@ public class RoomService {
         log.info("방 생성 - title: {}, capacity: {}, userId: {}", roomTitle, resolvedCapacity, userId);
         validateRoomCreateRequest(roomTitle, resolvedCapacity);
 
-        User host = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(USER_NOT_FOUND));
+        User host = getUserOrThrow(userId);
 
         int maxAttempts = 100;
         for (int i = 0; i < maxAttempts; i++) {
@@ -209,8 +208,7 @@ public class RoomService {
      */
     public PlayerJoinEvent joinRoom(String roomId, Long userId) {
         validateRoomId(roomId);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(USER_NOT_FOUND));
+        User user = getUserOrThrow(userId);
 
         Room room = getRoomOrThrow(roomId);
 
@@ -343,5 +341,10 @@ public class RoomService {
     private Player getPlayerOrThrow(Long userId) {
         return playerRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(PLAYER_NOT_FOUND));
+    }
+
+    private User getUserOrThrow(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(USER_NOT_FOUND));
     }
 }
