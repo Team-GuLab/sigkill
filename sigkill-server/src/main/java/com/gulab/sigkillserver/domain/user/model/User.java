@@ -1,24 +1,32 @@
 package com.gulab.sigkillserver.domain.user.model;
 
+import com.gulab.sigkillserver.common.BaseEntity;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.With;
 
 /**
  * 서비스 전체 사용자 정보
  */
 @Getter
-public class User {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class User extends BaseEntity {
 
-    private final String userId;
-    private final String nickname;
-    private final UserRole role;
+    @With
+    private Long userId;
+    private String sessionId;
+    private String nickname;
+    private UserRole role;
 
-    private User(String userId, String nickname, UserRole userRole) {
+    private User(Long userId, String sessionId, String nickname, UserRole userRole) {
         this.userId = userId;
+        this.sessionId = sessionId;
         this.nickname = nickname;
         this.role = userRole;
     }
 
-    public static User create(String userId, String nickname, UserRole userRole) {
-        return new User(userId, nickname, userRole);
+    public static User create(String sessionId, String nickname, UserRole userRole) {
+        return new User(null, sessionId, nickname, userRole);
     }
 }

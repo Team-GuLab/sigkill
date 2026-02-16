@@ -1,8 +1,10 @@
 package com.gulab.sigkillserver.common.exception.handler;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
+import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -50,6 +52,46 @@ public class StompExceptionHandler {
         return new ErrorMessage(
                 "INVALID_REQUEST",
                 e.getMessage() != null ? e.getMessage() : "잘못된 요청입니다."
+        );
+    }
+
+    /**
+     * MethodArgumentNotValidException 처리 (Payload validation 실패)
+     */
+    @MessageExceptionHandler(MethodArgumentNotValidException.class)
+    @SendToUser("/queue/errors")
+    public ErrorMessage handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        log.warn("WebSocket Payload validation 실패: {}", e.getMessage());
+
+        String message = e.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .findFirst()
+                .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "요청 형식이 잘못됐습니다.")
+                .orElse("요청 형식이 잘못됐습니다.");
+
+        return new ErrorMessage(
+                "INVALID_REQUEST",
+                message
+        );
+    }
+
+    /**
+     * ConstraintViolationException 처리 (메서드 파라미터 validation 실패)
+     */
+    @MessageExceptionHandler(ConstraintViolationException.class)
+    @SendToUser("/queue/errors")
+    public ErrorMessage handleConstraintViolationException(ConstraintViolationException e) {
+        log.warn("WebSocket ConstraintViolation 발생: {}", e.getMessage());
+
+        String message = e.getConstraintViolations().stream()
+                .findFirst()
+                .map(violation -> violation.getMessage() != null ? violation.getMessage() : "요청 형식이 잘못됐습니다.")
+                .orElse("요청 형식이 잘못됐습니다.");
+
+        return new ErrorMessage(
+                "INVALID_REQUEST",
+                message
         );
     }
 

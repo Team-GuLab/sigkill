@@ -1,6 +1,5 @@
 package com.gulab.sigkillserver.domain.room.dto.rest.response;
 
-import com.gulab.sigkillserver.domain.room.dto.rest.WebSocketInfo;
 import com.gulab.sigkillserver.domain.room.model.Room;
 
 /**
@@ -11,17 +10,15 @@ public record RoomCreateResponse(
         String roomTitle,
         Integer playerCount,
         Integer capacity,
-        String status,
-        WebSocketInfo ws
+        String status
 ) {
     public static RoomCreateResponse of(Room room) {
         return new RoomCreateResponse(
                 room.getRoomId(),
                 room.getRoomTitle(),
-                room.getPlayerCount(),
+                1, // 생성 직후이므로 플레이어 수는 1명
                 room.getCapacity(),
-                room.getStatus().name(),
-                WebSocketInfo.of(room.getRoomId())
+                room.getStatus().name()
         );
     }
 }

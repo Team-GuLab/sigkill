@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: sigkill-server
+
+
+# Session Configuration
+server:
+  servlet:
+    session:
+      cookie:
+        name: JSESSIONID
+        http-only: true
+        same-site: lax
+        # TODO: Set to true in production with HTTPS
+        secure: false
+        path: /
+      timeout: 24h
+

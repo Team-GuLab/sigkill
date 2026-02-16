@@ -19,8 +19,7 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // TODO: 배포 시 허용 도메인으로 변경
-                .withSockJS();
+                .setAllowedOriginPatterns("*"); // TODO: 배포 시 허용 도메인으로 변경
     }
 
     @Override
@@ -29,6 +28,7 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
         registry.setApplicationDestinationPrefixes("/app");
     }
 
+    // WebSocket connect, subscribe, disconnect 시에는 http 헤더 및 메시지를 넣을 수 있으므로 StompHandler에서 인증 처리
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(stompHandler);
