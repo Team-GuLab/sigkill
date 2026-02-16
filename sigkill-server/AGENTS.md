@@ -7,7 +7,8 @@
   - `domain/user` and `domain/room`: domain modules with `controller`, `service`, `repository`, `model`, `dto`, and `exception` packages.
 - `src/main/resources/application.yml`: runtime configuration (session and Redis settings).
 - `src/test/java/com/gulab/sigkillserver`: service and application tests.
-- `docs/`: coding/test style guides and STOMP specifications.
+- `docs/`: coding/test style guides and STOMP specification.
+  - `docs/STOMP_MESSAGE_SPEC.md`: STOMP 단일 계약 문서 (Single Source of Truth)
 
 ## Build, Test, and Development Commands
 - `./gradlew bootRun`: start the server locally.
@@ -39,3 +40,7 @@
   - linked issue (for example, `#8`),
   - test evidence (key `./gradlew test` results),
   - API/WebSocket request-response examples when behavior changes.
+
+## STOMP Documentation Rule
+- STOMP 경로(`@MessageMapping`), 토픽/큐 목적지, 이벤트 type/필드, 에러 코드 계약이 바뀌면 같은 PR에서 `docs/STOMP_MESSAGE_SPEC.md`를 함께 수정한다.
+- STOMP 문서는 단일 파일로 유지한다. 중복 가이드 문서는 추가하지 않는다.
