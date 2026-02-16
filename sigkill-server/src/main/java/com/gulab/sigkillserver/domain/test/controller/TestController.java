@@ -44,7 +44,7 @@ public class TestController {
         int cursor = 0;
 
         SeededRoom roomA = createRoomWithOccupancy(
-                "테스트 방 A (4/6)",
+                "테스트 방 A",
                 ROOM_CAPACITY,
                 ROOM_A_OCCUPANCY,
                 createdUsers,
@@ -53,7 +53,7 @@ public class TestController {
         cursor += ROOM_A_OCCUPANCY;
 
         SeededRoom roomB = createRoomWithOccupancy(
-                "테스트 방 B (6/6)",
+                "테스트 방 B",
                 ROOM_CAPACITY,
                 ROOM_B_OCCUPANCY,
                 createdUsers,
@@ -62,7 +62,7 @@ public class TestController {
         cursor += ROOM_B_OCCUPANCY;
 
         SeededRoom roomC = createRoomWithOccupancy(
-                "테스트 방 C (2/6)",
+                "테스트 방 C",
                 ROOM_CAPACITY,
                 ROOM_C_OCCUPANCY,
                 createdUsers,

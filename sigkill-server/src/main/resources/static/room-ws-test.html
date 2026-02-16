@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Room Flow Test</title>
+    <style>
+        body {
+            font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 12px;
+            background: #f6f8fb;
+            color: #1f2937;
+        }
+
+        h1, h2, h3 {
+            margin: 0;
+        }
+
+        .title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 12px;
+        }
+
+        .card {
+            border: 1px solid #d8e0ea;
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .endpoint {
+            font-family: Menlo, Consolas, monospace;
+            font-size: 12px;
+            color: #0f5fa8;
+            background: #eaf4ff;
+            border: 1px solid #c8e1fa;
+            border-radius: 6px;
+            padding: 4px 8px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 14px;
+            padding: 8px;
+            border: 1px solid #cfd8e3;
+            border-radius: 6px;
+            background: #fff;
+        }
+
+        button {
+            font-size: 14px;
+            padding: 8px 12px;
+            border: 1px solid #b9c6d6;
+            border-radius: 6px;
+            background: #f8fafc;
+            cursor: pointer;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .panel {
+            border: 1px solid #d8e0ea;
+            border-radius: 6px;
+            background: #f8fbff;
+            padding: 10px;
+            white-space: pre-wrap;
+            font-family: Menlo, Consolas, monospace;
+            font-size: 12px;
+            min-height: 90px;
+            overflow: auto;
+        }
+
+        .panel.big {
+            min-height: 200px;
+            max-height: 400px;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="title">
+    <h1>Room 기능 테스트 (5단계)</h1>
+    <button id="seedRoomsTopBtn">테스트 데이터 생성</button>
+</div>
+
+<div class="layout">
+    <div>
+        <div class="card">
+            <div class="card-head">
+                <h2>공통 변수</h2>
+                <span class="endpoint">GLOBAL</span>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="serverBase">serverBase</label>
+                    <input id="serverBase" type="text"/>
+                </div>
+                <div>
+                    <label for="wsUrlPreview">wsUrl (자동 계산)</label>
+                    <input id="wsUrlPreview" readonly type="text"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>1. 게스트 로그인</h2>
+                <span class="endpoint">POST /api/v1/users/guest-login</span>
+            </div>
+            <div class="hint">표시: REST 응답(JSON)</div>
+            <div class="actions">
+                <button id="loginBtn">실행</button>
+            </div>
+            <pre class="panel" id="loginResponse">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>2. 방 목록 조회</h2>
+                <span class="endpoint">GET /api/v1/rooms</span>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="roomsPage">page</label>
+                    <input id="roomsPage" type="number" value="0"/>
+                </div>
+                <div>
+                    <label for="roomsSize">size</label>
+                    <input id="roomsSize" type="number" value="20"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="loadRoomsBtn">실행</button>
+            </div>
+            <div class="hint">표시: REST 응답(JSON)</div>
+            <pre class="panel" id="roomsResponse">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>3. 방 참가 (통합 실행)</h2>
+                <span class="endpoint">GET availability + WS connect + SUBSCRIBE + SEND /app/room/join</span>
+            </div>
+            <div class="hint">
+                실행 순서:<br/>
+                1) <code>GET /api/v1/rooms/{roomId}/availability</code>로 참가 가능 여부 확인<br/>
+                2) <code>/ws</code> 연결<br/>
+                3) <code>/user/queue/errors</code> 구독<br/>
+                4) <code>/topic/room/{roomId}</code> 구독<br/>
+                5) <code>/app/room/join</code> 전송
+            </div>
+            <div class="hint">
+                표시: availability REST 요청/응답, join SEND JSON.
+                join 결과는 우측 Room/Error 이벤트 패널에서 확인하세요.
+            </div>
+            <div class="grid-3">
+                <div>
+                    <label for="joinRoomId">roomId</label>
+                    <input id="joinRoomId" placeholder="예: 1001" type="text"/>
+                </div>
+                <div>
+                    <label for="roomTopicPreview">roomTopic</label>
+                    <input id="roomTopicPreview" readonly type="text"/>
+                </div>
+                <div>
+                    <label for="errorTopicPreview">errorTopic</label>
+                    <input id="errorTopicPreview" readonly type="text"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="joinFlowBtn">실행</button>
+            </div>
+            <label>REST 요청 (availability)</label>
+            <pre class="panel" id="joinRequest">-</pre>
+            <div style="height:8px;"></div>
+            <label>REST 응답 (availability)</label>
+            <pre class="panel" id="joinResponse">-</pre>
+            <div style="height:8px;"></div>
+            <label>SEND (/app/room/join)</label>
+            <pre class="panel" id="joinSend">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>4. 방 준비 / 해제</h2>
+                <span class="endpoint">SEND /app/room/ready | /app/room/unready</span>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="readyRoomId">roomId</label>
+                    <input id="readyRoomId" placeholder="예: 1001" type="text"/>
+                </div>
+                <div>
+                    <label for="readyPayloadPreview">payload</label>
+                    <input id="readyPayloadPreview" readonly type="text"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="readyBtn">READY 실행</button>
+                <button id="unreadyBtn">UNREADY 실행</button>
+            </div>
+            <div class="hint">표시: SEND JSON</div>
+            <pre class="panel" id="readyResponse">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>5. 방 나가기 + WS 연결 해제</h2>
+                <span class="endpoint">SEND /app/room/leave + DISCONNECT</span>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="leaveRoomId">roomId</label>
+                    <input id="leaveRoomId" placeholder="예: 1001" type="text"/>
+                </div>
+                <div>
+                    <label for="leavePayloadPreview">payload</label>
+                    <input id="leavePayloadPreview" readonly type="text"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="leaveDisconnectBtn">실행</button>
+            </div>
+            <div class="hint">표시: SEND JSON</div>
+            <pre class="panel" id="leaveResponse">-</pre>
+        </div>
+    </div>
+
+    <div>
+        <div class="card">
+            <div class="card-head">
+                <h3>구독 상태</h3>
+                <span class="endpoint">FIXED 2 ENDPOINTS</span>
+            </div>
+            <div class="hint">표시: 수신 이벤트 JSON (마지막 수신 1건)</div>
+            <label>Room 이벤트 응답 (/topic/room/{roomId})</label>
+            <pre class="panel" id="roomEventPanel">-</pre>
+            <div style="height:8px;"></div>
+            <label>Error 이벤트 응답 (/user/queue/errors)</label>
+            <pre class="panel" id="errorEventPanel">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h3>로그</h3>
+                <button id="clearLogBtn">지우기</button>
+            </div>
+            <pre class="panel big" id="log">-</pre>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2/lib/stomp.min.js"></script>
+<script src="/room-ws-test.js"></script>
+</body>
+</html>
