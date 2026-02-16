@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Room WS Test</title>
     <style>
         body {
@@ -11,19 +11,23 @@
             margin: 24px auto;
             padding: 0 12px;
         }
+
         .row {
             display: flex;
             gap: 8px;
             margin-bottom: 8px;
             flex-wrap: wrap;
         }
+
         input, button {
             padding: 8px;
             font-size: 14px;
         }
+
         input {
             flex: 1 1 220px;
         }
+
         #log {
             white-space: pre-wrap;
             border: 1px solid #ccc;
@@ -32,147 +36,52 @@
             font-family: monospace;
             font-size: 13px;
         }
+
+        #roomsView {
+            white-space: pre-wrap;
+            border: 1px solid #ccc;
+            min-height: 120px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
-<h2>Room sendMessage 테스트 (임시)</h2>
+<h2>Room WebSocket 테스트 (실서비스 흐름)</h2>
 
 <div class="row">
-    <input id="serverBase" type="text" value="http://localhost:8080" placeholder="server base URL" />
+    <button id="seedRoomsBtn">테스트 데이터 생성 (유저20 + 4/6, 6/6, 2/6 방)</button>
 </div>
 
 <div class="row">
-    <input id="roomId" type="number" value="1" placeholder="roomId (Long)" />
+    <input id="serverBase" placeholder="server base URL" type="text" value="http://localhost:8080"/>
+</div>
+
+<div class="row">
+    <input id="roomId" placeholder="참가할 roomId 입력 (예: 6187)" type="number" value="1"/>
 </div>
 
 <div class="row">
     <button id="loginBtn">1) guest-login</button>
-    <button id="connectBtn">2) connect + subscribe + send</button>
+    <button id="loadRoomsBtn">2) 방 목록 조회</button>
+</div>
+
+<pre id="roomsView">방 목록을 불러와서 roomId를 확인한 뒤 위 입력칸에 직접 입력하세요.</pre>
+
+<div class="row">
+    <button id="connectBtn">3) connect + subscribe + join</button>
 </div>
 
 <div class="row">
-    <input id="message" type="text" placeholder="전송할 메시지" />
-    <button id="sendBtn">3) send</button>
+    <input id="message" placeholder="전송할 메시지" type="text"/>
+    <button id="sendBtn">4) send</button>
 </div>
 
-<pre id="log"></pre>
+<pre class="chat-box" id="log"></pre>
 
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2/lib/stomp.min.js"></script>
-<script>
-    let stompClient = null;
-    let topicSubscription = null;
-
-    const serverBaseInput = document.getElementById("serverBase");
-    const roomIdInput = document.getElementById("roomId");
-    const messageInput = document.getElementById("message");
-    const logEl = document.getElementById("log");
-
-    function log(message) {
-        const now = new Date().toLocaleTimeString();
-        logEl.textContent += "[" + now + "] " + message + "\n";
-        logEl.scrollTop = logEl.scrollHeight;
-    }
-
-    function serverBase() {
-        return serverBaseInput.value.trim().replace(/\/+$/, "");
-    }
-
-    function websocketUrl() {
-        const base = new URL(serverBase());
-        const wsProtocol = base.protocol === "https:" ? "wss:" : "ws:";
-        return wsProtocol + "//" + base.host + "/ws-stomp";
-    }
-
-    async function guestLogin() {
-        const response = await fetch(serverBase() + "/api/v1/users/guest-login", {
-            method: "POST",
-            credentials: "include"
-        });
-        if (!response.ok) {
-            throw new Error("guest-login 실패: " + response.status);
-        }
-        const data = await response.json();
-        const result = data.result || data.data || {};
-        const userName = result.userName || result.nickname || "(없음)";
-        log("guest-login 성공: userId=" + result.userId + ", userName=" + userName);
-    }
-
-    function connectAndSubscribe() {
-        if (stompClient && stompClient.connected) {
-            log("이미 연결됨");
-            return;
-        }
-
-        const roomId = roomIdInput.value.trim();
-        if (!roomId) {
-            log("roomId를 입력하세요");
-            return;
-        }
-
-        const socket = new WebSocket(websocketUrl());
-        stompClient = Stomp.over(socket);
-        stompClient.debug = null;
-
-        stompClient.connect({}, function () {
-            log("WS 연결 성공");
-
-            topicSubscription = stompClient.subscribe("/topic/" + roomId, function (frame) {
-                log("수신 (/topic/" + roomId + "): " + frame.body);
-            });
-
-            stompClient.subscribe("/user/queue/errors", function (frame) {
-                log("에러 수신: " + frame.body);
-            });
-
-            log("구독 완료: /topic/" + roomId);
-            sendMessage("입장했습니다.");
-        }, function (error) {
-            log("WS 연결 실패: " + error);
-        });
-    }
-
-    function sendMessage(defaultMessage) {
-        if (!stompClient || !stompClient.connected) {
-            log("먼저 connect 하세요");
-            return;
-        }
-
-        const roomId = roomIdInput.value.trim();
-        const message = messageInput.value || defaultMessage || "";
-
-        if (!roomId) {
-            log("roomId를 입력하세요");
-            return;
-        }
-
-        stompClient.send("/app/room/" + roomId, { "content-type": "text/plain" }, message);
-        log("전송 (/app/room/" + roomId + "): " + message);
-    }
-
-    document.getElementById("loginBtn").addEventListener("click", async function () {
-        try {
-            await guestLogin();
-        } catch (error) {
-            log(error.message);
-        }
-    });
-
-    document.getElementById("connectBtn").addEventListener("click", function () {
-        connectAndSubscribe();
-    });
-
-    document.getElementById("sendBtn").addEventListener("click", function () {
-        sendMessage();
-    });
-
-    window.addEventListener("beforeunload", function () {
-        if (topicSubscription) {
-            topicSubscription.unsubscribe();
-        }
-        if (stompClient && stompClient.connected) {
-            stompClient.disconnect();
-        }
-    });
-</script>
+<script src="script.js"></script>
 </body>
 </html>
