@@ -26,6 +26,7 @@ public enum RoomErrorCode implements CustomErrorCodeInterface {
     ROOM_ID_ALREADY_EXISTS("이미 존재하는 방 ID입니다", HttpStatus.CONFLICT),
     PLAYER_ID_ALREADY_EXISTS("이미 존재하는 플레이어 ID입니다", HttpStatus.CONFLICT),
     PLAYER_NOT_FOUND("플레이어를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
+    PLAYER_NOT_IN_ROOM("플레이어가 방에 참여 중이지 않습니다", HttpStatus.NOT_FOUND),
     USER_ALREADY_IN_ROOM("사용자가 이미 방에 참여 중입니다", HttpStatus.CONFLICT);
 
     private final String message;

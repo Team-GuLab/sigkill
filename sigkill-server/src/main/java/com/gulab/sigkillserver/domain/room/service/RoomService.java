@@ -6,6 +6,7 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TIT
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_NOT_FOUND;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
@@ -266,7 +267,7 @@ public class RoomService {
 
     private void validatePlayerInRoom(Player player, Room room) {
         if (!player.getRoomId().equals(room.getRoomId())) {
-            throw new CustomException(PLAYER_NOT_FOUND);
+            throw new CustomException(PLAYER_NOT_IN_ROOM);
         }
     }
 
