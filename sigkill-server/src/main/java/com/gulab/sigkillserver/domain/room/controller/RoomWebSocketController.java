@@ -1,6 +1,7 @@
 package com.gulab.sigkillserver.domain.room.controller;
 
-import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomJoinCommand;
+import com.gulab.sigkillserver.domain.room.dto.service.LeaveRoomResult;
+import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import jakarta.validation.Valid;
@@ -20,20 +21,30 @@ public class RoomWebSocketController {
     private final RoomService roomService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    /**
-     * 방 참가 클라이언트: SEND /app/room/join 브로드캐스트: /topic/room/{roomId}
-     */
     @MessageMapping("/room/join")
-    public void joinRoom(@Valid @Payload RoomJoinCommand request, Principal principal) {
+    public void joinRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
         log.info("방 참가 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         PlayerJoinEvent playerJoinEvent = roomService.joinRoom(request.roomId(), userId);
 
-        // 방에 있는 모든 사람에게 브로드캐스트
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
 
-        log.info("방 참가 브로드캐스트 완료 - roomId: {}, players: {}",
+        log.debug("방 참가 브로드캐스트 완료 - roomId: {}, players: {}",
                 request.roomId(), playerJoinEvent.players().size());
+    }
+
+    @MessageMapping("/room/leave")
+    public void leaveRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+        log.info("방 퇴장 요청 - roomId: {}, userId: {}", request.roomId(), userId);
+
+        LeaveRoomResult leaveRoomResult = roomService.leaveRoom(request.roomId(), userId);
+
+        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), leaveRoomResult.playerLeftEvent());
+        if (leaveRoomResult.hasHostChangedEvent()) {
+            messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), leaveRoomResult.hostChangedEvent());
+        }
+        log.debug("방 퇴장 브로드캐스트 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
 }
