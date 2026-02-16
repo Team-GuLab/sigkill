@@ -2,7 +2,7 @@ name: Deploy sigkill-server develop to OCI (compose)
 
 on:
   push:
-    branches: ["develop"]
+    branches: ["main", "develop"]
     paths:
       - "sigkill-server/**"
       - ".github/workflows/deploy-sigkill-server-develop.yml"
