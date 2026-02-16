@@ -1,25 +1,32 @@
-name: Deploy sigkill-server develop to OCI (compose)
+name: Deploy sigkill-server (develop)
 
 on:
   push:
-    branches: ["main", "develop"]
+    branches:
+      - main
+      - develop
     paths:
-      - "sigkill-server/**"
-      - ".github/workflows/deploy-sigkill-server-develop.yml"
+      - sigkill-server/**
+      - .github/workflows/deploy-sigkill-server-develop.yml
   workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  IMAGE_REPOSITORY: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sigkill-server
+  APP_IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sigkill-server:${{ github.sha }}
+
 jobs:
   build-and-push:
+    name: Build and push Docker image
     runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.meta.outputs.image }}
     steps:
-      - name: Checkout
+      # 1) Checkout source code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2) Set up the build environment
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
@@ -29,37 +36,43 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Test and build jar
+      # 3) Build application artifact
+      - name: Test and build JAR
         working-directory: sigkill-server
         run: ./gradlew test bootJar
 
-      - name: Docker Hub login
+      # 4) Authenticate and publish image
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set image metadata
+      - name: Generate Docker metadata
         id: meta
-        run: |
-          IMAGE="docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sigkill-server:${{ github.sha }}"
-          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_REPOSITORY }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=develop
 
-      - name: Build and push image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: ./sigkill-server
           file: ./sigkill-server/Dockerfile
           push: true
-          tags: |
-            ${{ steps.meta.outputs.image }}
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sigkill-server:develop
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
+    name: Deploy to OCI server
     runs-on: ubuntu-latest
     needs: build-and-push
     steps:
-      - name: Deploy to OCI with Docker Compose
+      # 1) Pull and restart the app container on OCI
+      - name: Deploy via Docker CLI
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.OCI_HOST }}
@@ -68,24 +81,18 @@ jobs:
           script: |
             set -e
 
-            mkdir -p /opt/sigkill
-            cd /opt/sigkill
-
-            cat > docker-compose.prod.yml <<'EOF'
-            services:
-              app:
-                image: ${APP_IMAGE}
-                container_name: sigkill-server
-                restart: unless-stopped
-                ports:
-                  - "8080:8080"
-                environment:
-                  SPRING_PROFILES_ACTIVE: dev
-            EOF
-
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-            APP_IMAGE="${{ needs.build-and-push.outputs.image }}" docker compose -f docker-compose.prod.yml pull app
-            APP_IMAGE="${{ needs.build-and-push.outputs.image }}" docker compose -f docker-compose.prod.yml up -d app
+            docker pull "${{ env.APP_IMAGE }}"
+
+            docker stop sigkill-server || true
+            docker rm sigkill-server || true
+
+            docker run -d \
+              --name sigkill-server \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              -e SPRING_PROFILES_ACTIVE=dev \
+              "${{ env.APP_IMAGE }}"
 
             docker image prune -f
