@@ -4,6 +4,7 @@ import com.gulab.sigkillserver.domain.room.dto.service.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -55,9 +56,21 @@ public class RoomWebSocketController {
         log.info("준비 상태 변경 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         PlayerReadyEvent playerReadyEvent = roomService.readyPlayer(request.roomId(), userId);
-        
+
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerReadyEvent);
 
         log.debug("준비 상태 변경 완료 - roomId: {}, userId: {}", request.roomId(), userId);
+    }
+
+    @MessageMapping("/room/unready")
+    public void playerUnready(@Valid @Payload RoomIdCommand request, Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+        log.info("준비 취소 요청 - roomId: {}, userId: {}", request.roomId(), userId);
+
+        PlayerUnreadyEvent playerUnreadyEvent = roomService.unreadyPlayer(request.roomId(), userId);
+
+        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerUnreadyEvent);
+
+        log.debug("준비 취소 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
 }
