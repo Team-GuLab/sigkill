@@ -4,7 +4,9 @@ import com.gulab.sigkillserver.common.BaseResponse;
 import com.gulab.sigkillserver.domain.user.dto.rest.response.LoginResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
-import com.gulab.sigkillserver.domain.user.service.UserService;
+import com.gulab.sigkillserver.domain.user.model.User;
+import com.gulab.sigkillserver.domain.user.model.UserRole;
+import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,7 +31,7 @@ public class TestController {
     private static final int ROOM_B_OCCUPANCY = 6;
     private static final int ROOM_C_OCCUPANCY = 2;
 
-    private final UserService userService;
+    private final UserRepository userRepository;
     private final RoomService roomService;
 
     /**
@@ -80,7 +82,10 @@ public class TestController {
         List<LoginResponse> users = new ArrayList<>(count);
         for (int i = 1; i <= count; i++) {
             String randomKey = UUID.randomUUID().toString().substring(0, 8);
-            users.add(userService.createGuestForTest("test-session-" + randomKey + "-" + i));
+            User createdUser = userRepository.save(
+                    User.create("test-session-" + randomKey + "-" + i, "테스트유저-" + randomKey + "-" + i, UserRole.GUEST)
+            );
+            users.add(new LoginResponse(createdUser.getUserId(), createdUser.getNickname()));
         }
         return users;
     }
