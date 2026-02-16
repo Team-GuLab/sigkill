@@ -4,8 +4,8 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.DEFAULT
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TITLE_LENGTH;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
+import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;

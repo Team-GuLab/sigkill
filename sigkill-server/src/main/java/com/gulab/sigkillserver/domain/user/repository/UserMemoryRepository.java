@@ -39,11 +39,11 @@ public class UserMemoryRepository implements UserRepository {
     }
 
     @Override public Optional<User> findBySessionId(String sessionId) {
-        Long useId = sessionIndex.get(sessionId);
-        if (useId == null) {
+        Long userId = sessionIndex.get(sessionId);
+        if (userId == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(store.get(useId));
+        return Optional.ofNullable(store.get(userId));
     }
 
     @Override

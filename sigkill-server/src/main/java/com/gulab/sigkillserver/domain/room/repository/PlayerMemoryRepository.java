@@ -1,7 +1,6 @@
 package com.gulab.sigkillserver.domain.room.repository;
 
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_ID_ALREADY_EXISTS;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_NOT_FOUND;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.room.model.Player;
@@ -32,10 +31,7 @@ public class PlayerMemoryRepository implements PlayerRepository {
 
     @Override
     public void deleteById(Long userId) {
-        Player removed = store.remove(userId);
-        if (removed == null) {
-            throw new CustomException(PLAYER_NOT_FOUND);
-        }
+        store.remove(userId);
     }
 
     @Override public List<Player> findAll() {
