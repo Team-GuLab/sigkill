@@ -28,6 +28,7 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
         registry.setApplicationDestinationPrefixes("/app");
     }
 
+    // WebSocket connect, subscribe, disconnect 시에는 http 헤더 및 메시지를 넣을 수 있으므로 StompHandler에서 인증 처리
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(stompHandler);
