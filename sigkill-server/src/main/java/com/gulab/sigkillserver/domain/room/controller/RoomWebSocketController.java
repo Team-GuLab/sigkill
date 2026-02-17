@@ -30,6 +30,7 @@ public class RoomWebSocketController {
 
         PlayerJoinEvent playerJoinEvent = roomService.joinRoom(request.roomId(), userId);
 
+        messagingTemplate.convertAndSendToUser(principal.getName(), "/queue/room/snapshot", playerJoinEvent);
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
 
         log.debug("방 참가 브로드캐스트 완료 - roomId: {}, players: {}",
