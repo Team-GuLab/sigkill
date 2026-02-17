@@ -8,10 +8,13 @@ import { useQueryErrorResetBoundary } from "@tanstack/react-query";
 import { AppError } from "@/api/axios";
 import Rooms from "@/components/room/rooms";
 import ErrorFallback from "@/components/common/error-fallback";
+import { Avatar, AvatarFallback, AvatarImage } from "@/ui/avatar";
+import { useUser } from "@/hooks/user/use-user";
 
 export default function RoomListPage() {
   const [showModal, setShowModal] = useState(false);
   const { reset } = useQueryErrorResetBoundary();
+  const { state } = useUser();
 
   const handleButtonClick = () => {
     setShowModal(true);
@@ -35,25 +38,49 @@ export default function RoomListPage() {
     );
   };
 
+  const userInitial = state.user?.nickname
+    ? state.user.nickname.charAt(0).toUpperCase()
+    : "?";
+
   return (
-    <>
+    <div className="relative flex h-full flex-col pb-20">
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-foreground text-xl font-bold">방 목록</h1>
         <Button className="cursor-pointer" onClick={handleButtonClick}>
           방 생성
         </Button>
       </header>
-      <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
-        <Suspense
-          fallback={
-            <div className="flex h-100 items-center justify-center">
-              <Spinner />
-            </div>
-          }
-        >
-          <Rooms />
-        </Suspense>
-      </ErrorBoundary>
+
+      {/* 방 목록 영역 */}
+      <section className="flex-1 overflow-y-auto">
+        <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
+          <Suspense
+            fallback={
+              <div className="flex h-100 items-center justify-center">
+                <Spinner />
+              </div>
+            }
+          >
+            <Rooms />
+          </Suspense>
+        </ErrorBoundary>
+      </section>
+
+      {/* 하단 사용자 프로필 영역 */}
+      <footer className="bg-background fixed right-0 bottom-0 left-0 flex items-center gap-3 border-t p-4">
+        <Avatar>
+          <AvatarImage src="" alt={state.user?.nickname || "User"} />
+          <AvatarFallback>{userInitial}</AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold">
+            {state.user?.nickname || "Guest"}
+          </span>
+          <span className="text-muted-foreground text-xs">
+            User ID: {state.user?.userId || "Unknown"}
+          </span>
+        </div>
+      </footer>
 
       {showModal &&
         createPortal(
@@ -63,6 +90,6 @@ export default function RoomListPage() {
           />,
           document.getElementById("modal-root")!,
         )}
-    </>
+    </div>
   );
 }
