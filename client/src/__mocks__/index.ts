@@ -1,4 +1,8 @@
 export async function enableMocking() {
+  if (import.meta.env.MOCKING !== true) {
+    return;
+  }
+
   if (import.meta.env.MODE !== "development") {
     return;
   }
