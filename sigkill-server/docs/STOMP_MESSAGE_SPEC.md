@@ -185,7 +185,33 @@
 }
 ```
 
+<<<<<<< Updated upstream
 ### 5.6 Ping / Pong (연결 상태 확인)
+=======
+<<<<<<< Updated upstream
+=======
+### 5.6 Ping / Pong (연결 상태 확인)
+
+- SEND: `/app/ping`
+- SUBSCRIBE: `/user/queue/pong`
+- Response type: `PONG`
+
+```json
+{
+  "type": "PONG",
+  "userId": "2",
+  "serverTime": 1739791230456
+}
+```
+
+설명:
+
+- `userId`는 서버가 `Principal`에서 추출한다.
+- `serverTime`은 서버 시각의 Unix epoch milliseconds(`long`)이다.
+
+>>>>>>> Stashed changes
+## 6. 에러 계약
+>>>>>>> Stashed changes
 
 - SEND: `/app/ping`
 - SUBSCRIBE: `/user/queue/pong`
