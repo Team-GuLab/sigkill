@@ -35,7 +35,6 @@
     const leaveResponseEl = document.getElementById("leaveResponse");
 
     const roomEventPanelEl = document.getElementById("roomEventPanel");
-    const roomSnapshotPanelEl = document.getElementById("roomSnapshotPanel");
     const errorEventPanelEl = document.getElementById("errorEventPanel");
     const pongEventPanelEl = document.getElementById("pongEventPanel");
     const logEl = document.getElementById("log");
@@ -43,7 +42,6 @@
     const state = {
         stompClient: null,
         roomSubscription: null,
-        roomSnapshotSubscription: null,
         errorSubscription: null,
         pongSubscription: null,
         subscribedRoomId: null
@@ -265,20 +263,6 @@
         return {subscribed: true, newlySubscribed: true};
     }
 
-    function subscribeRoomSnapshotQueueOnce() {
-        if (state.roomSnapshotSubscription) {
-            return {subscribed: true, newlySubscribed: false};
-        }
-
-        state.roomSnapshotSubscription = state.stompClient.subscribe("/user/queue/room/snapshot", (frame) => {
-            const parsed = parseJsonSafe(frame.body);
-            setPanel(roomSnapshotPanelEl, parsed || frame.body);
-            log("ROOM SNAPSHOT 이벤트 수신");
-        });
-
-        return {subscribed: true, newlySubscribed: true};
-    }
-
     function subscribeRoomTopic(roomId) {
         if (state.roomSubscription) {
             state.roomSubscription.unsubscribe();
@@ -343,9 +327,8 @@
         await connectStompIfNeeded();
         subscribeErrorQueueOnce();
         subscribePongQueueOnce();
-        subscribeRoomSnapshotQueueOnce();
-        const sendResult = sendRoomCommand("join", roomId);
         subscribeRoomTopic(roomId);
+        const sendResult = sendRoomCommand("join", roomId);
         setPanel(joinSendEl, sendResult);
         log("3) 방 참가 통합 실행 완료");
     }
@@ -374,10 +357,6 @@
         if (state.errorSubscription) {
             state.errorSubscription.unsubscribe();
             state.errorSubscription = null;
-        }
-        if (state.roomSnapshotSubscription) {
-            state.roomSnapshotSubscription.unsubscribe();
-            state.roomSnapshotSubscription = null;
         }
         if (state.pongSubscription) {
             state.pongSubscription.unsubscribe();
