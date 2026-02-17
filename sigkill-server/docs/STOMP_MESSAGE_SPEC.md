@@ -23,8 +23,11 @@
 - 인증 실패 시 에러 코드 `ACCESS_DENIED`를 사용자 에러 채널로 전송한다.
 - Request payload에는 사용자 식별자(`userId`, `sessionId`)를 넣지 않는다. 서버가 `Principal`에서 추출한다.
 - 구독 인가 규칙:
-  - `/topic/room/{roomId}`는 해당 방 멤버만 구독 가능
-  - 사용자 큐 구독 허용 대상: `/user/queue/errors`, `/user/queue/pong`
+    - `/topic/room/{roomId}`는 다음 조건에서 구독 가능
+        - 현재 해당 방 멤버인 사용자
+        - 현재 어떤 방에도 속하지 않은 사용자
+        - 현재 다른 방에 속한 사용자는 구독 불가
+    - 사용자 큐 구독 허용 대상: `/user/queue/errors`, `/user/queue/pong`
 
 ## 4. 공통 DTO
 
@@ -216,7 +219,8 @@ Response type: `ERROR`
 
 주요 코드:
 
-- 비즈니스: `ROOM_NOT_FOUND`, `ROOM_FULL`, `ROOM_IN_GAME`, `HOST_CANNOT_READY`, `PLAYER_NOT_IN_ANY_ROOM`, `PLAYER_NOT_IN_ROOM`,
+- 비즈니스: `ROOM_NOT_FOUND`, `ROOM_FULL`, `ROOM_IN_GAME`, `HOST_CANNOT_READY`, `PLAYER_NOT_IN_ANY_ROOM`,
+  `PLAYER_NOT_IN_ROOM`,
   `USER_ALREADY_IN_ROOM`,
   `ROOM_NUMBER_ERROR`
 - 인증/보안: `ACCESS_DENIED`
