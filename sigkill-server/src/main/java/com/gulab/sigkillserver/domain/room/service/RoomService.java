@@ -4,9 +4,9 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.DEFAULT
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TITLE_LENGTH;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
-import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_FOUND;
+import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
+import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
@@ -252,8 +252,7 @@ public class RoomService {
      */
     public LeaveRoomResult leaveRoom(String roomId, Long userId) {
         Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerOrThrow(userId);
-        validatePlayerInRoom(player, room);
+        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
         PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player);
 
         if (getPlayerCountInRoom(roomId) <= 1) {
@@ -272,19 +271,13 @@ public class RoomService {
         return LeaveRoomResult.of(playerLeftEvent);
     }
 
-    private void validatePlayerInRoom(Player player, Room room) {
-        if (!player.getRoomId().equals(room.getRoomId())) {
-            throw new CustomException(PLAYER_NOT_IN_ROOM);
-        }
-    }
-
     /**
      * 호스트 변경
      */
     private HostChangedEvent changeHost(Room room, Player previousHost) {
         Player newHost = playerRepository.findAllByRoomId(room.getRoomId()).stream()
                 .min(Comparator.comparing(Player::getCreatedAt))
-                .orElseThrow(() -> new CustomException(PLAYER_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
         room.changeHost(newHost.getUserId());
         return HostChangedEvent.of(newHost, previousHost, HOST_CHANGED_REASON_HOST_LEFT);
     }
@@ -294,8 +287,7 @@ public class RoomService {
      */
     public PlayerReadyEvent readyPlayer(String roomId, Long userId) {
         Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerOrThrow(userId);
-        validatePlayerInRoom(player, room);
+        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
         validatePlayerNotHost(player, room);
         validateRoomNotInGame(room);
 
@@ -337,8 +329,7 @@ public class RoomService {
      */
     public PlayerUnreadyEvent unreadyPlayer(String roomId, Long userId) {
         Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerOrThrow(userId);
-        validatePlayerInRoom(player, room);
+        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
         validatePlayerNotHost(player, room);
         validateRoomNotInGame(room);
 
@@ -352,9 +343,15 @@ public class RoomService {
                 .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
     }
 
-    private Player getPlayerOrThrow(Long userId) {
-        return playerRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(PLAYER_NOT_FOUND));
+    private Player getPlayerInRoomOrThrow(Long userId, String roomId) {
+        Player player = playerRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
+
+        if (!player.getRoomId().equals(roomId)) {
+            throw new CustomException(PLAYER_NOT_IN_ROOM);
+        }
+
+        return player;
     }
 
     private User getUserOrThrow(Long userId) {

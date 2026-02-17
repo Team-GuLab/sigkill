@@ -664,14 +664,14 @@ class RoomServiceTest {
         }
 
         @Test
-        void 존재하지_않는_유저일_경우_예외를_발생한다() {
+        void 플레이어_정보가_없으면_퇴장할_수_없다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
 
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.leaveRoom(TEST_ROOM_ID, NON_EXISTENT_USER_ID),
-                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
+                    PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
         }
 
         @Test
@@ -686,7 +686,7 @@ class RoomServiceTest {
         }
 
         @Test
-        void 방에_참가하지_않은_플레이어일_경우_예외를_발생한다() {
+        void 유저는_존재하지만_어떤_방에도_참가하지_않으면_퇴장할_수_없다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             User guest1 = createAndSaveUser("guest-session-1", "게스트유저1");
@@ -698,7 +698,7 @@ class RoomServiceTest {
             // when then
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.leaveRoom(TEST_ROOM_ID, guest2.getUserId()),
-                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
+                    PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
         }
 
         @Test
@@ -714,7 +714,7 @@ class RoomServiceTest {
             // when then
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.leaveRoom("9999", guest.getUserId()),
-                    RoomErrorCode.PLAYER_NOT_IN_ROOM.name());
+                    PlayerErrorCode.PLAYER_NOT_IN_ROOM.name());
         }
 
         @Test
@@ -790,14 +790,14 @@ class RoomServiceTest {
         }
 
         @Test
-        void 존재하지_않는_유저일_경우_예외를_발생한다() {
+        void 플레이어_정보가_없으면_준비_완료할_수_없다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
 
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.readyPlayer(TEST_ROOM_ID, NON_EXISTENT_USER_ID),
-                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
+                    PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
         }
 
         @Test
@@ -812,7 +812,7 @@ class RoomServiceTest {
         }
 
         @Test
-        void 방에_참가하지_않은_플레이어일_경우_예외를_발생한다() {
+        void 유저는_존재하지만_어떤_방에도_참가하지_않으면_준비_완료할_수_없다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             User guest = createAndSaveUser("guest-session", "게스트유저");
@@ -826,7 +826,7 @@ class RoomServiceTest {
             // when then
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.readyPlayer(TEST_ROOM_ID, otherPlayer.getUserId()),
-                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
+                    PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
         }
 
         @Test
@@ -842,7 +842,7 @@ class RoomServiceTest {
             // when then
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.readyPlayer("9999", guest.getUserId()),
-                    RoomErrorCode.PLAYER_NOT_IN_ROOM.name());
+                    PlayerErrorCode.PLAYER_NOT_IN_ROOM.name());
         }
 
         @Test
@@ -923,14 +923,14 @@ class RoomServiceTest {
         }
 
         @Test
-        void 존재하지_않는_유저일_경우_예외를_발생한다() {
+        void 플레이어_정보가_없으면_준비_취소할_수_없다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
 
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.unreadyPlayer(TEST_ROOM_ID, NON_EXISTENT_USER_ID),
-                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
+                    PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
         }
 
         @Test
@@ -945,7 +945,7 @@ class RoomServiceTest {
         }
 
         @Test
-        void 방에_참가하지_않은_플레이어일_경우_예외를_발생한다() {
+        void 유저는_존재하지만_어떤_방에도_참가하지_않으면_준비_취소할_수_없다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             User guest = createAndSaveUser("guest-session", "게스트유저");
@@ -961,7 +961,7 @@ class RoomServiceTest {
             // when then
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.unreadyPlayer(TEST_ROOM_ID, otherPlayer.getUserId()),
-                    PlayerErrorCode.PLAYER_NOT_FOUND.name());
+                    PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
         }
 
         @Test
@@ -977,7 +977,7 @@ class RoomServiceTest {
             // when then
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.unreadyPlayer("9999", guest.getUserId()),
-                    RoomErrorCode.PLAYER_NOT_IN_ROOM.name());
+                    PlayerErrorCode.PLAYER_NOT_IN_ROOM.name());
         }
 
         @Test
