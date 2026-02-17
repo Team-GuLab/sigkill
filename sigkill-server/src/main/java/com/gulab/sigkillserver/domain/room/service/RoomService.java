@@ -141,6 +141,7 @@ public class RoomService {
         validateRoomCreateRequest(roomTitle, resolvedCapacity);
 
         User host = getUserOrThrow(userId);
+        validateUserNotInRoom(userId);
 
         int maxAttempts = 100;
         for (int i = 0; i < maxAttempts; i++) {
@@ -177,6 +178,12 @@ public class RoomService {
 
         if (capacity < MIN_CAPACITY || capacity > MAX_CAPACITY) {
             throw new CustomException(ROOM_CAPACITY_INVALID);
+        }
+    }
+
+    private void validateUserNotInRoom(Long userId) {
+        if (playerRepository.findById(userId).isPresent()) {
+            throw new CustomException(USER_ALREADY_IN_ROOM);
         }
     }
 
