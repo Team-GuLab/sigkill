@@ -233,7 +233,7 @@ class RoomServiceTest {
             User host = createAndSaveUser("test-session", "호스트");
 
             // when
-            roomService.createRoom("방1", 6, host.getUserId());
+            var response = roomService.createRoom("방1", 6, host.getUserId());
 
             // then
             assertThat(roomRepository.findAll()).hasSize(1);
@@ -247,6 +247,42 @@ class RoomServiceTest {
             // 호스트가 Player로 자동 참가되었는지 확인
             assertThat(playerRepository.countByRoomId(room.getRoomId())).isEqualTo(1);
             assertThat(playerRepository.existsByRoomIdAndUserId(room.getRoomId(), host.getUserId())).isTrue();
+
+            // 응답 DTO 확인
+            assertThat(response.roomId()).isEqualTo(room.getRoomId());
+            assertThat(response.roomTitle()).isEqualTo("방1");
+            assertThat(response.playerCount()).isEqualTo(1);
+            assertThat(response.capacity()).isEqualTo(6);
+            assertThat(response.status()).isEqualTo(RoomStatus.WAITING.name());
+        }
+
+        @Test
+        void 수용_인원수가_null이면_기본값으로_방을_생성한다() {
+            // given
+            User host = createAndSaveUser("test-session-default-capacity", "호스트");
+
+            // when
+            var response = roomService.createRoom("기본 정원 방", null, host.getUserId());
+
+            // then
+            Room room = roomRepository.findAll().get(0);
+            assertThat(room.getCapacity()).isEqualTo(6);
+            assertThat(response.capacity()).isEqualTo(6);
+            assertThat(response.playerCount()).isEqualTo(1);
+        }
+
+        @Test
+        void 제목_앞뒤_공백은_제거되어_저장된다() {
+            // given
+            User host = createAndSaveUser("test-session-title-trim", "호스트");
+
+            // when
+            var response = roomService.createRoom("   공백 포함 제목   ", TEST_CAPACITY, host.getUserId());
+
+            // then
+            Room room = roomRepository.findAll().get(0);
+            assertThat(room.getRoomTitle()).isEqualTo("공백 포함 제목");
+            assertThat(response.roomTitle()).isEqualTo("공백 포함 제목");
         }
 
         @Test
@@ -254,6 +290,25 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.createRoom(TEST_ROOM_TITLE, TEST_CAPACITY, NON_EXISTENT_USER_ID),
                     UserErrorCode.USER_NOT_FOUND.name());
+            assertThat(roomRepository.findAll()).isEmpty();
+            assertThat(playerRepository.findAll()).isEmpty();
+        }
+
+        @Test
+        void 이미_방에_참가중인_유저로_방을_생성할_경우_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("test-session-already-in-room", "호스트");
+            createAndSaveRoomWithHost("9999", "기존 방", TEST_CAPACITY, host);
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.createRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()),
+                    RoomErrorCode.USER_ALREADY_IN_ROOM.name());
+
+            // 기존 데이터 유지
+            assertThat(roomRepository.findAll()).hasSize(1);
+            assertThat(playerRepository.findAll()).hasSize(1);
+            assertThat(playerRepository.existsByRoomIdAndUserId("9999", host.getUserId())).isTrue();
         }
 
         @Test
@@ -272,6 +327,12 @@ class RoomServiceTest {
             User overLimitHost = createAndSaveUser("test-session-over-limit", "호스트3");
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.createRoom(overMaxLengthTitle, TEST_CAPACITY, overLimitHost.getUserId()),
+                    RoomErrorCode.ROOM_TITLE_INVALID.name());
+
+            String overMaxLengthTitleWithPadding = "   " + "A".repeat(21) + "   ";
+            User paddedOverLimitHost = createAndSaveUser("test-session-padded-over-limit", "호스트4");
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.createRoom(overMaxLengthTitleWithPadding, TEST_CAPACITY, paddedOverLimitHost.getUserId()),
                     RoomErrorCode.ROOM_TITLE_INVALID.name());
         }
 
@@ -294,6 +355,24 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.createRoom(TEST_ROOM_TITLE, 11, overCapacityHost.getUserId()),
                     RoomErrorCode.ROOM_CAPACITY_INVALID.name());
+        }
+
+        @Test
+        void 유효하지_않은_요청이면_방과_플레이어가_생성되지_않는다() {
+            // given
+            User host = createAndSaveUser("test-session-invalid-request", "호스트");
+
+            // when
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.createRoom("   ", TEST_CAPACITY, host.getUserId()),
+                    RoomErrorCode.ROOM_TITLE_INVALID.name());
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.createRoom(TEST_ROOM_TITLE, 11, host.getUserId()),
+                    RoomErrorCode.ROOM_CAPACITY_INVALID.name());
+
+            // then
+            assertThat(roomRepository.findAll()).isEmpty();
+            assertThat(playerRepository.findAll()).isEmpty();
         }
     }
 
