@@ -117,3 +117,42 @@
 5. `PING 전송`으로 pong 응답 확인
 
 정확한 payload, 에러 코드, 이벤트 계약은 `docs/STOMP_MESSAGE_SPEC.md`를 기준으로 확인하세요.
+
+## Docker 실행 기본값
+
+- `Dockerfile` 기본 JVM 옵션:
+  - 타임존: `Asia/Seoul` (`TZ`, `-Duser.timezone`)
+  - 힙: `-Xms512m -Xmx1024m`
+  - GC: `G1GC` + `MaxGCPauseMillis=200`
+  - OOM: `-XX:+HeapDumpOnOutOfMemoryError`, `-XX:HeapDumpPath=/app/logs`, `-XX:+ExitOnOutOfMemoryError`
+  - 권장 컨테이너 제한(개발 서버 4GB, 추후 RDB/Redis 공존 고려): `--memory=1536m --memory-swap=1536m`
+
+```bash
+docker build -t sigkill-server .
+
+docker run -d --name sigkill-server -p 8080:8080 \
+  --memory=1536m --memory-swap=1536m \
+  -e TZ=Asia/Seoul \
+  -e JAVA_TOOL_OPTIONS="-Duser.timezone=Asia/Seoul -Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ParallelRefProcEnabled -XX:+UseStringDeduplication -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -XX:+ExitOnOutOfMemoryError" \
+  -v "$(pwd)/logs:/app/logs" \
+  sigkill-server
+```
+
+## 자동배포(GitHub Actions) 메모리 제한
+
+- 자동배포 시에도 컨테이너 메모리 제한을 동일하게 적용합니다.
+- 파일: `.github/workflows/deploy-sigkill-server-develop.yml`
+- `docker run` 옵션:
+  - `--memory=1536m`
+  - `--memory-swap=1536m`
+
+```bash
+docker run -d \
+  --name sigkill-server \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  --memory=1536m \
+  --memory-swap=1536m \
+  -e SPRING_PROFILES_ACTIVE=dev \
+  "${APP_IMAGE}"
+```
