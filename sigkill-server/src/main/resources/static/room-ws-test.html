@@ -142,7 +142,7 @@
 </head>
 <body>
 <div class="title">
-    <h1>Room 기능 테스트 (5단계)</h1>
+    <h1>Room 기능 테스트</h1>
     <button id="seedRoomsTopBtn">테스트 데이터 생성</button>
 </div>
 
@@ -209,8 +209,9 @@
                 1) <code>GET /api/v1/rooms/{roomId}/availability</code>로 참가 가능 여부 확인<br/>
                 2) <code>/ws</code> 연결<br/>
                 3) <code>/user/queue/errors</code> 구독<br/>
-                4) <code>/topic/room/{roomId}</code> 구독<br/>
-                5) <code>/app/room/join</code> 전송
+                4) <code>/user/queue/room/snapshot</code> 구독<br/>
+                5) <code>/app/room/join</code> 전송<br/>
+                6) <code>/topic/room/{roomId}</code> 구독
             </div>
             <div class="hint">
                 표시: availability REST 요청/응답, join SEND JSON.
@@ -287,20 +288,37 @@
             <div class="hint">표시: SEND JSON</div>
             <pre class="panel" id="leaveResponse">-</pre>
         </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>6. Ping / Pong 확인</h2>
+                <span class="endpoint">SEND /app/ping | SUBSCRIBE /user/queue/pong</span>
+            </div>
+            <div class="actions">
+                <button id="pingBtn">PING 전송</button>
+            </div>
+            <div class="hint">표시: pong 응답은 우측 PONG 패널에서 확인</div>
+        </div>
     </div>
 
     <div>
         <div class="card">
             <div class="card-head">
                 <h3>구독 상태</h3>
-                <span class="endpoint">FIXED 2 ENDPOINTS</span>
+                <span class="endpoint">FIXED 4 ENDPOINTS</span>
             </div>
             <div class="hint">표시: 수신 이벤트 JSON (마지막 수신 1건)</div>
             <label>Room 이벤트 응답 (/topic/room/{roomId})</label>
             <pre class="panel" id="roomEventPanel">-</pre>
             <div style="height:8px;"></div>
+            <label>Room Snapshot (/user/queue/room/snapshot)</label>
+            <pre class="panel" id="roomSnapshotPanel">-</pre>
+            <div style="height:8px;"></div>
             <label>Error 이벤트 응답 (/user/queue/errors)</label>
             <pre class="panel" id="errorEventPanel">-</pre>
+            <div style="height:8px;"></div>
+            <label>PONG 이벤트 응답 (/user/queue/pong)</label>
+            <pre class="panel" id="pongEventPanel">-</pre>
         </div>
 
         <div class="card">
