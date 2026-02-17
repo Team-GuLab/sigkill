@@ -222,6 +222,26 @@ class RoomServiceTest {
             assertThatCode(() -> roomService.fetchRooms(0, 100))
                     .doesNotThrowAnyException();
         }
+
+        @Test
+        void 페이지_범위를_초과하면_빈_리스트를_반환한다() {
+            // given
+            for (int i = 0; i < 3; i++) {
+                User host = createAndSaveUser("overflow-session-" + i, "호스트" + i);
+                createAndSaveRoomWithHost(String.format("%04d", 1000 + i), "방" + i, 6, host);
+            }
+
+            // when
+            RoomListResponse response = roomService.fetchRooms(2, 2);
+
+            // then
+            assertThat(response.rooms()).isEmpty();
+            assertThat(response.page()).isEqualTo(2);
+            assertThat(response.size()).isEqualTo(2);
+            assertThat(response.totalElements()).isEqualTo(3);
+            assertThat(response.totalPages()).isEqualTo(2);
+            assertThat(response.hasNext()).isFalse();
+        }
     }
 
     @Nested
@@ -419,6 +439,9 @@ class RoomServiceTest {
                     () -> roomService.checkRoomAvailability("12AB", guest.getUserId()),
                     RoomErrorCode.ROOM_NUMBER_ERROR.name());
             assertThrowsCustomExceptionWithCode(
+                    () -> roomService.checkRoomAvailability("999", guest.getUserId()),
+                    RoomErrorCode.ROOM_NUMBER_ERROR.name());
+            assertThrowsCustomExceptionWithCode(
                     () -> roomService.checkRoomAvailability("10000", guest.getUserId()),
                     RoomErrorCode.ROOM_NUMBER_ERROR.name());
         }
@@ -534,6 +557,23 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()),
                     RoomErrorCode.ROOM_NOT_FOUND.name());
+        }
+
+        @Test
+        void 방_아이디가_유효하지_않을경우_예외를_발생한다() {
+            // given
+            User guest = createAndSaveUser("guest-session-invalid-room-id", "게스트유저");
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom("12AB", guest.getUserId()),
+                    RoomErrorCode.ROOM_NUMBER_ERROR.name());
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom("999", guest.getUserId()),
+                    RoomErrorCode.ROOM_NUMBER_ERROR.name());
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom("10000", guest.getUserId()),
+                    RoomErrorCode.ROOM_NUMBER_ERROR.name());
         }
 
         @Test
@@ -662,6 +702,22 @@ class RoomServiceTest {
         }
 
         @Test
+        void 다른_방에_참가한_플레이어가_퇴장요청하면_예외를_발생한다() {
+            // given
+            User host1 = createAndSaveUser("host-session-1", "호스트1");
+            User host2 = createAndSaveUser("host-session-2", "호스트2");
+            User guest = createAndSaveUser("guest-session", "게스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host1);
+            createAndSaveRoomWithHost("9999", "다른 방", TEST_CAPACITY, host2);
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.leaveRoom("9999", guest.getUserId()),
+                    RoomErrorCode.PLAYER_NOT_IN_ROOM.name());
+        }
+
+        @Test
         void 호스트가_퇴장할_경우_HostChangedEvent를_반환하고_다음_플레이어가_호스트가_된다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
@@ -771,6 +827,22 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.readyPlayer(TEST_ROOM_ID, otherPlayer.getUserId()),
                     PlayerErrorCode.PLAYER_NOT_FOUND.name());
+        }
+
+        @Test
+        void 다른_방에_참가중인_플레이어가_준비_요청하면_예외를_발생한다() {
+            // given
+            User host1 = createAndSaveUser("ready-host-session-1", "호스트1");
+            User host2 = createAndSaveUser("ready-host-session-2", "호스트2");
+            User guest = createAndSaveUser("ready-guest-session", "게스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host1);
+            createAndSaveRoomWithHost("9999", "다른 방", TEST_CAPACITY, host2);
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.readyPlayer("9999", guest.getUserId()),
+                    RoomErrorCode.PLAYER_NOT_IN_ROOM.name());
         }
 
         @Test
@@ -890,6 +962,22 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.unreadyPlayer(TEST_ROOM_ID, otherPlayer.getUserId()),
                     PlayerErrorCode.PLAYER_NOT_FOUND.name());
+        }
+
+        @Test
+        void 다른_방에_참가중인_플레이어가_준비_취소_요청하면_예외를_발생한다() {
+            // given
+            User host1 = createAndSaveUser("unready-host-session-1", "호스트1");
+            User host2 = createAndSaveUser("unready-host-session-2", "호스트2");
+            User guest = createAndSaveUser("unready-guest-session", "게스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host1);
+            createAndSaveRoomWithHost("9999", "다른 방", TEST_CAPACITY, host2);
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.unreadyPlayer("9999", guest.getUserId()),
+                    RoomErrorCode.PLAYER_NOT_IN_ROOM.name());
         }
 
         @Test
