@@ -99,6 +99,8 @@ jobs:
               --name sigkill-server \
               --restart unless-stopped \
               -p 8080:8080 \
+              --memory=1536m \
+              --memory-swap=1536m \
               -e SPRING_PROFILES_ACTIVE=dev \
               "${{ env.APP_IMAGE }}"
 
