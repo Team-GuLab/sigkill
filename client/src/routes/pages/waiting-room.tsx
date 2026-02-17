@@ -1,10 +1,10 @@
 import { handleRoomMessage } from "@/api/room/handle-room-message";
 import { subscribeRoom } from "@/api/room/subscribe-room";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import type { Player, RoomItem } from "@/api/room/types";
-import {
+import client, {
   connectWebSocket,
   disconnectWebSocket,
   publishMessage,
@@ -12,6 +12,7 @@ import {
 import PlayerList from "@/components/room/player-list";
 import { Button } from "@/ui/button";
 import { Play } from "lucide-react";
+import { ROUTE_PATHS } from "@/routes/paths";
 
 export type PlayerSlot = {
   slotIndex: number;
@@ -26,6 +27,7 @@ export default function WaitingRoom() {
     "playerCount" | "canJoin"
   > | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const unsubscribe = useRef<(() => void) | undefined>(undefined);
 
   // userId -> slotIndex 매핑 (플레이어를 특정 슬롯에 고정)
   const [playerSlotMapping, setPlayerSlotMapping] = useState<
@@ -94,18 +96,32 @@ export default function WaitingRoom() {
   useEffect(() => {
     if (!roomId) return;
 
-    let unsubscribe: (() => void) | undefined;
-
     const setupConnection = async () => {
       try {
         await connectWebSocket();
 
-        // 웹소켓 메시지 핸들러 - 메시지 타입별로 상태 업데이트
-        unsubscribe = subscribeRoom(roomId, message => {
-          handleRoomMessage(message, setRoomInfo, setPlayers);
+        // Receipt ID 생성
+        const receiptId = `receipt-sub-${roomId}-${Date.now()}`;
+
+        // Receipt를 기다리는 Promise 생성
+        const receiptPromise = new Promise<void>(resolve => {
+          client.watchForReceipt(receiptId, () => {
+            console.log(`Subscription confirmed via receipt ${receiptId}`);
+            resolve();
+          });
         });
 
-        // 방 입장 메시지 전송
+        // 웹소켓 메시지 핸들러 - 메시지 타입별로 상태 업데이트
+        unsubscribe.current = subscribeRoom(
+          roomId,
+          message => {
+            handleRoomMessage(message, setRoomInfo, setPlayers);
+          },
+          { receipt: receiptId },
+        );
+
+        await receiptPromise;
+
         publishMessage("/app/room/join", { roomId });
       } catch (error) {
         console.error("Connection failed:", error);
@@ -116,9 +132,9 @@ export default function WaitingRoom() {
     setupConnection();
 
     return () => {
-      if (unsubscribe) {
+      if (unsubscribe.current) {
         console.log("unsubscribe");
-        unsubscribe();
+        unsubscribe.current();
       }
       disconnectWebSocket();
     };
@@ -152,7 +168,7 @@ export default function WaitingRoom() {
             variant="gray"
             className="text-md h-full w-28"
             onClick={() => {
-              navigate("/");
+              navigate(ROUTE_PATHS.ROOM_LIST);
             }}
           >
             나가기
