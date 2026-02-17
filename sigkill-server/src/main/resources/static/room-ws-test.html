@@ -208,7 +208,7 @@
                 실행 순서:<br/>
                 1) <code>GET /api/v1/rooms/{roomId}/availability</code>로 참가 가능 여부 확인<br/>
                 2) <code>/ws</code> 연결<br/>
-                3) <code>/user/queue/errors</code> 구독<br/>
+                3) <code>/user/queue/errors</code>, <code>/user/queue/pong</code> 구독<br/>
                 4) <code>/topic/room/{roomId}</code> 구독<br/>
                 5) <code>/app/room/join</code> 전송
             </div>

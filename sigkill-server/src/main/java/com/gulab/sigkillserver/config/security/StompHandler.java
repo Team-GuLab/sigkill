@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.config.security;
 
+import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import java.security.Principal;
 import java.util.Set;
@@ -111,11 +112,24 @@ public class StompHandler implements ChannelInterceptor {
         }
 
         Long userId = parseUserId(user.getName());
-        boolean isRoomMember = playerRepository.existsByRoomIdAndUserId(roomId, userId);
-        if (!isRoomMember) {
-            log.warn("[SUBSCRIBE] 실패: 방 멤버 아님 - userId={}, destination={}", userId, destination);
-            throw new AccessDeniedException("방 구독 권한이 없습니다.");
+        var player = playerRepository.findById(userId);
+
+        if (player.isPresent()) {
+            validateCurrentRoomSubscription(player.get(), roomId, destination, userId);
+            return;
         }
+
+        log.info("[SUBSCRIBE] join 구독 - userId={}, roomId={}", userId, roomId);
+    }
+
+    private void validateCurrentRoomSubscription(Player player, String roomId, String destination, Long userId) {
+        if (player.getRoomId().equals(roomId)) {
+            return;
+        }
+
+        log.warn("[SUBSCRIBE] 실패: 다른 방 멤버 - userId={}, currentRoomId={}, destination={}",
+                userId, player.getRoomId(), destination);
+        throw new AccessDeniedException("방 구독 권한이 없습니다.");
     }
 
     private Long parseUserId(String principalName) {

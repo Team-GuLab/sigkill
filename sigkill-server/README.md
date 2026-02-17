@@ -63,7 +63,6 @@
 - Room 브로드캐스트: `SUBSCRIBE /topic/room/{roomId}`
 - 사용자 에러: `SUBSCRIBE /user/queue/errors`
 - 사용자 pong: `SUBSCRIBE /user/queue/pong`
-- 사용자 room snapshot: `SUBSCRIBE /user/queue/room/snapshot`
 
 ### 이벤트 타입
 
@@ -73,6 +72,7 @@
 - `PLAYER_READY`
 - `PLAYER_UNREADY`
 - `PONG`
+- `ERROR` (예외 응답 type)
 
 ## 최근 추가된 실시간 안정성 기능
 
@@ -93,16 +93,14 @@
 
 ### 4) SUBSCRIBE 인가 강화
 
-- `/topic/room/{roomId}`는 방 멤버만 구독 가능
+- `/topic/room/{roomId}` 구독 허용:
+  - 현재 해당 방 멤버
+  - 현재 어떤 방에도 속하지 않은 사용자(pre-join)
+- `/topic/room/{roomId}` 구독 거부:
+  - 현재 다른 방에 참가 중인 사용자
 - 사용자 큐는 허용 목록만 구독 가능:
   - `/user/queue/errors`
   - `/user/queue/pong`
-  - `/user/queue/room/snapshot`
-
-### 5) Join 시 스냅샷 개인 전송
-
-- `join` 성공 시 요청자에게 동일 payload를 `/user/queue/room/snapshot`으로 추가 전송
-- 그 외 참여자에게는 기존처럼 `/topic/room/{roomId}`로 브로드캐스트
 
 ## WebSocket 테스트 페이지 사용 흐름
 
@@ -110,9 +108,8 @@
 2. 방 목록 조회 또는 테스트 데이터 생성
 3. 방 참가 통합 실행
    - availability 확인
-   - `/user/queue/errors`, `/user/queue/room/snapshot` 구독
-   - `SEND /app/room/join`
-   - `SUBSCRIBE /topic/room/{roomId}`
+   - `/user/queue/errors`, `/topic/room/{roomId}` 구독
+   - `SEND /app/room/join` (구독 중인 room topic으로 `PLAYER_JOIN` 수신)
 4. `READY/UNREADY`, `LEAVE + DISCONNECT` 테스트
 5. `PING 전송`으로 pong 응답 확인
 

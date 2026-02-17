@@ -6,8 +6,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import java.security.Principal;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.Message;
@@ -31,9 +33,9 @@ class StompHandlerTest {
     }
 
     @Test
-    void room_topic_구독은_방_멤버만_허용한다() {
+    void room_topic_현재_방_멤버_구독은_허용한다() {
         // given
-        when(playerRepository.existsByRoomIdAndUserId("1001", 1L)).thenReturn(true);
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "1001", "user1")));
         Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/room/1001");
 
         // when
@@ -41,13 +43,26 @@ class StompHandlerTest {
 
         // then
         assertThat(result).isSameAs(message);
-        verify(playerRepository).existsByRoomIdAndUserId("1001", 1L);
+        verify(playerRepository).findById(1L);
     }
 
     @Test
-    void room_topic_비멤버_구독은_거부한다() {
+    void room_topic_pre_join_구독은_허용한다() {
         // given
-        when(playerRepository.existsByRoomIdAndUserId("1001", 1L)).thenReturn(false);
+        when(playerRepository.findById(1L)).thenReturn(Optional.empty());
+        Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/room/1001");
+
+        // when
+        Message<?> result = stompHandler.preSend(message, messageChannel);
+
+        // then
+        assertThat(result).isSameAs(message);
+    }
+
+    @Test
+    void room_topic_다른_방_멤버_구독은_거부한다() {
+        // given
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "2002", "user1")));
         Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/room/1001");
 
         // when // then
