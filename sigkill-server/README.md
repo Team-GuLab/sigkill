@@ -1,0 +1,155 @@
+# sigkill-server
+
+실시간 방(룸) 기반 게임 로비를 위한 Spring Boot 서버입니다.
+
+## 빠른 시작
+
+### 요구 사항
+
+- Java 21
+- Gradle Wrapper 사용 (`./gradlew`)
+
+### 실행
+
+```bash
+./gradlew bootRun
+```
+
+### 테스트
+
+```bash
+./gradlew test
+```
+
+## 주요 링크
+
+- WebSocket 테스트 페이지: [http://localhost:8080/room-ws-test.html](http://localhost:8080/room-ws-test.html)
+- Swagger UI: [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)
+- STOMP 계약 문서: [docs/STOMP_MESSAGE_SPEC.md](docs/STOMP_MESSAGE_SPEC.md)
+
+## REST 기능
+
+### 인증
+
+- `POST /api/v1/users/guest-login`
+  - 세션 기반 게스트 로그인
+
+### 방 관리
+
+- `GET /api/v1/rooms`
+  - 방 목록 조회 (페이징)
+- `POST /api/v1/rooms`
+  - 방 생성
+- `GET /api/v1/rooms/{roomId}/availability`
+  - 방 입장 가능 여부 확인
+
+## STOMP 기능
+
+### 연결 규칙
+
+- Endpoint: `/ws`
+- App Prefix: `/app`
+- Broker Prefix: `/topic`, `/queue`
+
+### Room 명령
+
+- `SEND /app/room/join`
+- `SEND /app/room/leave`
+- `SEND /app/room/ready`
+- `SEND /app/room/unready`
+
+### 구독 채널
+
+- Room 브로드캐스트: `SUBSCRIBE /topic/room/{roomId}`
+- 사용자 에러: `SUBSCRIBE /user/queue/errors`
+- 사용자 pong: `SUBSCRIBE /user/queue/pong`
+
+### 이벤트 타입
+
+- `PLAYER_JOIN`
+- `PLAYER_LEFT`
+- `HOST_CHANGED`
+- `PLAYER_READY`
+- `PLAYER_UNREADY`
+- `PONG`
+- `ERROR` (예외 응답 type)
+
+## 최근 추가된 실시간 안정성 기능
+
+### 1) STOMP Heartbeat
+
+- `SimpleBroker` heartbeat 활성화
+- 값: `10000ms / 10000ms` (server->client / client->server)
+
+### 2) Ping / Pong
+
+- `SEND /app/ping` -> `SUBSCRIBE /user/queue/pong`
+- 응답 필드: `type`, `userId`, `serverTime(UTC ISO-8601)`
+
+### 3) 비정상 종료 자동 퇴장 처리
+
+- 클라이언트가 `leave` 없이 연결이 끊겨도 서버가 자동으로 퇴장 처리
+- 필요 시 `PLAYER_LEFT`, `HOST_CHANGED`를 기존 room topic으로 브로드캐스트
+
+### 4) SUBSCRIBE 인가 강화
+
+- `/topic/room/{roomId}` 구독 허용:
+  - 현재 해당 방 멤버
+  - 현재 어떤 방에도 속하지 않은 사용자(pre-join)
+- `/topic/room/{roomId}` 구독 거부:
+  - 현재 다른 방에 참가 중인 사용자
+- 사용자 큐는 허용 목록만 구독 가능:
+  - `/user/queue/errors`
+  - `/user/queue/pong`
+
+## WebSocket 테스트 페이지 사용 흐름
+
+1. 게스트 로그인 실행
+2. 방 목록 조회 또는 테스트 데이터 생성
+3. 방 참가 통합 실행
+   - availability 확인
+   - `/user/queue/errors`, `/topic/room/{roomId}` 구독
+   - `SEND /app/room/join` (구독 중인 room topic으로 `PLAYER_JOIN` 수신)
+4. `READY/UNREADY`, `LEAVE + DISCONNECT` 테스트
+5. `PING 전송`으로 pong 응답 확인
+
+정확한 payload, 에러 코드, 이벤트 계약은 `docs/STOMP_MESSAGE_SPEC.md`를 기준으로 확인하세요.
+
+## Docker 실행 기본값
+
+- `Dockerfile` 기본 JVM 옵션:
+  - 타임존: `Asia/Seoul` (`TZ`, `-Duser.timezone`)
+  - 힙: `-Xms512m -Xmx1024m`
+  - GC: `G1GC` + `MaxGCPauseMillis=200`
+  - OOM: `-XX:+HeapDumpOnOutOfMemoryError`, `-XX:HeapDumpPath=/app/logs`, `-XX:+ExitOnOutOfMemoryError`
+  - 권장 컨테이너 제한(개발 서버 4GB, 추후 RDB/Redis 공존 고려): `--memory=1536m --memory-swap=1536m`
+
+```bash
+docker build -t sigkill-server .
+
+docker run -d --name sigkill-server -p 8080:8080 \
+  --memory=1536m --memory-swap=1536m \
+  -e TZ=Asia/Seoul \
+  -e JAVA_TOOL_OPTIONS="-Duser.timezone=Asia/Seoul -Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ParallelRefProcEnabled -XX:+UseStringDeduplication -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -XX:+ExitOnOutOfMemoryError" \
+  -v "$(pwd)/logs:/app/logs" \
+  sigkill-server
+```
+
+## 자동배포(GitHub Actions) 메모리 제한
+
+- 자동배포 시에도 컨테이너 메모리 제한을 동일하게 적용합니다.
+- 파일: `.github/workflows/deploy-sigkill-server-develop.yml`
+- `docker run` 옵션:
+  - `--memory=1536m`
+  - `--memory-swap=1536m`
+
+```bash
+docker run -d \
+  --name sigkill-server \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  --memory=1536m \
+  --memory-swap=1536m \
+  -e SPRING_PROFILES_ACTIVE=dev \
+  "${APP_IMAGE}"
+```

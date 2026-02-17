@@ -13,14 +13,15 @@ public record RoomResponse(
         String status,
         boolean canJoin
 ) {
-    public static RoomResponse of(Room room) {
+    public static RoomResponse of(Room room, int playerCount) {
+        boolean canJoin = !room.isInGame() && playerCount < room.getCapacity();
         return new RoomResponse(
                 room.getRoomId(),
                 room.getRoomTitle(),
-                room.getPlayerCount(),
+                playerCount,
                 room.getCapacity(),
                 room.getStatus().name(),
-                room.canJoin()
+                canJoin
         );
     }
 }

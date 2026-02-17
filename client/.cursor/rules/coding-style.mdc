@@ -1,0 +1,100 @@
+---
+alwaysApply: true
+---
+---
+alwaysApply: true
+---
+
+# 코딩 컨벤션 규칙
+
+## 일반 원칙
+
+### Airbnb 스타일 가이드 준수
+
+- [Airbnb JavaScript 스타일 가이드](https://github.com/airbnb/javascript)를 준수합니다.
+- [Airbnb TypeScript 스타일 가이드](https://github.com/airbnb/javascript/tree/master/react)를 준수합니다.
+- `var` 대신 모든 변수 선언에 `const`를 사용합니다.
+- 재할당이 필요한 경우에만 `let`을 사용합니다.
+- 느슨한 비교 대신 엄격한 일치 연산자 (`===` 및 `!==`)를 사용합니다.
+
+## 네이밍 컨벤션
+
+### 변수 및 함수
+
+- 변수와 함수 이름에는 `camelCase`를 사용합니다 (예: `getUser`, `isValid`).
+- 클래스, 인터페이스, 타입 별칭, React 컴포넌트에는 `PascalCase`를 사용합니다 (예: `UserProfile`, `Button`).
+- Boolean 변수는 `is`, `has`, `should`로 시작해야 합니다 (예: `isVisible`, `hasError`).
+
+### 상수
+
+- export되는 상수와 설정값에는 `UPPER_SNAKE_CASE`를 사용합니다 (예: `MAX_RETRY_COUNT`, `API_BASE_URL`).
+- 함수 내부의 로컬 상수에는 `camelCase`를 사용합니다.
+
+### 파일 및 디렉토리
+
+- 파일과 디렉토리 이름에는 `kebab-case`를 사용합니다 (예: `user-profile.tsx`, `api-utils.ts`).
+- React 컴포넌트 파일명은 컴포넌트 이름과 일치하되 `kebab-case`로 작성합니다.
+
+## 타입 및 인터페이스
+
+### 타입 정의
+
+- 객체 형태를 정의할 때는 `type`보다 `interface`를 선호합니다.
+- 유니온, 인터섹션, 원시 타입 정의 시에는 `type`을 사용합니다.
+- 함수, 특히 export되는 함수의 반환 타입을 명시적으로 정의합니다.
+
+### Props
+
+- 컴포넌트 Props 인터페이스 이름은 `ComponentProps` 형식으로 짓습니다 (예: `ButtonProps`).
+- 함수 시그니처에서 props를 구조 분해 할당하여 사용합니다.
+
+## React 관련 규칙
+
+### 컴포넌트
+
+- 함수형 컴포넌트와 Hooks를 사용합니다; 클래스 컴포넌트는 지양합니다.
+- 컴포넌트는 Named Export를 사용합니다.
+- 컴포넌트는 작게 유지하고 단일 책임을 갖도록 합니다.
+
+### Hooks
+
+- 커스텀 Hooks는 `use` 접두사를 붙입니다 (예: `useWindowSize`).
+- Hooks는 컴포넌트 최상단에 위치시킵니다.
+
+### JSX/TSX
+
+- 자식 요소가 없는 경우 셀프 클로징 태그를 사용합니다 (예: `<Component />`).
+- JSX 속성에는 큰따옴표(`"`)를 사용합니다.
+- 여러 줄의 JSX를 반환할 때는 괄호(`()`)를 사용합니다.
+
+## import 및 export
+
+- **경로 별칭 (Path Alias):** `@/`는 `` 또는 프로젝트 루트를 가리키도록 설정 (`tsconfig.json` 확인).
+
+### import 순서
+
+- import 문은 다음 순서로 그룹화합니다:
+  1. 내장 모듈 (예: `react`, `next/link`)
+  2. 외부 라이브러리 (예: `zustand`, `lucide-react`)
+  3. 내부 모듈 (`@/entities`, `@/shared` 등 alias 사용)
+  4. 스타일 및 에셋
+- 각 그룹 사이에는 빈 줄을 추가합니다.
+
+### export
+
+- 더 나은 트리쉐이킹과 리팩토링 지원을 위해 Default Export보다 Named Export를 선호합니다 (Next.js Page 제외).
+
+## 포맷팅 및 주석
+
+### 포맷팅
+
+- 들여쓰기는 스페이스 2칸을 사용합니다.
+- 문장 끝에는 세미콜론을 사용합니다.
+- 여러 줄의 객체/배열 리터럴에는 후행 콤마(trailing comma)를 사용합니다.
+- 가능한 한 줄 길이를 80-100자로 제한합니다.
+
+### 주석
+
+- 로직 설명이나 상세 내용은 **한국어**로 작성합니다.
+- 함수나 복잡한 타입 문서화에는 JSDoc을 사용합니다.
+- 뻔한 내용은 주석으로 달지 말고, "무엇을"이 아닌 "왜"를 설명합니다.

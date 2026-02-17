@@ -30,7 +30,9 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api/v1/users/guest-login", // 게스트 로그인
-                                "/ws/**"
+                                "/ws/**",
+                                "/room-ws-test.html", // TODO: 테스트용 웹소켓 페이지
+                                "/room-ws-test.js" // TODO: 테스트용 웹소켓 JS
                         ).permitAll()
                         .requestMatchers("/api/**").hasRole("GUEST")
                         .anyRequest().denyAll()

@@ -8,6 +8,7 @@ import { useQueryErrorResetBoundary } from "@tanstack/react-query";
 import { AppError } from "@/api/axios";
 import Rooms from "@/components/room/rooms";
 import ErrorFallback from "@/components/common/error-fallback";
+import Profile from "@/widgets/profile";
 
 export default function RoomListPage() {
   const [showModal, setShowModal] = useState(false);
@@ -36,24 +37,29 @@ export default function RoomListPage() {
   };
 
   return (
-    <>
+    <div className="relative flex h-full flex-col pb-20">
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-foreground text-xl font-bold">방 목록</h1>
         <Button className="cursor-pointer" onClick={handleButtonClick}>
           방 생성
         </Button>
       </header>
-      <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
-        <Suspense
-          fallback={
-            <div className="flex h-100 items-center justify-center">
-              <Spinner />
-            </div>
-          }
-        >
-          <Rooms />
-        </Suspense>
-      </ErrorBoundary>
+      <div className="flex-1 overflow-y-auto">
+        <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
+          <Suspense
+            fallback={
+              <div className="flex h-100 items-center justify-center">
+                <Spinner />
+              </div>
+            }
+          >
+            <Rooms />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
+
+      {/* 하단 사용자 프로필 영역 */}
+      <Profile />
 
       {showModal &&
         createPortal(
@@ -63,6 +69,6 @@ export default function RoomListPage() {
           />,
           document.getElementById("modal-root")!,
         )}
-    </>
+    </div>
   );
 }

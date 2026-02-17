@@ -1,5 +1,8 @@
 package com.gulab.sigkillserver.domain.room.repository;
 
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_ID_ALREADY_EXISTS;
+
+import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import java.util.Comparator;
 import java.util.List;
@@ -17,7 +20,7 @@ public class RoomMemoryRepository implements RoomRepository {
     public Room save(Room room) {
         Room existing = store.putIfAbsent(room.getRoomId(), room);
         if (existing != null) {
-            throw new IllegalStateException("Room ID 가 이미 존재합니다.: " + room.getRoomId());
+            throw new CustomException(ROOM_ID_ALREADY_EXISTS);
         }
         return room;
     }
