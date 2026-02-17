@@ -26,8 +26,7 @@ public class StompHandler implements ChannelInterceptor {
     private static final String ROOM_TOPIC_PREFIX = "/topic/room/";
     private static final Set<String> ALLOWED_USER_QUEUE_DESTINATIONS = Set.of(
             "/user/queue/errors",
-            "/user/queue/pong",
-            "/user/queue/room/snapshot"
+            "/user/queue/pong"
     );
 
     private final PlayerRepository playerRepository;

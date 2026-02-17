@@ -15,7 +15,6 @@
 - Room Broadcast 채널: `/topic/room/{roomId}`
 - 사용자 에러 채널: `/user/queue/errors`
 - 사용자 pong 채널: `/user/queue/pong`
-- 사용자 room snapshot 채널: `/user/queue/room/snapshot`
 - Heartbeat: `10000ms / 10000ms` (server->client / client->server)
 
 ## 3. 인증/인가
@@ -25,7 +24,7 @@
 - Request payload에는 사용자 식별자(`userId`, `sessionId`)를 넣지 않는다. 서버가 `Principal`에서 추출한다.
 - 구독 인가 규칙:
   - `/topic/room/{roomId}`는 해당 방 멤버만 구독 가능
-  - 사용자 큐 구독 허용 대상: `/user/queue/errors`, `/user/queue/pong`, `/user/queue/room/snapshot`
+  - 사용자 큐 구독 허용 대상: `/user/queue/errors`, `/user/queue/pong`
 
 ## 4. 공통 DTO
 
@@ -98,7 +97,6 @@
 설명:
 
 - 현재 구현은 입장 시 변경분만이 아니라 방/플레이어 전체 스냅샷을 브로드캐스트한다.
-- 방 참가 요청자는 동일 payload를 `/user/queue/room/snapshot`으로도 수신한다.
 
 ### 5.2 플레이어 퇴장
 
@@ -206,9 +204,11 @@
 ## 6. 에러 계약
 
 에러는 모두 사용자 채널(`/user/queue/errors`)로 내려간다.
+Response type: `ERROR`
 
 ```json
 {
+  "type": "ERROR",
   "code": "ROOM_FULL",
   "message": "방이 가득 찼습니다"
 }

@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 @ControllerAdvice
 public class StompExceptionHandler {
 
+    private static final String ERROR_TYPE = "ERROR";
+
     /**
      * CustomException 처리
      */
@@ -23,7 +25,7 @@ public class StompExceptionHandler {
     @SendToUser("/queue/errors")
     public ErrorMessage handleCustomException(CustomException e) {
         log.error("WebSocket CustomException 발생: {}", e.getErrorCode().getMessage(), e);
-        return new ErrorMessage(
+        return ErrorMessage.of(
                 e.getErrorCode().getCode(),
                 e.getErrorCode().getMessage()
         );
@@ -36,7 +38,7 @@ public class StompExceptionHandler {
     @SendToUser("/queue/errors")
     public ErrorMessage handleAccessDeniedException(AccessDeniedException e) {
         log.error("WebSocket 접근 거부: {}", e.getMessage(), e);
-        return new ErrorMessage(
+        return ErrorMessage.of(
                 "ACCESS_DENIED",
                 "접근 권한이 없습니다."
         );
@@ -49,7 +51,7 @@ public class StompExceptionHandler {
     @SendToUser("/queue/errors")
     public ErrorMessage handleIllegalArgumentException(IllegalArgumentException e) {
         log.warn("WebSocket 잘못된 요청: {}", e.getMessage());
-        return new ErrorMessage(
+        return ErrorMessage.of(
                 "INVALID_REQUEST",
                 e.getMessage() != null ? e.getMessage() : "잘못된 요청입니다."
         );
@@ -70,7 +72,7 @@ public class StompExceptionHandler {
                 .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "요청 형식이 잘못됐습니다.")
                 .orElse("요청 형식이 잘못됐습니다.");
 
-        return new ErrorMessage(
+        return ErrorMessage.of(
                 "INVALID_REQUEST",
                 message
         );
@@ -89,7 +91,7 @@ public class StompExceptionHandler {
                 .map(violation -> violation.getMessage() != null ? violation.getMessage() : "요청 형식이 잘못됐습니다.")
                 .orElse("요청 형식이 잘못됐습니다.");
 
-        return new ErrorMessage(
+        return ErrorMessage.of(
                 "INVALID_REQUEST",
                 message
         );
@@ -102,7 +104,7 @@ public class StompExceptionHandler {
     @SendToUser("/queue/errors")
     public ErrorMessage handleIllegalStateException(IllegalStateException e) {
         log.warn("WebSocket 잘못된 상태: {}", e.getMessage());
-        return new ErrorMessage(
+        return ErrorMessage.of(
                 "INVALID_STATE",
                 e.getMessage() != null ? e.getMessage() : "잘못된 상태입니다."
         );
@@ -115,7 +117,7 @@ public class StompExceptionHandler {
     @SendToUser("/queue/errors")
     public ErrorMessage handleException(Exception e) {
         log.error("WebSocket 예상치 못한 예외 발생", e);
-        return new ErrorMessage(
+        return ErrorMessage.of(
                 "INTERNAL_SERVER_ERROR",
                 "서버 내부 오류가 발생했습니다."
         );
@@ -125,8 +127,12 @@ public class StompExceptionHandler {
      * WebSocket 에러 메시지 DTO
      */
     public record ErrorMessage(
+            String type,
             String code,
             String message
     ) {
+        public static ErrorMessage of(String code, String message) {
+            return new ErrorMessage(ERROR_TYPE, code, message);
+        }
     }
 }
