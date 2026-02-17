@@ -10,6 +10,7 @@
     const readyBtn = document.getElementById("readyBtn");
     const unreadyBtn = document.getElementById("unreadyBtn");
     const leaveDisconnectBtn = document.getElementById("leaveDisconnectBtn");
+    const pingBtn = document.getElementById("pingBtn");
     const clearLogBtn = document.getElementById("clearLogBtn");
     const seedRoomsTopBtn = document.getElementById("seedRoomsTopBtn");
 
@@ -34,13 +35,17 @@
     const leaveResponseEl = document.getElementById("leaveResponse");
 
     const roomEventPanelEl = document.getElementById("roomEventPanel");
+    const roomSnapshotPanelEl = document.getElementById("roomSnapshotPanel");
     const errorEventPanelEl = document.getElementById("errorEventPanel");
+    const pongEventPanelEl = document.getElementById("pongEventPanel");
     const logEl = document.getElementById("log");
 
     const state = {
         stompClient: null,
         roomSubscription: null,
+        roomSnapshotSubscription: null,
         errorSubscription: null,
+        pongSubscription: null,
         subscribedRoomId: null
     };
 
@@ -221,6 +226,9 @@
         const socket = new WebSocket(toWsUrl(getServerBase()));
         state.stompClient = Stomp.over(socket);
         state.stompClient.debug = null;
+        state.stompClient.heartbeat.outgoing = 10000;
+        state.stompClient.heartbeat.incoming = 10000;
+        state.stompClient.reconnect_delay = 5000;
 
         await new Promise((resolve, reject) => {
             state.stompClient.connect({}, () => resolve(), (error) => reject(error));
@@ -238,6 +246,34 @@
             const parsed = parseJsonSafe(frame.body);
             setPanel(errorEventPanelEl, parsed || frame.body);
             log("에러 이벤트 수신");
+        });
+
+        return {subscribed: true, newlySubscribed: true};
+    }
+
+    function subscribePongQueueOnce() {
+        if (state.pongSubscription) {
+            return {subscribed: true, newlySubscribed: false};
+        }
+
+        state.pongSubscription = state.stompClient.subscribe("/user/queue/pong", (frame) => {
+            const parsed = parseJsonSafe(frame.body);
+            setPanel(pongEventPanelEl, parsed || frame.body);
+            log("PONG 이벤트 수신");
+        });
+
+        return {subscribed: true, newlySubscribed: true};
+    }
+
+    function subscribeRoomSnapshotQueueOnce() {
+        if (state.roomSnapshotSubscription) {
+            return {subscribed: true, newlySubscribed: false};
+        }
+
+        state.roomSnapshotSubscription = state.stompClient.subscribe("/user/queue/room/snapshot", (frame) => {
+            const parsed = parseJsonSafe(frame.body);
+            setPanel(roomSnapshotPanelEl, parsed || frame.body);
+            log("ROOM SNAPSHOT 이벤트 수신");
         });
 
         return {subscribed: true, newlySubscribed: true};
@@ -306,10 +342,20 @@
 
         await connectStompIfNeeded();
         subscribeErrorQueueOnce();
-        subscribeRoomTopic(roomId);
+        subscribePongQueueOnce();
+        subscribeRoomSnapshotQueueOnce();
         const sendResult = sendRoomCommand("join", roomId);
+        subscribeRoomTopic(roomId);
         setPanel(joinSendEl, sendResult);
         log("3) 방 참가 통합 실행 완료");
+    }
+
+    async function executePing() {
+        await connectStompIfNeeded();
+        subscribeErrorQueueOnce();
+        subscribePongQueueOnce();
+        state.stompClient.send("/app/ping", {"content-type": "application/json"}, "{}");
+        log("PING 전송 완료");
     }
 
     function executeReadyLike(command) {
@@ -328,6 +374,14 @@
         if (state.errorSubscription) {
             state.errorSubscription.unsubscribe();
             state.errorSubscription = null;
+        }
+        if (state.roomSnapshotSubscription) {
+            state.roomSnapshotSubscription.unsubscribe();
+            state.roomSnapshotSubscription = null;
+        }
+        if (state.pongSubscription) {
+            state.pongSubscription.unsubscribe();
+            state.pongSubscription = null;
         }
 
         if (state.stompClient && state.stompClient.connected) {
@@ -375,6 +429,7 @@
     bindAsync(readyBtn, async () => executeReadyLike("ready"));
     bindAsync(unreadyBtn, async () => executeReadyLike("unready"));
     bindAsync(leaveDisconnectBtn, executeLeaveAndDisconnect);
+    bindAsync(pingBtn, executePing);
     bindAsync(seedRoomsTopBtn, executeSeedRoomsTop);
 
     clearLogBtn.addEventListener("click", () => {
