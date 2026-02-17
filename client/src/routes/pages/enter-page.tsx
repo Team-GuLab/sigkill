@@ -1,16 +1,17 @@
 import { guestLogin } from "@/api/user";
-import { useUser } from "@/hooks/user/use-user";
+import { useLogin } from "@/store/user-store";
 import { Button } from "@/ui/button";
 import { useNavigate } from "react-router";
 
 export default function EnterPage() {
   const navigate = useNavigate();
-  const { dispatch } = useUser();
+  const login = useLogin();
 
   const handleEnter = async () => {
     try {
       const user = await guestLogin();
-      dispatch({ type: "LOGIN", payload: user });
+
+      login(user);
 
       navigate("/rooms");
     } catch (error) {

@@ -9,12 +9,12 @@ import { AppError } from "@/api/axios";
 import Rooms from "@/components/room/rooms";
 import ErrorFallback from "@/components/common/error-fallback";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/avatar";
-import { useUser } from "@/hooks/user/use-user";
+import { useUser } from "@/store/user-store";
 
 export default function RoomListPage() {
   const [showModal, setShowModal] = useState(false);
   const { reset } = useQueryErrorResetBoundary();
-  const { state } = useUser();
+  const user = useUser();
 
   const handleButtonClick = () => {
     setShowModal(true);
@@ -38,8 +38,8 @@ export default function RoomListPage() {
     );
   };
 
-  const userInitial = state.user?.nickname
-    ? state.user.nickname.charAt(0).toUpperCase()
+  const userInitial = user?.nickname
+    ? user.nickname.charAt(0).toUpperCase()
     : "?";
 
   return (
@@ -50,9 +50,7 @@ export default function RoomListPage() {
           방 생성
         </Button>
       </header>
-
-      {/* 방 목록 영역 */}
-      <section className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
           <Suspense
             fallback={
@@ -64,23 +62,23 @@ export default function RoomListPage() {
             <Rooms />
           </Suspense>
         </ErrorBoundary>
-      </section>
+      </div>
 
       {/* 하단 사용자 프로필 영역 */}
-      <footer className="bg-background fixed right-0 bottom-0 left-0 flex items-center gap-3 border-t p-4">
+      <div className="bg-background fixed right-0 bottom-0 left-0 flex items-center gap-3 border-t p-4">
         <Avatar>
-          <AvatarImage src="" alt={state.user?.nickname || "User"} />
+          <AvatarImage src="" alt={user?.nickname || "User"} />
           <AvatarFallback>{userInitial}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col">
           <span className="text-sm font-semibold">
-            {state.user?.nickname || "Guest"}
+            {user?.nickname || "Guest"}
           </span>
           <span className="text-muted-foreground text-xs">
-            User ID: {state.user?.userId || "Unknown"}
+            User ID: {user?.userId || "Unknown"}
           </span>
         </div>
-      </footer>
+      </div>
 
       {showModal &&
         createPortal(
