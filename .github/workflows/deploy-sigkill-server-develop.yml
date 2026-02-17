@@ -15,7 +15,7 @@ permissions:
 
 env:
   IMAGE_REPOSITORY: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sigkill-server
-  APP_IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sigkill-server:${{ github.sha }}
+  APP_IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sigkill-server:sha-${{ github.sha }}
 
 jobs:
   build-and-push:
@@ -48,13 +48,19 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Generate Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
-            type=sha,format=long
+            type=raw,value=sha-${{ github.sha }}
             type=raw,value=develop
 
       - name: Build and push Docker image
@@ -63,6 +69,7 @@ jobs:
           context: ./sigkill-server
           file: ./sigkill-server/Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
