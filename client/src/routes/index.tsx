@@ -3,21 +3,22 @@ import RoomListPage from "./pages/room-list-page";
 import DefaultLayout from "./layouts/default";
 import WaitingRoom from "./pages/waiting-room";
 import EnterPage from "./pages/enter-page";
+import { ROUTE_PATHS } from "./paths";
 
 const router = createBrowserRouter([
   {
-    path: "/",
+    path: ROUTE_PATHS.HOME,
     element: <EnterPage />,
   },
   {
     element: <DefaultLayout />,
     children: [
       {
-        path: "/rooms",
+        path: ROUTE_PATHS.ROOM_LIST,
         element: <RoomListPage />,
       },
       {
-        path: "/waiting-room/:roomId",
+        path: ROUTE_PATHS.WAITING_ROOM,
         element: <WaitingRoom />,
       },
     ],
