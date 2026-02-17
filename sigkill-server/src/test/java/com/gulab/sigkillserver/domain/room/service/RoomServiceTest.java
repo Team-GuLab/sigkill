@@ -5,12 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
-import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
-import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomResponseType;
+import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
+import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.model.RoomStatus;
@@ -257,7 +257,7 @@ class RoomServiceTest {
 
             // then
             assertThat(roomRepository.findAll()).hasSize(1);
-            Room room = roomRepository.findAll().get(0);
+            Room room = roomRepository.findAll().getFirst();
             assertThat(room.getRoomId()).matches("\\d{4}");
             assertThat(room.getRoomTitle()).isEqualTo("방1");
             assertThat(room.getCapacity()).isEqualTo(6);
@@ -285,7 +285,7 @@ class RoomServiceTest {
             var response = roomService.createRoom("기본 정원 방", null, host.getUserId());
 
             // then
-            Room room = roomRepository.findAll().get(0);
+            Room room = roomRepository.findAll().getFirst();
             assertThat(room.getCapacity()).isEqualTo(6);
             assertThat(response.capacity()).isEqualTo(6);
             assertThat(response.playerCount()).isEqualTo(1);
@@ -300,7 +300,7 @@ class RoomServiceTest {
             var response = roomService.createRoom("   공백 포함 제목   ", TEST_CAPACITY, host.getUserId());
 
             // then
-            Room room = roomRepository.findAll().get(0);
+            Room room = roomRepository.findAll().getFirst();
             assertThat(room.getRoomTitle()).isEqualTo("공백 포함 제목");
             assertThat(response.roomTitle()).isEqualTo("공백 포함 제목");
         }
@@ -352,7 +352,8 @@ class RoomServiceTest {
             String overMaxLengthTitleWithPadding = "   " + "A".repeat(21) + "   ";
             User paddedOverLimitHost = createAndSaveUser("test-session-padded-over-limit", "호스트4");
             assertThrowsCustomExceptionWithCode(
-                    () -> roomService.createRoom(overMaxLengthTitleWithPadding, TEST_CAPACITY, paddedOverLimitHost.getUserId()),
+                    () -> roomService.createRoom(overMaxLengthTitleWithPadding, TEST_CAPACITY,
+                            paddedOverLimitHost.getUserId()),
                     RoomErrorCode.ROOM_TITLE_INVALID.name());
         }
 
