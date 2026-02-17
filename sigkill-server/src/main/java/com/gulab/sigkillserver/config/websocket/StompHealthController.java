@@ -19,12 +19,10 @@ public class StompHealthController {
     public record PongMessage(
             String type,
             String userId,
-            String serverTime
+            long serverTime
     ) {
-        private static final String TYPE = "PONG";
-
         public static PongMessage of(String userId) {
-            return new PongMessage(TYPE, userId, Instant.now().toString());
+            return new PongMessage("PONG", userId, Instant.now().toEpochMilli());
         }
     }
 }

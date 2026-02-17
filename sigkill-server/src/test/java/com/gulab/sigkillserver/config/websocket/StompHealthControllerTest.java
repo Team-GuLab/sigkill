@@ -1,7 +1,6 @@
 package com.gulab.sigkillserver.config.websocket;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
@@ -15,14 +14,16 @@ class StompHealthControllerTest {
         // given
         String userId = "123";
 
+        long before = Instant.now().toEpochMilli();
+
         // when
         StompHealthController.PongMessage pongMessage = controller.ping(() -> userId);
+        long after = Instant.now().toEpochMilli();
 
         // then
         assertThat(pongMessage.type()).isEqualTo("PONG");
         assertThat(pongMessage.userId()).isEqualTo(userId);
-        assertThat(pongMessage.serverTime()).isNotBlank();
-        assertThatCode(() -> Instant.parse(pongMessage.serverTime())).doesNotThrowAnyException();
+        assertThat(pongMessage.serverTime()).isBetween(before, after);
     }
 
     @Test
