@@ -4,7 +4,7 @@ import RoomItem from "@/components/room/room-item";
 import RoomListPagination from "./room-list-pagination";
 import { ItemGroup } from "@/ui/item";
 import { EmptyData } from "@/components/common/empty-data";
-import { InboxIcon, RefreshCcwIcon } from "lucide-react";
+import { RefreshCcwIcon } from "lucide-react";
 
 const PAGE_SIZE = 6;
 
@@ -32,22 +32,19 @@ export default function Rooms() {
       <section>
         <ItemGroup className="gap-3">
           {rooms.map(room => (
-            <RoomItem {...room} />
+            <RoomItem key={room.roomId} {...room} />
           ))}
         </ItemGroup>
       </section>
 
       {totalPages === 0 && rooms.length === 0 && (
-        <div className="mt-8">
-          <EmptyData
-            icon={<InboxIcon />}
-            title="방이 없습니다"
-            description="현재 생성된 방이 없습니다. 새로운 방을 만들어보세요."
-            buttonText="새로고침"
-            buttonIcon={<RefreshCcwIcon />}
-            onButtonClick={handleRefresh}
-          />
-        </div>
+        <EmptyData
+          title="방이 없습니다"
+          description="현재 생성된 방이 없습니다. 새로운 방을 만들어보세요."
+          buttonText="새로고침"
+          buttonIcon={<RefreshCcwIcon />}
+          onButtonClick={handleRefresh}
+        />
       )}
 
       {totalPages > 0 && (

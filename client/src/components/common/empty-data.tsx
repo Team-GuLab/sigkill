@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 
 // 빈 데이터 표시
 interface EmptyDataProps {
-  icon: ReactNode;
+  icon?: ReactNode;
   title: string;
   description: string;
   buttonText?: string;
@@ -27,9 +27,9 @@ export function EmptyData({
   onButtonClick,
 }: EmptyDataProps) {
   return (
-    <Empty className="bg-muted/30 h-full">
+    <Empty className="border-primary h-full rounded-xl border-2 bg-transparent">
       <EmptyHeader>
-        <EmptyMedia variant="icon">{icon}</EmptyMedia>
+        {icon && <EmptyMedia variant="icon">{icon}</EmptyMedia>}
         <EmptyTitle>{title}</EmptyTitle>
         <EmptyDescription className="max-w-xs text-pretty">
           {description}
