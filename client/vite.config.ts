@@ -34,6 +34,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        "/ws": {
+          target: `${env.VITE_API_DOMAIN}`,
+          ws: true,
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
   };
