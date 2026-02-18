@@ -6,7 +6,6 @@ import lombok.Getter;
 
 @Getter
 public class Game extends BaseEntity {
-    private static final long QUIZ_COUNTDOWN_MILLIS = 5_000L;
     private final long gameId;
     private final String roomId;
     private final GameStatus status;
