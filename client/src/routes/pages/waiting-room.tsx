@@ -100,27 +100,10 @@ export default function WaitingRoom() {
       try {
         await connectWebSocket();
 
-        // Receipt ID 생성
-        const receiptId = `receipt-sub-${roomId}-${Date.now()}`;
-
-        // Receipt를 기다리는 Promise 생성
-        const receiptPromise = new Promise<void>(resolve => {
-          client.watchForReceipt(receiptId, () => {
-            console.log(`Subscription confirmed via receipt ${receiptId}`);
-            resolve();
-          });
-        });
-
         // 웹소켓 메시지 핸들러 - 메시지 타입별로 상태 업데이트
-        unsubscribe.current = subscribeRoom(
-          roomId,
-          message => {
-            handleRoomMessage(message, setRoomInfo, setPlayers);
-          },
-          { receipt: receiptId },
-        );
-
-        await receiptPromise;
+        unsubscribe.current = subscribeRoom(roomId, message => {
+          handleRoomMessage(message, setRoomInfo, setPlayers);
+        });
 
         publishMessage("/app/room/join", { roomId });
       } catch (error) {
