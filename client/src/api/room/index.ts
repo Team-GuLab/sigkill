@@ -23,7 +23,6 @@ export const getRoomList = async <T = RoomListDto>(
   return response.data.result;
 };
 
-const PLAYER_COUNT = 0;
 const CAPACITY = 10;
 
 export const createRoom = async <T = RoomItem>({
@@ -32,10 +31,9 @@ export const createRoom = async <T = RoomItem>({
   const response = await axiosInstance.post<
     APIResponse<T>,
     AxiosResponse<APIResponse<T>>,
-    Pick<RoomItem, "roomTitle" | "playerCount" | "capacity">
+    Pick<RoomItem, "roomTitle" | "capacity">
   >(`/api/v1/rooms`, {
     roomTitle,
-    playerCount: PLAYER_COUNT,
     capacity: CAPACITY,
   });
 

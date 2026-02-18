@@ -13,6 +13,10 @@ import { Field, FieldLabel } from "@/ui/field";
 import { useCreateRoom } from "@/hooks/room/use-create-room";
 import { useState } from "react";
 import { toast } from "sonner";
+import { QUERY_KEYS } from "@/lib/constants";
+import { useQueryClient } from "@tanstack/react-query";
+import { ROUTE_GENERATORS } from "@/routes/paths";
+import { useNavigate } from "react-router";
 
 interface RoomCreateModalProps {
   open: boolean;
@@ -21,19 +25,22 @@ interface RoomCreateModalProps {
 
 export function RoomCreateModal({ open, onOpenChange }: RoomCreateModalProps) {
   const [title, setTitle] = useState("");
-
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { mutate: createRoom, isPending: isCreatingRoom } = useCreateRoom({
-    onSuccess: () => {
+    onSuccess: ({ roomId }) => {
       toast.success("방이 성공적으로 생성되었습니다!");
       onOpenChange(false);
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.room.all });
+      navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId));
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(error.message);
     },
   });
 
   const handleCreateRoomButtonClick = () => {
-    createRoom({ title });
+    createRoom({ roomTitle: title });
   };
 
   return (
@@ -49,7 +56,7 @@ export function RoomCreateModal({ open, onOpenChange }: RoomCreateModalProps) {
             id="room-title"
             placeholder="방 제목을 입력하세요"
             required
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={e => setTitle(e.target.value)}
           />
         </Field>
 

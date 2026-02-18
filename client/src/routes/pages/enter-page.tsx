@@ -1,9 +1,9 @@
-import { AppError } from "@/api/axios";
 import { guestLogin } from "@/api/user";
 import { useLogin } from "@/store/user-store";
 import { Button } from "@/ui/button";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
+import { ROUTE_PATHS } from "@/routes/paths";
 
 export default function EnterPage() {
   const navigate = useNavigate();
@@ -13,19 +13,10 @@ export default function EnterPage() {
     try {
       const user = await guestLogin();
       login(user);
-      navigate("/rooms");
+      navigate(ROUTE_PATHS.ROOM_LIST);
     } catch (error) {
-      if (error instanceof AppError) {
-        switch (error.status) {
-          case 401:
-            toast.error("인증 정보가 올바르지 않습니다.");
-            break;
-          default:
-            break;
-        }
-      }
-      toast.error("로그인에 실패했습니다. 잠시후 다시 시도해주세요.");
       console.error(error);
+      toast.error("로그인에 실패했습니다. 잠시후 다시 시도해주세요.");
     }
   };
 
