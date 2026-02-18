@@ -1,4 +1,4 @@
-import client from "./web-socket-client";
+import { getClient } from "./web-socket-client";
 import type { IMessage } from "@stomp/stompjs";
 
 /**
@@ -11,6 +11,8 @@ export const subscribeManager = <T>(
   destination: string,
   onMessage: (data: T) => void,
 ) => {
+  const client = getClient();
+
   if (!client.connected) {
     console.warn(`Subscribing to ${destination} but client is not connected.`);
   }

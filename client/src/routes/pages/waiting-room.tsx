@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import type { Player, RoomItem } from "@/api/room/types";
-import client, {
+import {
   connectWebSocket,
   disconnectWebSocket,
   publishMessage,
