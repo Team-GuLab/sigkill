@@ -10,7 +10,7 @@ server:
       cookie:
         name: JSESSIONID
         http-only: true
-        same-site: lax
+        same-site: none
         secure: true
         path: /
       timeout: 24h
