@@ -4,7 +4,7 @@ import java.util.List;
 
 public record Quiz(
         long quizId,
-        List<String> categoryIds,
+        String categoryId,
         String question,
         String explanation,
         long correctChoiceId,
@@ -12,7 +12,6 @@ public record Quiz(
         List<QuizChoice> choices
 ) {
     public Quiz {
-        categoryIds = List.copyOf(categoryIds);
         choices = List.copyOf(choices);
     }
 
