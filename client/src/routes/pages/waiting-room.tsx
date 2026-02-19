@@ -13,6 +13,7 @@ import PlayerList from "@/components/room/player-list";
 import { Button } from "@/ui/button";
 import { Play } from "lucide-react";
 import { ROUTE_PATHS } from "@/routes/paths";
+import { MAX_CAPACITY } from "@/constants/room";
 
 export type PlayerSlot = {
   slotIndex: number;
@@ -43,7 +44,7 @@ export default function WaitingRoom() {
 
   // 슬롯 배열 생성 (capacity 크기, 각 슬롯에 플레이어 또는 null)
   const playerSlots = useMemo<PlayerSlot[]>(() => {
-    const capacity = roomInfo?.capacity || 6;
+    const capacity = roomInfo?.capacity || MAX_CAPACITY;
     const slots: PlayerSlot[] = Array.from({ length: capacity }, (_, i) => ({
       slotIndex: i,
       player: null,
@@ -141,7 +142,10 @@ export default function WaitingRoom() {
         <h2 className="bg-background sticky top-0 z-10 mb-3 py-2 text-sm font-semibold">
           참가자 ({players.length}/{roomInfo?.capacity || 0}명)
         </h2>
-        <PlayerList slots={playerSlots} capacity={roomInfo?.capacity || 10} />
+        <PlayerList
+          slots={playerSlots}
+          capacity={roomInfo?.capacity || MAX_CAPACITY}
+        />
       </section>
 
       {/* 버튼 */}
