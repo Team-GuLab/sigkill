@@ -25,14 +25,6 @@ export const wsHandlers = [
           }
         }
 
-        // Receipt 헤더 확인 및 응답
-        const receiptMatch = message.match(/receipt:(.*)\n/);
-        if (receiptMatch) {
-          const receiptId = receiptMatch[1].trim();
-          console.log(`[MSW] Sending RECEIPT for subscription: ${receiptId}`);
-          client.send(`RECEIPT\nreceipt-id:${receiptId}\n\n\0`);
-        }
-
         // 1. CONNECT 프레임 처리
         if (message.startsWith("CONNECT")) {
           console.log("[MSW] Received STOMP CONNECT frame. Sending CONNECTED.");
@@ -43,27 +35,11 @@ export const wsHandlers = [
         if (message.startsWith("SEND")) {
           const destination = extractDestination(message);
 
-          // Body 파싱 로직 추가
-          let payload: any = {};
-          try {
-            // 헤더와 바디 사이의 빈 줄(\n\n)을 기준으로 분리
-            const parts = message.split("\n\n");
-            if (parts.length > 1) {
-              // 마지막의 null 문자(\0) 제거
-              const bodyStr = parts[1].replace(/\0/g, "");
-              if (bodyStr.trim()) {
-                payload = JSON.parse(bodyStr);
-              }
-            }
-          } catch (e) {
-            console.error("[MSW] Failed to parse SEND body:", e);
-          }
-
           console.log(`[MSW] Routing to destination: ${destination}`);
 
           switch (destination) {
             case "/app/room/join":
-              handleRoomJoin(room, currentSubscriptionId, payload);
+              handleRoomJoin(room, currentSubscriptionId);
               break;
 
             default:
