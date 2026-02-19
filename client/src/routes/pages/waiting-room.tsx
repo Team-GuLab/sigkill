@@ -11,9 +11,11 @@ import {
 } from "@/app/config/web-socket-client";
 import PlayerList from "@/components/room/player-list";
 import { Button } from "@/ui/button";
-import { Play } from "lucide-react";
 import { ROUTE_PATHS } from "@/routes/paths";
 import { MAX_CAPACITY } from "@/constants/room";
+import { useUser } from "@/store/user-store";
+import GameStartButton from "@/components/room/game-start-button";
+import ReadyButton from "@/components/room/ready-button";
 
 export type PlayerSlot = {
   slotIndex: number;
@@ -35,11 +37,15 @@ export default function WaitingRoom() {
     Map<number, number>
   >(new Map());
 
-  // TODO: 로그인 구현 시 반영
-  const currentUserId = 1;
+  const user = useUser();
+  const myUserId = user!.userId;
 
-  const isHost = currentUserId
-    ? players.find(p => p.userId === currentUserId)?.role === "HOST"
+  const isHost = myUserId
+    ? players.find(p => p.userId === myUserId)?.role === "HOST"
+    : false;
+
+  const myReadyStatus = myUserId
+    ? players.find(p => p.userId === myUserId)?.status === "READY"
     : false;
 
   // 슬롯 배열 생성 (capacity 크기, 각 슬롯에 플레이어 또는 null)
@@ -70,7 +76,7 @@ export default function WaitingRoom() {
       players.forEach(player => {
         if (!newMapping.has(player.userId)) {
           // 빈 슬롯 찾기 (가장 앞쪽부터)
-          const capacity = roomInfo?.capacity || 10;
+          const capacity = roomInfo?.capacity || MAX_CAPACITY;
           const occupiedSlots = new Set(newMapping.values());
 
           for (let i = 0; i < capacity; i++) {
@@ -103,12 +109,13 @@ export default function WaitingRoom() {
 
         // 웹소켓 메시지 핸들러 - 메시지 타입별로 상태 업데이트
         unsubscribe.current = subscribeRoom(roomId, message => {
-          handleRoomMessage(message, setRoomInfo, setPlayers);
+          handleRoomMessage(message, setRoomInfo, setPlayers, myUserId);
         });
 
         publishMessage("/app/room/join", { roomId });
       } catch (error) {
         console.error("Connection failed:", error);
+        navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
         toast.error("대기방 연결에 실패했습니다.");
       }
     };
@@ -152,35 +159,19 @@ export default function WaitingRoom() {
       <div className="bg-background sticky bottom-0 flex-none">
         <div className="flex h-10 items-center gap-2">
           <Button
+            disabled={myReadyStatus === true}
             variant="gray"
             className="text-md h-full w-28"
             onClick={() => {
-              navigate(ROUTE_PATHS.ROOM_LIST);
+              navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
             }}
           >
             나가기
           </Button>
           {isHost ? (
-            <Button
-              className="text-md h-full flex-1"
-              onClick={() => {
-                // 게임 시작 메시지 전송
-                publishMessage("/app/game/start", { roomId });
-              }}
-            >
-              <Play className="mr-2 h-4 w-4" />
-              게임 시작
-            </Button>
+            <GameStartButton roomId={roomId} />
           ) : (
-            <Button
-              className="text-md h-full flex-1"
-              onClick={() => {
-                // 준비 상태 토글 메시지 전송
-                publishMessage("/app/room/ready", { roomId });
-              }}
-            >
-              준비
-            </Button>
+            <ReadyButton roomId={roomId} myReadyStatus={myReadyStatus} />
           )}
         </div>
       </div>
