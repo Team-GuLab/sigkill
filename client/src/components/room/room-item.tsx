@@ -29,7 +29,7 @@ export default function RoomItem({
         throw new Error();
       }
 
-      navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId));
+      navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId), { replace: true });
     } catch (error) {
       if (error instanceof AppError) {
         toast.error(error.message);
