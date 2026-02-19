@@ -6,6 +6,7 @@
 
     const loginBtn = document.getElementById("loginBtn");
     const loadRoomsBtn = document.getElementById("loadRoomsBtn");
+    const createRoomFlowBtn = document.getElementById("createRoomFlowBtn");
     const joinFlowBtn = document.getElementById("joinFlowBtn");
     const readyBtn = document.getElementById("readyBtn");
     const unreadyBtn = document.getElementById("unreadyBtn");
@@ -16,6 +17,8 @@
 
     const roomsPageInput = document.getElementById("roomsPage");
     const roomsSizeInput = document.getElementById("roomsSize");
+    const createRoomTitleInput = document.getElementById("createRoomTitle");
+    const createRoomCapacityInput = document.getElementById("createRoomCapacity");
 
     const joinRoomIdInput = document.getElementById("joinRoomId");
     const readyRoomIdInput = document.getElementById("readyRoomId");
@@ -31,6 +34,9 @@
     const joinRequestEl = document.getElementById("joinRequest");
     const joinResponseEl = document.getElementById("joinResponse");
     const joinSendEl = document.getElementById("joinSend");
+    const createRequestEl = document.getElementById("createRequest");
+    const createResponseEl = document.getElementById("createResponse");
+    const createWsResultEl = document.getElementById("createWsResult");
     const readyResponseEl = document.getElementById("readyResponse");
     const leaveResponseEl = document.getElementById("leaveResponse");
 
@@ -198,6 +204,84 @@
         log("2) 방 목록 조회 성공");
     }
 
+    function extractRoomIdFromCreateResponse(body) {
+        if (!body || !body.result) {
+            return null;
+        }
+
+        if (body.result.room && body.result.room.roomId) {
+            return String(body.result.room.roomId);
+        }
+
+        if (body.result.roomId) {
+            return String(body.result.roomId);
+        }
+
+        return null;
+    }
+
+    function syncRoomIdToAllInputs(roomId) {
+        joinRoomIdInput.value = roomId;
+        readyRoomIdInput.value = roomId;
+        leaveRoomIdInput.value = roomId;
+        refreshComputedFields();
+    }
+
+    async function executeCreateRoomFlow() {
+        const roomTitle = getValueOrThrow(createRoomTitleInput, "roomTitle");
+        const capacityRaw = createRoomCapacityInput.value.trim();
+        const payload = {roomTitle: roomTitle};
+
+        if (capacityRaw) {
+            const parsedCapacity = Number(capacityRaw);
+            if (!Number.isInteger(parsedCapacity)) {
+                throw new Error("capacity는 정수여야 합니다.");
+            }
+            payload.capacity = parsedCapacity;
+        }
+
+        setPanel(createRequestEl, {
+            method: "POST",
+            path: "/api/v1/rooms",
+            body: payload
+        });
+        setPanel(createWsResultEl, "-");
+
+        const response = await fetchJson("/api/v1/rooms", {
+            method: "POST",
+            credentials: "include",
+            headers: {"content-type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+
+        setPanel(createResponseEl, getResponseBodyForPanel(response));
+        if (!response.ok) {
+            throw new Error("방 생성 실패: HTTP " + response.status);
+        }
+
+        const createdRoomId = extractRoomIdFromCreateResponse(response.body);
+        if (!createdRoomId) {
+            throw new Error("방 생성 응답에서 roomId를 찾을 수 없습니다.");
+        }
+
+        syncRoomIdToAllInputs(createdRoomId);
+
+        const connectResult = await connectStompIfNeeded();
+        const errorSubscribeResult = subscribeErrorQueueOnce();
+        const pongSubscribeResult = subscribePongQueueOnce();
+        const roomSubscribeResult = subscribeRoomTopic(createdRoomId);
+
+        setPanel(createWsResultEl, {
+            wsConnected: connectResult,
+            errorSubscription: errorSubscribeResult,
+            pongSubscription: pongSubscribeResult,
+            roomSubscription: roomSubscribeResult,
+            autoFilledRoomId: createdRoomId
+        });
+
+        log("3) 방 생성 통합 실행 완료 (roomId=" + createdRoomId + ")");
+    }
+
     async function executeSeedRoomsTop() {
         const response = await fetchJson("/api/v1/test/seed-rooms", {
             method: "POST",
@@ -330,7 +414,7 @@
         subscribeRoomTopic(roomId);
         const sendResult = sendRoomCommand("join", roomId);
         setPanel(joinSendEl, sendResult);
-        log("3) 방 참가 통합 실행 완료");
+        log("4) 방 참가 통합 실행 완료");
     }
 
     async function executePing() {
@@ -346,7 +430,7 @@
         normalizeRoomIdAcrossSections(readyRoomIdInput);
         const sendResult = sendRoomCommand(command, roomId);
         setPanel(readyResponseEl, sendResult);
-        log("4) " + command.toUpperCase() + " 전송 완료");
+        log("5) " + command.toUpperCase() + " 전송 완료");
     }
 
     function disconnectStomp() {
@@ -381,9 +465,9 @@
             setPanel(leaveResponseEl, sendResult);
             await new Promise((resolve) => setTimeout(resolve, 150));
             disconnectStomp();
-            log("5) LEAVE 전송 + WS 연결 해제 완료");
+            log("6) LEAVE 전송 + WS 연결 해제 완료");
         } else {
-            log("5) WS 미연결 상태로 연결해제 단계만 스킵");
+            log("6) WS 미연결 상태로 연결해제 단계만 스킵");
         }
     }
 
@@ -404,6 +488,7 @@
 
     bindAsync(loginBtn, executeGuestLogin);
     bindAsync(loadRoomsBtn, executeLoadRooms);
+    bindAsync(createRoomFlowBtn, executeCreateRoomFlow);
     bindAsync(joinFlowBtn, executeJoinFlow);
     bindAsync(readyBtn, async () => executeReadyLike("ready"));
     bindAsync(unreadyBtn, async () => executeReadyLike("unready"));
