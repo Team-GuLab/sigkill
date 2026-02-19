@@ -12,6 +12,7 @@ import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomResponseType;
 import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
+import com.gulab.sigkillserver.domain.room.model.ReadyStatus;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.model.RoomStatus;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
@@ -269,11 +270,14 @@ class RoomServiceTest {
             assertThat(playerRepository.existsByRoomIdAndUserId(room.getRoomId(), host.getUserId())).isTrue();
 
             // 응답 DTO 확인
-            assertThat(response.roomId()).isEqualTo(room.getRoomId());
-            assertThat(response.roomTitle()).isEqualTo("방1");
-            assertThat(response.playerCount()).isEqualTo(1);
-            assertThat(response.capacity()).isEqualTo(6);
-            assertThat(response.status()).isEqualTo(RoomStatus.WAITING.name());
+            assertThat(response.room().roomId()).isEqualTo(room.getRoomId());
+            assertThat(response.room().roomTitle()).isEqualTo("방1");
+            assertThat(response.room().hostId()).isEqualTo(host.getUserId());
+            assertThat(response.room().capacity()).isEqualTo(6);
+            assertThat(response.room().status()).isEqualTo(RoomStatus.WAITING);
+            assertThat(response.players()).hasSize(1);
+            assertThat(response.players().getFirst().userId()).isEqualTo(host.getUserId());
+            assertThat(response.players().getFirst().status()).isEqualTo(ReadyStatus.NOT_READY);
         }
 
         @Test
@@ -287,8 +291,8 @@ class RoomServiceTest {
             // then
             Room room = roomRepository.findAll().getFirst();
             assertThat(room.getCapacity()).isEqualTo(6);
-            assertThat(response.capacity()).isEqualTo(6);
-            assertThat(response.playerCount()).isEqualTo(1);
+            assertThat(response.room().capacity()).isEqualTo(6);
+            assertThat(response.players()).hasSize(1);
         }
 
         @Test
@@ -302,7 +306,7 @@ class RoomServiceTest {
             // then
             Room room = roomRepository.findAll().getFirst();
             assertThat(room.getRoomTitle()).isEqualTo("공백 포함 제목");
-            assertThat(response.roomTitle()).isEqualTo("공백 포함 제목");
+            assertThat(response.room().roomTitle()).isEqualTo("공백 포함 제목");
         }
 
         @Test

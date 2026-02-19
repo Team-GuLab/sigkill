@@ -1,9 +1,9 @@
 package com.gulab.sigkillserver.domain.test.controller;
 
 import com.gulab.sigkillserver.common.BaseResponse;
-import com.gulab.sigkillserver.domain.user.dto.rest.response.LoginResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
+import com.gulab.sigkillserver.domain.user.dto.rest.response.LoginResponse;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
@@ -106,7 +106,7 @@ public class TestController {
 
         LoginResponse host = users.get(startIndex);
         RoomCreateResponse roomCreateResponse = roomService.createRoom(roomTitle, capacity, host.userId());
-        String roomId = roomCreateResponse.roomId();
+        String roomId = roomCreateResponse.room().roomId();
 
         for (int i = 1; i < targetOccupancy; i++) {
             LoginResponse guest = users.get(startIndex + i);

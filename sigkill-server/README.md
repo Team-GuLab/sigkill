@@ -40,6 +40,27 @@
   - 방 목록 조회 (페이징)
 - `POST /api/v1/rooms`
   - 방 생성
+  - 응답 `result` 예시:
+
+```json
+{
+  "room": {
+    "roomId": "5340",
+    "roomTitle": "새 퀴즈방",
+    "hostId": 69,
+    "capacity": 6,
+    "status": "WAITING"
+  },
+  "players": [
+    {
+      "userId": 69,
+      "nickname": "미소짓는 구렁이",
+      "status": "NOT_READY"
+    }
+  ]
+}
+```
+
 - `GET /api/v1/rooms/{roomId}/availability`
   - 방 입장 가능 여부 확인
 
@@ -84,7 +105,7 @@
 ### 2) Ping / Pong
 
 - `SEND /app/ping` -> `SUBSCRIBE /user/queue/pong`
-- 응답 필드: `type`, `userId`, `serverTime(UTC ISO-8601)`
+- 응답 필드: `type`, `userId`, `serverTime(epoch milliseconds)`
 
 ### 3) 비정상 종료 자동 퇴장 처리
 
@@ -106,12 +127,16 @@
 
 1. 게스트 로그인 실행
 2. 방 목록 조회 또는 테스트 데이터 생성
-3. 방 참가 통합 실행
+3. 방 생성 통합 실행
+   - `POST /api/v1/rooms` 실행
+   - 생성 응답에서 `roomId` 추출
+   - `/ws` 연결 후 `/user/queue/errors`, `/user/queue/pong`, `/topic/room/{roomId}` 구독
+4. 방 참가 통합 실행
    - availability 확인
-   - `/user/queue/errors`, `/topic/room/{roomId}` 구독
+   - `/user/queue/errors`, `/user/queue/pong`, `/topic/room/{roomId}` 구독
    - `SEND /app/room/join` (구독 중인 room topic으로 `PLAYER_JOIN` 수신)
-4. `READY/UNREADY`, `LEAVE + DISCONNECT` 테스트
-5. `PING 전송`으로 pong 응답 확인
+5. `READY/UNREADY`, `LEAVE + DISCONNECT` 테스트
+6. `PING 전송`으로 pong 응답 확인
 
 정확한 payload, 에러 코드, 이벤트 계약은 `docs/STOMP_MESSAGE_SPEC.md`를 기준으로 확인하세요.
 
