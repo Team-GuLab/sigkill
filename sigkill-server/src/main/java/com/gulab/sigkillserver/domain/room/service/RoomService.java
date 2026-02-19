@@ -155,7 +155,7 @@ public class RoomService {
                 playerRepository.create(hostPlayer);
 
                 log.info("방 생성 완료 - roomId: {}, hostId: {}", roomId, userId);
-                return RoomCreateResponse.of(room);
+                return RoomCreateResponse.of(room, hostPlayer);
             } catch (IllegalStateException e) {
                 log.debug("Room ID 중복 발생, 재시도 중 (attempt: {}): {}", i + 1, e.getMessage());
             }
