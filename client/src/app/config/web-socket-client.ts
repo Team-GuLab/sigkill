@@ -1,19 +1,28 @@
 import { Client } from "@stomp/stompjs";
 
 let client: Client | null = null;
+let onConnectedCallback: (() => void) | null = null;
 
 const getClient = (): Client => {
   if (!client) {
     client = new Client({
       brokerURL: import.meta.env.VITE_WS_URL,
-      reconnectDelay: 0, // TODO: 이후 상황에 따라 변경 필요
+      reconnectDelay: 5000,
     });
   }
   return client;
 };
 
-export const connectWebSocket = async (): Promise<void> => {
+/**
+ * WebSocket 연결
+ * @param onConnected - 초기 연결 및 재연결 시마다 호출되는 콜백
+ */
+export const connectWebSocket = async (
+  onConnected?: () => void,
+): Promise<void> => {
   const wsClient = getClient();
+
+  onConnectedCallback = onConnected ?? null;
 
   // 안전한 재연결을 위한 이미 활성화된 상태라면 연결 해제 선행
   if (wsClient.active) {
@@ -24,6 +33,8 @@ export const connectWebSocket = async (): Promise<void> => {
     wsClient.onConnect = () => {
       console.log("Connected to WebSocket");
       resolve();
+      // 구독 재설정 등 복구 작업
+      onConnectedCallback?.();
     };
 
     wsClient.onStompError = frame => {
@@ -36,10 +47,10 @@ export const connectWebSocket = async (): Promise<void> => {
 
     wsClient.onWebSocketError = event => {
       console.error("WebSocket error", event);
-      reject(new Error("WebSocket connection failed"));
+      reject(new Error("WebSocket connection error"));
     };
 
-    wsClient.onDisconnect = frame => {
+    wsClient.onDisconnect = () => {
       console.log("Disconnected successfully");
     };
 
@@ -52,8 +63,9 @@ export const connectWebSocket = async (): Promise<void> => {
 };
 
 export const disconnectWebSocket = async () => {
-  // client가 아직 생성되지 않았다면 아무것도 하지 않음
   if (!client) return;
+
+  onConnectedCallback = null;
 
   if (client.active) {
     await client.deactivate();
