@@ -62,7 +62,7 @@ export const useRoomSocket = (roomId: string | undefined, myUserId: number) => {
       } catch (error) {
         console.error("Connection failed:", error);
         navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
-        toast.error("대기방 연결에 실패했습니다.");
+        toast.error("연결 중 오류로 인해 방 목록으로 이동합니다.");
       }
     };
 
