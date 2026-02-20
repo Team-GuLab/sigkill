@@ -1,15 +1,6 @@
-import { subscribeError } from "@/api/error/subscribe-error";
-import { handleRoomMessage } from "@/api/room/handle-room-message";
-import { subscribeRoom } from "@/api/room/subscribe-room";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
-import { toast } from "sonner";
-import type { Player, RoomItem } from "@/api/room/types";
-import {
-  connectWebSocket,
-  disconnectWebSocket,
-  publishMessage,
-} from "@/app/config/web-socket-client";
+import type { Player } from "@/api/room/types";
 import PlayerList from "@/components/room/player-list";
 import { Button } from "@/ui/button";
 import { ROUTE_PATHS } from "@/routes/paths";
@@ -17,7 +8,7 @@ import { MAX_CAPACITY } from "@/constants/room";
 import { useUser } from "@/store/user-store";
 import GameStartButton from "@/components/room/game-start-button";
 import ReadyButton from "@/components/room/ready-button";
-import { handleErrorMessage } from "@/api/error/handle-error-message";
+import { useRoomSocket } from "@/hooks/room/use-room-socket";
 
 export type PlayerSlot = {
   slotIndex: number;
@@ -27,21 +18,16 @@ export type PlayerSlot = {
 export default function WaitingRoom() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const [roomInfo, setRoomInfo] = useState<Omit<
-    RoomItem,
-    "playerCount" | "canJoin"
-  > | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const unsubscribe = useRef<(() => void) | undefined>(undefined);
-  const errorUnsubscribe = useRef<(() => void) | undefined>(undefined);
+
+  const user = useUser();
+  const myUserId = user!.userId;
+
+  const { roomInfo, players } = useRoomSocket(roomId, myUserId);
 
   // userId -> slotIndex 매핑 (플레이어를 특정 슬롯에 고정)
   const [playerSlotMapping, setPlayerSlotMapping] = useState<
     Map<number, number>
   >(new Map());
-
-  const user = useUser();
-  const myUserId = user!.userId;
 
   const isHost = myUserId
     ? players.find(p => p.userId === myUserId)?.role === "HOST"
@@ -102,46 +88,6 @@ export default function WaitingRoom() {
       return newMapping;
     });
   }, [players, roomInfo?.capacity]);
-
-  useEffect(() => {
-    if (!roomId) return;
-
-    const setupConnection = async () => {
-      try {
-        await connectWebSocket();
-
-        // 웹소켓 메시지 핸들러 - 메시지 타입별로 상태 업데이트
-        unsubscribe.current = subscribeRoom(roomId, message => {
-          handleRoomMessage(message, setRoomInfo, setPlayers, myUserId);
-        });
-
-        // 에러 메시지 구독
-        errorUnsubscribe.current = subscribeError(error => {
-          handleErrorMessage(error);
-        });
-
-        publishMessage("/app/room/join", { roomId });
-      } catch (error) {
-        console.error("Connection failed:", error);
-        navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
-        toast.error("대기방 연결에 실패했습니다.");
-      }
-    };
-
-    setupConnection();
-
-    return () => {
-      if (unsubscribe.current) {
-        console.log("unsubscribe");
-        unsubscribe.current();
-      }
-      if (errorUnsubscribe.current) {
-        console.log("errorUnsubscribe");
-        errorUnsubscribe.current();
-      }
-      disconnectWebSocket();
-    };
-  }, [roomId]);
 
   return (
     <div className="scrollbar-hide flex h-[calc(100vh-8rem)] flex-col p-2 pt-6">
