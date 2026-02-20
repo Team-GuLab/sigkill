@@ -1,3 +1,4 @@
+import { subscribeError } from "@/api/error/subscribe-error";
 import { handleRoomMessage } from "@/api/room/handle-room-message";
 import { subscribeRoom } from "@/api/room/subscribe-room";
 import { useEffect, useState, useMemo, useRef } from "react";
@@ -16,6 +17,7 @@ import { MAX_CAPACITY } from "@/constants/room";
 import { useUser } from "@/store/user-store";
 import GameStartButton from "@/components/room/game-start-button";
 import ReadyButton from "@/components/room/ready-button";
+import { handleErrorMessage } from "@/api/error/handle-error-message";
 
 export type PlayerSlot = {
   slotIndex: number;
@@ -31,6 +33,7 @@ export default function WaitingRoom() {
   > | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const unsubscribe = useRef<(() => void) | undefined>(undefined);
+  const errorUnsubscribe = useRef<(() => void) | undefined>(undefined);
 
   // userId -> slotIndex 매핑 (플레이어를 특정 슬롯에 고정)
   const [playerSlotMapping, setPlayerSlotMapping] = useState<
@@ -112,6 +115,11 @@ export default function WaitingRoom() {
           handleRoomMessage(message, setRoomInfo, setPlayers, myUserId);
         });
 
+        // 에러 메시지 구독
+        errorUnsubscribe.current = subscribeError(error => {
+          handleErrorMessage(error);
+        });
+
         publishMessage("/app/room/join", { roomId });
       } catch (error) {
         console.error("Connection failed:", error);
@@ -126,6 +134,10 @@ export default function WaitingRoom() {
       if (unsubscribe.current) {
         console.log("unsubscribe");
         unsubscribe.current();
+      }
+      if (errorUnsubscribe.current) {
+        console.log("errorUnsubscribe");
+        errorUnsubscribe.current();
       }
       disconnectWebSocket();
     };
