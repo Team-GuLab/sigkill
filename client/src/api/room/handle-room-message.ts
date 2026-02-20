@@ -4,10 +4,18 @@ import type { RoomWebSocketMessage, RoomItem, Player } from "./types";
 
 type RoomInfoState = Omit<RoomItem, "playerCount" | "canJoin"> | null;
 
+/**
+ * 대기방 관련 stomp 메시지 핸들러
+ * @param message - 방 stomp 메시지
+ * @param setRoomInfo - 방 정보 상태 설정 함수
+ * @param setPlayers - 플레이어 상태 설정 함수
+ * @param myUserId - 내 유저 ID
+ */
 export const handleRoomMessage = (
   message: RoomWebSocketMessage,
   setRoomInfo: Dispatch<SetStateAction<RoomInfoState>>,
   setPlayers: Dispatch<SetStateAction<Player[]>>,
+  myUserId: number,
 ) => {
   switch (message.type) {
     case "PLAYER_JOIN":
@@ -43,24 +51,34 @@ export const handleRoomMessage = (
 
     case "PLAYER_READY":
       // 플레이어 준비 상태 변경 시
+      const readyPlayer = message.player;
       setPlayers(prevPlayers => {
-        const readyPlayer = message.player;
-        toast.info(`${readyPlayer.nickname}님이 준비했습니다.`);
-        return prevPlayers.map(p =>
-          p.userId === readyPlayer.userId ? { ...p, status: "READY" } : p,
-        );
+        return prevPlayers.map(p => {
+          return p.userId === readyPlayer?.userId
+            ? { ...p, status: "READY" }
+            : p;
+        });
       });
+
+      if (myUserId !== readyPlayer?.userId) {
+        toast.info(`${readyPlayer?.nickname}님이 준비했습니다.`);
+      }
       break;
 
     case "PLAYER_UNREADY":
       // 플레이어 준비 취소 시
+      const unreadyPlayer = message.player;
       setPlayers(prevPlayers => {
-        const unreadyPlayer = message.player;
-        toast.info(`${unreadyPlayer.nickname}님이 준비 취소했습니다.`);
         return prevPlayers.map(p =>
-          p.userId === unreadyPlayer.userId ? { ...p, status: "NOT_READY" } : p,
+          p.userId === unreadyPlayer?.userId
+            ? { ...p, status: "NOT_READY" }
+            : p,
         );
       });
+
+      if (myUserId !== unreadyPlayer?.userId) {
+        toast.info(`${unreadyPlayer?.nickname}님이 준비 취소했습니다.`);
+      }
       break;
 
     case "HOST_CHANGED":

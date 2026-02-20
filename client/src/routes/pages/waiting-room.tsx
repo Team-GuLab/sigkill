@@ -1,18 +1,14 @@
-import { handleRoomMessage } from "@/api/room/handle-room-message";
-import { subscribeRoom } from "@/api/room/subscribe-room";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
-import { toast } from "sonner";
-import type { Player, RoomItem } from "@/api/room/types";
-import {
-  connectWebSocket,
-  disconnectWebSocket,
-  publishMessage,
-} from "@/app/config/web-socket-client";
+import type { Player } from "@/api/room/types";
 import PlayerList from "@/components/room/player-list";
 import { Button } from "@/ui/button";
-import { Play } from "lucide-react";
 import { ROUTE_PATHS } from "@/routes/paths";
+import { MAX_CAPACITY } from "@/constants/room";
+import { useUser } from "@/store/user-store";
+import GameStartButton from "@/components/room/game-start-button";
+import ReadyButton from "@/components/room/ready-button";
+import { useRoomSocket } from "@/hooks/room/use-room-socket";
 
 export type PlayerSlot = {
   slotIndex: number;
@@ -22,28 +18,28 @@ export type PlayerSlot = {
 export default function WaitingRoom() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const [roomInfo, setRoomInfo] = useState<Omit<
-    RoomItem,
-    "playerCount" | "canJoin"
-  > | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const unsubscribe = useRef<(() => void) | undefined>(undefined);
+
+  const user = useUser();
+  const myUserId = user!.userId;
+
+  const { roomInfo, players } = useRoomSocket(roomId, myUserId);
 
   // userId -> slotIndex 매핑 (플레이어를 특정 슬롯에 고정)
   const [playerSlotMapping, setPlayerSlotMapping] = useState<
     Map<number, number>
   >(new Map());
 
-  // TODO: 로그인 구현 시 반영
-  const currentUserId = 1;
+  const isHost = myUserId
+    ? players.find(p => p.userId === myUserId)?.role === "HOST"
+    : false;
 
-  const isHost = currentUserId
-    ? players.find(p => p.userId === currentUserId)?.role === "HOST"
+  const myReadyStatus = myUserId
+    ? players.find(p => p.userId === myUserId)?.status === "READY"
     : false;
 
   // 슬롯 배열 생성 (capacity 크기, 각 슬롯에 플레이어 또는 null)
   const playerSlots = useMemo<PlayerSlot[]>(() => {
-    const capacity = roomInfo?.capacity || 6;
+    const capacity = roomInfo?.capacity || MAX_CAPACITY;
     const slots: PlayerSlot[] = Array.from({ length: capacity }, (_, i) => ({
       slotIndex: i,
       player: null,
@@ -69,7 +65,7 @@ export default function WaitingRoom() {
       players.forEach(player => {
         if (!newMapping.has(player.userId)) {
           // 빈 슬롯 찾기 (가장 앞쪽부터)
-          const capacity = roomInfo?.capacity || 10;
+          const capacity = roomInfo?.capacity || MAX_CAPACITY;
           const occupiedSlots = new Set(newMapping.values());
 
           for (let i = 0; i < capacity; i++) {
@@ -93,36 +89,6 @@ export default function WaitingRoom() {
     });
   }, [players, roomInfo?.capacity]);
 
-  useEffect(() => {
-    if (!roomId) return;
-
-    const setupConnection = async () => {
-      try {
-        await connectWebSocket();
-
-        // 웹소켓 메시지 핸들러 - 메시지 타입별로 상태 업데이트
-        unsubscribe.current = subscribeRoom(roomId, message => {
-          handleRoomMessage(message, setRoomInfo, setPlayers);
-        });
-
-        publishMessage("/app/room/join", { roomId });
-      } catch (error) {
-        console.error("Connection failed:", error);
-        toast.error("대기방 연결에 실패했습니다.");
-      }
-    };
-
-    setupConnection();
-
-    return () => {
-      if (unsubscribe.current) {
-        console.log("unsubscribe");
-        unsubscribe.current();
-      }
-      disconnectWebSocket();
-    };
-  }, [roomId]);
-
   return (
     <div className="scrollbar-hide flex h-[calc(100vh-8rem)] flex-col p-2 pt-6">
       <div className="mb-4 flex-none">
@@ -141,42 +107,29 @@ export default function WaitingRoom() {
         <h2 className="bg-background sticky top-0 z-10 mb-3 py-2 text-sm font-semibold">
           참가자 ({players.length}/{roomInfo?.capacity || 0}명)
         </h2>
-        <PlayerList slots={playerSlots} capacity={roomInfo?.capacity || 10} />
+        <PlayerList
+          slots={playerSlots}
+          capacity={roomInfo?.capacity || MAX_CAPACITY}
+        />
       </section>
 
       {/* 버튼 */}
       <div className="bg-background sticky bottom-0 flex-none">
         <div className="flex h-10 items-center gap-2">
           <Button
+            disabled={myReadyStatus === true}
             variant="gray"
             className="text-md h-full w-28"
             onClick={() => {
-              navigate(ROUTE_PATHS.ROOM_LIST);
+              navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
             }}
           >
             나가기
           </Button>
           {isHost ? (
-            <Button
-              className="text-md h-full flex-1"
-              onClick={() => {
-                // 게임 시작 메시지 전송
-                publishMessage("/app/game/start", { roomId });
-              }}
-            >
-              <Play className="mr-2 h-4 w-4" />
-              게임 시작
-            </Button>
+            <GameStartButton roomId={roomId} />
           ) : (
-            <Button
-              className="text-md h-full flex-1"
-              onClick={() => {
-                // 준비 상태 토글 메시지 전송
-                publishMessage("/app/room/ready", { roomId });
-              }}
-            >
-              준비
-            </Button>
+            <ReadyButton roomId={roomId} myReadyStatus={myReadyStatus} />
           )}
         </div>
       </div>
