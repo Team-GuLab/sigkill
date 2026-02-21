@@ -55,7 +55,7 @@ export const wsHandlers = [
       }
     });
 
-    client.addEventListener("close", event => {
+    client.addEventListener("close", () => {
       console.log("Client is closing the connection");
     });
   }),
