@@ -32,6 +32,7 @@ export function RoomCreateModal({ open, onOpenChange }: RoomCreateModalProps) {
         state: {
           players,
         },
+        replace: true,
       });
     },
     onError: error => {
