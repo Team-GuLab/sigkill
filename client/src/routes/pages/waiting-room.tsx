@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import type { Player } from "@/api/room/types";
 import PlayerList from "@/components/room/player-list";
 import { Button } from "@/ui/button";
@@ -9,6 +9,7 @@ import { useUser } from "@/store/user-store";
 import GameStartButton from "@/components/room/game-start-button";
 import ReadyButton from "@/components/room/ready-button";
 import { useRoomSocket } from "@/hooks/room/use-room-socket";
+import { WaitingRoomSkeleton } from "@/components/room/waiting-room-skeleton";
 
 export type PlayerSlot = {
   slotIndex: number;
@@ -17,12 +18,21 @@ export type PlayerSlot = {
 
 export default function WaitingRoom() {
   const { roomId } = useParams<{ roomId: string }>();
+
+  const location = useLocation();
+  const state = location.state as { players: Player[] } | null;
+  const initialPlayers = state?.players ?? [];
+
   const navigate = useNavigate();
 
   const user = useUser();
   const myUserId = user!.userId;
 
-  const { roomInfo, players } = useRoomSocket(roomId, myUserId);
+  const { roomInfo, players, isPending } = useRoomSocket({
+    roomId,
+    myUserId,
+    initialPlayers,
+  });
 
   // userId -> slotIndex 매핑 (플레이어를 특정 슬롯에 고정)
   const [playerSlotMapping, setPlayerSlotMapping] = useState<
@@ -88,6 +98,10 @@ export default function WaitingRoom() {
       return newMapping;
     });
   }, [players, roomInfo?.capacity]);
+
+  if (isPending) {
+    return <WaitingRoomSkeleton />;
+  }
 
   return (
     <div className="scrollbar-hide flex h-[calc(100vh-8rem)] flex-col p-2 pt-6">

@@ -13,8 +13,6 @@ import { Field, FieldLabel } from "@/ui/field";
 import { useCreateRoom } from "@/hooks/room/use-create-room";
 import { useState } from "react";
 import { toast } from "sonner";
-import { QUERY_KEYS } from "@/lib/constants";
-import { useQueryClient } from "@tanstack/react-query";
 import { ROUTE_GENERATORS } from "@/routes/paths";
 import { useNavigate } from "react-router";
 
@@ -25,14 +23,16 @@ interface RoomCreateModalProps {
 
 export function RoomCreateModal({ open, onOpenChange }: RoomCreateModalProps) {
   const [title, setTitle] = useState("");
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { mutate: createRoom, isPending: isCreatingRoom } = useCreateRoom({
-    onSuccess: ({ roomId }) => {
+    onSuccess: ({ room, players }) => {
       toast.success("방이 성공적으로 생성되었습니다!");
       onOpenChange(false);
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.room.all });
-      navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId));
+      navigate(ROUTE_GENERATORS.WAITING_ROOM(room.roomId), {
+        state: {
+          players,
+        },
+      });
     },
     onError: error => {
       toast.error(error.message);
