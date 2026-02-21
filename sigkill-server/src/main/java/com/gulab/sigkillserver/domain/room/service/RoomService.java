@@ -19,11 +19,11 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_A
 import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_NOT_FOUND;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
-import com.gulab.sigkillserver.domain.room.dto.service.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;

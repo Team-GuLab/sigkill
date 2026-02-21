@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.gulab.sigkillserver.domain.room.dto.service.LeaveRoomResult;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.model.Player;
@@ -31,7 +31,8 @@ class StompEventListenerTest {
     private final RoomService roomService = mock(RoomService.class);
     private final PlayerRepository playerRepository = mock(PlayerRepository.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
-    private final StompEventListener stompEventListener = new StompEventListener(roomService, playerRepository, messagingTemplate);
+    private final StompEventListener stompEventListener = new StompEventListener(roomService, playerRepository,
+            messagingTemplate);
 
     @Test
     void disconnect_시_플레이어가_있으면_자동_퇴장_이벤트를_브로드캐스트한다() {
