@@ -15,18 +15,29 @@ import { ROUTE_PATHS } from "@/routes/paths";
 import type { Player, RoomItem } from "@/api/room/types";
 
 /**
- * 대기방 소켓 연결 및 상태 관리
+ * 대기방 웹소켓 연결 및 상태 관리
  * @param roomId - 방 ID
  * @param myUserId - 내 유저 ID
+ * @param initialPlayers - 초기 플레이어 목록
  * @returns - 방 정보와 플레이어 목록
  */
-export const useRoomSocket = (roomId: string | undefined, myUserId: number) => {
+interface UseRoomSocketProps {
+  roomId: string | undefined;
+  myUserId: number;
+  initialPlayers: Player[];
+}
+export const useRoomSocket = ({
+  roomId,
+  myUserId,
+  initialPlayers,
+}: UseRoomSocketProps) => {
   const navigate = useNavigate();
+  const [isPending, setIsPending] = useState(false);
   const [roomInfo, setRoomInfo] = useState<Omit<
     RoomItem,
     "playerCount" | "canJoin"
   > | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [players, setPlayers] = useState<Player[]>(initialPlayers);
 
   const unsubscribe = useRef<(() => void) | undefined>(undefined);
   const errorUnsubscribe = useRef<(() => void) | undefined>(undefined);
@@ -36,6 +47,7 @@ export const useRoomSocket = (roomId: string | undefined, myUserId: number) => {
 
     const setupConnection = async () => {
       try {
+        setIsPending(true);
         await connectWebSocket();
         const client = getClient();
 
@@ -63,6 +75,8 @@ export const useRoomSocket = (roomId: string | undefined, myUserId: number) => {
         console.error("Connection failed:", error);
         navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
         toast.error("연결 중 오류로 인해 방 목록으로 이동합니다.");
+      } finally {
+        setIsPending(false);
       }
     };
 
@@ -78,5 +92,5 @@ export const useRoomSocket = (roomId: string | undefined, myUserId: number) => {
     };
   }, [roomId, myUserId, navigate]);
 
-  return { roomInfo, players };
+  return { roomInfo, players, isPending };
 };
