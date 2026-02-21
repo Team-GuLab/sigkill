@@ -56,13 +56,15 @@
   "player": {
     "userId": 2,
     "nickname": "귀여운사자",
-    "status": "NOT_READY"
+    "status": "NOT_READY",
+    "role": "GUEST"
   }
 }
 ```
 
 - `RoomInfo.status`: `WAITING | INGAME`
 - `PlayerInfo.status`: `READY | NOT_READY`
+- `PlayerInfo.role`: `HOST | GUEST`
 
 ## 5. Room 이벤트 계약
 
@@ -86,12 +88,14 @@
     {
       "userId": 1,
       "nickname": "방장",
-      "status": "NOT_READY"
+      "status": "NOT_READY",
+      "role": "HOST"
     },
     {
       "userId": 2,
       "nickname": "참가자",
-      "status": "NOT_READY"
+      "status": "NOT_READY",
+      "role": "GUEST"
     }
   ]
 }
@@ -113,7 +117,8 @@
   "player": {
     "userId": 2,
     "nickname": "참가자",
-    "status": "READY"
+    "status": "READY",
+    "role": "GUEST"
   }
 }
 ```
@@ -135,12 +140,14 @@
   "newHost": {
     "userId": 3,
     "nickname": "새 방장",
-    "status": "NOT_READY"
+    "status": "NOT_READY",
+    "role": "HOST"
   },
   "oldHost": {
     "userId": 1,
     "nickname": "이전 방장",
-    "status": "NOT_READY"
+    "status": "NOT_READY",
+    "role": "GUEST"
   },
   "reason": "HOST_LEFT"
 }
@@ -158,7 +165,8 @@
   "player": {
     "userId": 2,
     "nickname": "참가자",
-    "status": "READY"
+    "status": "READY",
+    "role": "GUEST"
   },
   "allReady": false
 }
@@ -180,7 +188,8 @@
   "player": {
     "userId": 2,
     "nickname": "참가자",
-    "status": "NOT_READY"
+    "status": "NOT_READY",
+    "role": "GUEST"
   }
 }
 ```

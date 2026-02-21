@@ -1,4 +1,4 @@
-package com.gulab.sigkillserver.domain.room.dto.service;
+package com.gulab.sigkillserver.domain.room.dto.rest.response;
 
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;

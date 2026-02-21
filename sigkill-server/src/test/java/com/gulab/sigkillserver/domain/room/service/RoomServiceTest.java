@@ -9,6 +9,7 @@ import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomResponseType;
+import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerRole;
 import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
@@ -278,6 +279,7 @@ class RoomServiceTest {
             assertThat(response.players()).hasSize(1);
             assertThat(response.players().getFirst().userId()).isEqualTo(host.getUserId());
             assertThat(response.players().getFirst().status()).isEqualTo(ReadyStatus.NOT_READY);
+            assertThat(response.players().getFirst().role()).isEqualTo(PlayerRole.HOST);
         }
 
         @Test
@@ -541,6 +543,16 @@ class RoomServiceTest {
             assertThat(result.players())
                     .extracting("userId")
                     .containsExactlyInAnyOrder(host.getUserId(), guest.getUserId());
+            assertThat(result.players().stream()
+                    .filter(playerInfo -> playerInfo.userId().equals(host.getUserId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .role()).isEqualTo(PlayerRole.HOST);
+            assertThat(result.players().stream()
+                    .filter(playerInfo -> playerInfo.userId().equals(guest.getUserId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .role()).isEqualTo(PlayerRole.GUEST);
         }
 
         @Test
@@ -665,6 +677,7 @@ class RoomServiceTest {
             assertThat(result).isNotNull();
             assertThat(result.playerLeftEvent().type()).isEqualTo(RoomResponseType.PLAYER_LEFT);
             assertThat(result.playerLeftEvent().player().userId()).isEqualTo(guest.getUserId());
+            assertThat(result.playerLeftEvent().player().role()).isEqualTo(PlayerRole.GUEST);
             assertThat(result.hostChangedEvent()).isNull();
         }
 
@@ -739,10 +752,13 @@ class RoomServiceTest {
             // then
             assertThat(result.playerLeftEvent().type()).isEqualTo(RoomResponseType.PLAYER_LEFT);
             assertThat(result.playerLeftEvent().player().userId()).isEqualTo(host.getUserId());
+            assertThat(result.playerLeftEvent().player().role()).isEqualTo(PlayerRole.HOST);
             assertThat(result.hostChangedEvent()).isNotNull();
             assertThat(result.hostChangedEvent().type()).isEqualTo(RoomResponseType.HOST_CHANGED);
             assertThat(result.hostChangedEvent().oldHost().userId()).isEqualTo(host.getUserId());
+            assertThat(result.hostChangedEvent().oldHost().role()).isEqualTo(PlayerRole.GUEST);
             assertThat(result.hostChangedEvent().newHost().userId()).isEqualTo(guest1.getUserId());
+            assertThat(result.hostChangedEvent().newHost().role()).isEqualTo(PlayerRole.HOST);
             assertThat(result.hostChangedEvent().reason()).isEqualTo("HOST_LEFT");
 
             Room updatedRoom = roomRepository.findById(TEST_ROOM_ID).orElseThrow();
@@ -764,6 +780,7 @@ class RoomServiceTest {
             // then
             assertThat(result.playerLeftEvent().type()).isEqualTo(RoomResponseType.PLAYER_LEFT);
             assertThat(result.playerLeftEvent().player().userId()).isEqualTo(host.getUserId());
+            assertThat(result.playerLeftEvent().player().role()).isEqualTo(PlayerRole.HOST);
             assertThat(result.hostChangedEvent()).isNull();
             assertThat(roomRepository.findById(TEST_ROOM_ID)).isEmpty();
             assertThat(playerRepository.countByRoomId(TEST_ROOM_ID)).isZero();
@@ -791,6 +808,7 @@ class RoomServiceTest {
             assertThat(result.type()).isEqualTo(RoomResponseType.PLAYER_READY);
             assertThat(result.player().userId()).isEqualTo(guest.getUserId());
             assertThat(result.player().nickname()).isEqualTo("게스트유저");
+            assertThat(result.player().role()).isEqualTo(PlayerRole.GUEST);
             assertThat(result.allReady()).isTrue(); // 호스트는 준비 상태가 아니여도 모든 게스트가 준비 상태이므로 true
         }
 
@@ -925,6 +943,7 @@ class RoomServiceTest {
             assertThat(result.type()).isEqualTo(RoomResponseType.PLAYER_UNREADY);
             assertThat(result.player().userId()).isEqualTo(guest.getUserId());
             assertThat(result.player().nickname()).isEqualTo("게스트유저");
+            assertThat(result.player().role()).isEqualTo(PlayerRole.GUEST);
         }
 
         @Test
