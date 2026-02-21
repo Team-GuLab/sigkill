@@ -19,11 +19,11 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_A
 import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_NOT_FOUND;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
-import com.gulab.sigkillserver.domain.room.dto.service.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
@@ -155,7 +155,7 @@ public class RoomService {
                 playerRepository.create(hostPlayer);
 
                 log.info("방 생성 완료 - roomId: {}, hostId: {}", roomId, userId);
-                return RoomCreateResponse.of(room);
+                return RoomCreateResponse.of(room, hostPlayer);
             } catch (IllegalStateException e) {
                 log.debug("Room ID 중복 발생, 재시도 중 (attempt: {}): {}", i + 1, e.getMessage());
             }
@@ -230,7 +230,7 @@ public class RoomService {
 
         List<Player> playersInRoom = playerRepository.findAllByRoomId(roomId);
         List<PlayerInfo> playerInfos = playersInRoom.stream()
-                .map(PlayerInfo::of)
+                .map(p -> PlayerInfo.of(p, room.getHostId()))
                 .toList();
         return PlayerJoinEvent.of(room, playerInfos);
     }
@@ -253,7 +253,7 @@ public class RoomService {
     public LeaveRoomResult leaveRoom(String roomId, Long userId) {
         Room room = getRoomOrThrow(roomId);
         Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player);
+        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, room.getHostId());
 
         if (getPlayerCountInRoom(roomId) <= 1) {
             roomRepository.deleteById(roomId);
@@ -279,7 +279,7 @@ public class RoomService {
                 .min(Comparator.comparing(Player::getCreatedAt))
                 .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
         room.changeHost(newHost.getUserId());
-        return HostChangedEvent.of(newHost, previousHost, HOST_CHANGED_REASON_HOST_LEFT);
+        return HostChangedEvent.of(newHost, previousHost, room.getHostId(), HOST_CHANGED_REASON_HOST_LEFT);
     }
 
     /**
@@ -295,7 +295,7 @@ public class RoomService {
 
         boolean isAllReady = isAllGuestsReady(room);
 
-        return PlayerReadyEvent.of(player, isAllReady);
+        return PlayerReadyEvent.of(player, room.getHostId(), isAllReady);
     }
 
     private void validateRoomNotInGame(Room room) {
@@ -335,7 +335,7 @@ public class RoomService {
 
         player.unready();
 
-        return PlayerUnreadyEvent.of(player);
+        return PlayerUnreadyEvent.of(player, room.getHostId());
     }
 
     private Room getRoomOrThrow(String roomId) {

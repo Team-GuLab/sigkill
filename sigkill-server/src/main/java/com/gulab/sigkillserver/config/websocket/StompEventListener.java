@@ -1,6 +1,6 @@
 package com.gulab.sigkillserver.config.websocket;
 
-import com.gulab.sigkillserver.domain.room.dto.service.LeaveRoomResult;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.service.RoomService;

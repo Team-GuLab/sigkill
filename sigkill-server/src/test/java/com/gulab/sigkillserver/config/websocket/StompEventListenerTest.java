@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.gulab.sigkillserver.domain.room.dto.service.LeaveRoomResult;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.model.Player;
@@ -31,14 +31,15 @@ class StompEventListenerTest {
     private final RoomService roomService = mock(RoomService.class);
     private final PlayerRepository playerRepository = mock(PlayerRepository.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
-    private final StompEventListener stompEventListener = new StompEventListener(roomService, playerRepository, messagingTemplate);
+    private final StompEventListener stompEventListener = new StompEventListener(roomService, playerRepository,
+            messagingTemplate);
 
     @Test
     void disconnect_시_플레이어가_있으면_자동_퇴장_이벤트를_브로드캐스트한다() {
         // given
         Long userId = 1L;
         Player player = Player.create(userId, "1001", "tester");
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player);
+        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, userId);
         when(playerRepository.findById(userId)).thenReturn(Optional.of(player));
         when(roomService.leaveRoom("1001", userId)).thenReturn(LeaveRoomResult.of(playerLeftEvent));
 
@@ -58,8 +59,8 @@ class StompEventListenerTest {
         Long userId = 1L;
         Player leavingPlayer = Player.create(userId, "1001", "oldHost");
         Player newHost = Player.create(2L, "1001", "newHost");
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(leavingPlayer);
-        HostChangedEvent hostChangedEvent = HostChangedEvent.of(newHost, leavingPlayer, "HOST_LEFT");
+        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(leavingPlayer, userId);
+        HostChangedEvent hostChangedEvent = HostChangedEvent.of(newHost, leavingPlayer, newHost.getUserId(), "HOST_LEFT");
         when(playerRepository.findById(userId)).thenReturn(Optional.of(leavingPlayer));
         when(roomService.leaveRoom("1001", userId))
                 .thenReturn(LeaveRoomResult.of(playerLeftEvent, hostChangedEvent));

@@ -1,7 +1,8 @@
 import { axiosInstance } from "@/api/axios";
 import type { APIResponse } from "@/api/types";
-import type { CreateRoomParams, RoomItem, RoomListDto } from "./types";
+import type { CreateRoomParams, CreateRoomResponse, RoomListDto } from "./types";
 import type { AxiosResponse } from "axios";
+import { MAX_CAPACITY } from "@/constants/room";
 
 export interface RoomListParams {
   page?: number;
@@ -23,20 +24,16 @@ export const getRoomList = async <T = RoomListDto>(
   return response.data.result;
 };
 
-const PLAYER_COUNT = 0;
-const CAPACITY = 10;
-
-export const createRoom = async <T = RoomItem>({
+export const createRoom = async ({
   roomTitle,
-}: CreateRoomParams): Promise<T> => {
+}: CreateRoomParams): Promise<CreateRoomResponse> => {
   const response = await axiosInstance.post<
-    APIResponse<T>,
-    AxiosResponse<APIResponse<T>>,
-    Pick<RoomItem, "roomTitle" | "playerCount" | "capacity">
+    APIResponse<CreateRoomResponse>,
+    AxiosResponse<APIResponse<CreateRoomResponse>>,
+    { roomTitle: string; capacity: number }
   >(`/api/v1/rooms`, {
     roomTitle,
-    playerCount: PLAYER_COUNT,
-    capacity: CAPACITY,
+    capacity: MAX_CAPACITY,
   });
 
   return response.data.result;

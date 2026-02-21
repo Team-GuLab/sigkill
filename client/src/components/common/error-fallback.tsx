@@ -20,15 +20,15 @@ export default function ErrorFallback({
 }: ErrorFallbackProps) {
   return (
     <div className="flex min-h-100 items-center justify-center">
-      <div className="text-center space-y-4">
-        <div className="flex justify-center mb-4">
+      <div className="space-y-4 text-center">
+        <div className="mb-4 flex justify-center">
           <div className="text-destructive">
             {icon ?? <AlertCircleIcon className="h-12 w-12" />}
           </div>
         </div>
         <div>
           <p className="text-destructive font-semibold">{title}</p>
-          <p className="text-muted-foreground text-sm mt-2">{description}</p>
+          <p className="text-muted-foreground mt-2 text-sm">{description}</p>
         </div>
         {onButtonClick && (
           <Button onClick={onButtonClick} variant="outline" size="sm">

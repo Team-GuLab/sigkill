@@ -7,10 +7,10 @@ public record PlayerUnreadyEvent(
         RoomResponseType type,
         PlayerInfo player
 ) {
-    public static PlayerUnreadyEvent of(Player player) {
+    public static PlayerUnreadyEvent of(Player player, Long hostId) {
         return new PlayerUnreadyEvent(
                 RoomResponseType.PLAYER_UNREADY,
-                PlayerInfo.of(player)
+                PlayerInfo.of(player, hostId)
         );
     }
 }

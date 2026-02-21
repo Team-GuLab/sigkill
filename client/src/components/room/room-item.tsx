@@ -6,6 +6,7 @@ import { Users } from "lucide-react";
 import { AppError } from "@/api/axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
+import { ROUTE_GENERATORS } from "@/routes/paths";
 
 // 방 목록 내 단건 방
 interface RoomItemProps extends RoomItem {}
@@ -28,7 +29,7 @@ export default function RoomItem({
         throw new Error();
       }
 
-      navigate(`/waiting-room/${roomId}`);
+      navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId), { replace: true });
     } catch (error) {
       if (error instanceof AppError) {
         toast.error(error.message);

@@ -30,7 +30,13 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         "/api": {
-          target: `${env.VITE_API_DOMAIN}:${env.VITE_API_PORT}`,
+          target: `${env.VITE_API_DOMAIN}`,
+          changeOrigin: true,
+          secure: false,
+        },
+        "/ws": {
+          target: `${env.VITE_API_DOMAIN}`,
+          ws: true,
           changeOrigin: true,
           secure: false,
         },

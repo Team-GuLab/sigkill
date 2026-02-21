@@ -32,6 +32,13 @@ axiosInstance.interceptors.response.use(
     if (error.response) {
       console.error("🅾️ Axios error occurred", error);
       const { status, data } = error.response;
+
+      if (status === 401) {
+        if (window.location.pathname !== "/") {
+          window.location.href = "/";
+        }
+      }
+
       // 애플리케이션 에러로 변환하여 reject
       const appError = new AppError(
         data?.message ?? "요청에 실패했습니다.",

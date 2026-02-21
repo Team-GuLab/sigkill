@@ -56,13 +56,15 @@
   "player": {
     "userId": 2,
     "nickname": "귀여운사자",
-    "status": "NOT_READY"
+    "status": "NOT_READY",
+    "role": "GUEST"
   }
 }
 ```
 
 - `RoomInfo.status`: `WAITING | INGAME`
 - `PlayerInfo.status`: `READY | NOT_READY`
+- `PlayerInfo.role`: `HOST | GUEST`
 
 ### 4.3 Game Request DTO
 
@@ -120,12 +122,14 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
     {
       "userId": 1,
       "nickname": "방장",
-      "status": "NOT_READY"
+      "status": "NOT_READY",
+      "role": "HOST"
     },
     {
       "userId": 2,
       "nickname": "참가자",
-      "status": "NOT_READY"
+      "status": "NOT_READY",
+      "role": "GUEST"
     }
   ]
 }
@@ -147,7 +151,8 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
   "player": {
     "userId": 2,
     "nickname": "참가자",
-    "status": "READY"
+    "status": "READY",
+    "role": "GUEST"
   }
 }
 ```
@@ -169,12 +174,14 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
   "newHost": {
     "userId": 3,
     "nickname": "새 방장",
-    "status": "NOT_READY"
+    "status": "NOT_READY",
+    "role": "HOST"
   },
   "oldHost": {
     "userId": 1,
     "nickname": "이전 방장",
-    "status": "NOT_READY"
+    "status": "NOT_READY",
+    "role": "GUEST"
   },
   "reason": "HOST_LEFT"
 }
@@ -192,7 +199,8 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
   "player": {
     "userId": 2,
     "nickname": "참가자",
-    "status": "READY"
+    "status": "READY",
+    "role": "GUEST"
   },
   "allReady": false
 }
@@ -214,7 +222,8 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
   "player": {
     "userId": 2,
     "nickname": "참가자",
-    "status": "NOT_READY"
+    "status": "NOT_READY",
+    "role": "GUEST"
   }
 }
 ```

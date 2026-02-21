@@ -7,10 +7,10 @@ public record PlayerLeftEvent(
         RoomResponseType type,
         PlayerInfo player
 ) {
-    public static PlayerLeftEvent of(Player player) {
+    public static PlayerLeftEvent of(Player player, Long hostId) {
         return new PlayerLeftEvent(
                 RoomResponseType.PLAYER_LEFT,
-                PlayerInfo.of(player)
+                PlayerInfo.of(player, hostId)
         );
     }
 }

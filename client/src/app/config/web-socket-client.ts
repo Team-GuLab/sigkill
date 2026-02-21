@@ -1,24 +1,43 @@
 import { Client } from "@stomp/stompjs";
 
-const client = new Client({
-  brokerURL: import.meta.env.VITE_WS_URL,
-  reconnectDelay: 0, // TODO: 이후 상황에 따라 변경 필요
-});
+let client: Client | null = null;
+let onConnectedCallback: (() => void) | null = null;
 
-export const connectWebSocket = (): Promise<void> => {
+const getClient = (): Client => {
+  if (!client) {
+    client = new Client({
+      brokerURL: import.meta.env.VITE_WS_URL,
+      reconnectDelay: 5000,
+    });
+  }
+  return client;
+};
+
+/**
+ * WebSocket 연결
+ * @param onConnected - 초기 연결 및 재연결 시마다 호출되는 콜백
+ */
+export const connectWebSocket = async (
+  onConnected?: () => void,
+): Promise<void> => {
+  const wsClient = getClient();
+
+  onConnectedCallback = onConnected ?? null;
+
+  // 안전한 재연결을 위한 이미 활성화된 상태라면 연결 해제 선행
+  if (wsClient.active) {
+    await wsClient.deactivate();
+  }
+
   return new Promise((resolve, reject) => {
-    // 이미 연결된 경우 바로 성공 처리
-    if (client.connected) {
-      resolve();
-      return;
-    }
-
-    client.onConnect = () => {
+    wsClient.onConnect = () => {
       console.log("Connected to WebSocket");
       resolve();
+      // 구독 재설정 등 복구 작업
+      onConnectedCallback?.();
     };
 
-    client.onStompError = frame => {
+    wsClient.onStompError = frame => {
       console.error("Broker reported error: " + frame.headers["message"]);
       console.error("Additional details: " + frame.body);
       reject(
@@ -26,27 +45,41 @@ export const connectWebSocket = (): Promise<void> => {
       );
     };
 
-    client.onWebSocketError = event => {
+    wsClient.onWebSocketError = event => {
       console.error("WebSocket error", event);
-      reject(new Error("WebSocket connection failed"));
+      reject(new Error("WebSocket connection error"));
     };
 
-    client.activate();
+    wsClient.onDisconnect = () => {
+      console.log("Disconnected successfully");
+    };
+
+    wsClient.onWebSocketClose = event => {
+      console.log("WebSocket closed. Code:", event.code);
+    };
+
+    wsClient.activate();
   });
 };
 
-export const disconnectWebSocket = () => {
+export const disconnectWebSocket = async () => {
+  if (!client) return;
+
+  onConnectedCallback = null;
+
   if (client.active) {
-    client.deactivate();
+    await client.deactivate();
   }
 };
 
 export const publishMessage = (destination: string, body: any) => {
-  if (client.active) {
-    client.publish({ destination, body: JSON.stringify(body) });
+  const wsClient = getClient();
+
+  if (wsClient.active) {
+    wsClient.publish({ destination, body: JSON.stringify(body) });
   } else {
     console.error("Cannot publish message. WebSocket is not active.");
   }
 };
 
-export default client;
+export { getClient };

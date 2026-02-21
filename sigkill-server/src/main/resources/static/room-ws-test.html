@@ -201,7 +201,47 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>3. 방 참가 (통합 실행)</h2>
+                <h2>3. 방 생성 (REST + WS 후속 처리)</h2>
+                <span class="endpoint">POST /api/v1/rooms + WS connect + SUBSCRIBE</span>
+            </div>
+            <div class="hint">
+                실행 순서:<br/>
+                1) <code>POST /api/v1/rooms</code>로 방 생성 (host는 서버에서 자동으로 Player 참가 처리)<br/>
+                2) 생성 응답에서 <code>roomId</code> 추출<br/>
+                3) <code>/ws</code> 연결<br/>
+                4) <code>/user/queue/errors</code>, <code>/user/queue/pong</code> 구독<br/>
+                5) <code>/topic/room/{roomId}</code> 구독<br/>
+                6) 생성된 <code>roomId</code>를 아래 참가/준비/나가기 입력창에 자동 반영
+            </div>
+            <div class="hint">
+                생성 직후에는 이미 host가 방에 들어가 있으므로 <code>/app/room/join</code> 전송은 필요 없습니다.
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="createRoomTitle">roomTitle</label>
+                    <input id="createRoomTitle" placeholder="예: 새 퀴즈방" type="text" value="테스트 생성 방"/>
+                </div>
+                <div>
+                    <label for="createRoomCapacity">capacity (선택, 비우면 기본값)</label>
+                    <input id="createRoomCapacity" placeholder="예: 6" type="number"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="createRoomFlowBtn">실행</button>
+            </div>
+            <label>REST 요청 (create)</label>
+            <pre class="panel" id="createRequest">-</pre>
+            <div style="height:8px;"></div>
+            <label>REST 응답 (create)</label>
+            <pre class="panel" id="createResponse">-</pre>
+            <div style="height:8px;"></div>
+            <label>WS 후속 처리 (connect/subscribe 결과)</label>
+            <pre class="panel" id="createWsResult">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>4. 방 참가 (통합 실행)</h2>
                 <span class="endpoint">GET availability + WS connect + SUBSCRIBE + SEND /app/room/join</span>
             </div>
             <div class="hint">
@@ -245,7 +285,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>4. 방 준비 / 해제</h2>
+                <h2>5. 방 준비 / 해제</h2>
                 <span class="endpoint">SEND /app/room/ready | /app/room/unready</span>
             </div>
             <div class="grid-2">
@@ -268,7 +308,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>5. 방 나가기 + WS 연결 해제</h2>
+                <h2>6. 방 나가기 + WS 연결 해제</h2>
                 <span class="endpoint">SEND /app/room/leave + DISCONNECT</span>
             </div>
             <div class="grid-2">
@@ -290,7 +330,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>6. Ping / Pong 확인</h2>
+                <h2>7. Ping / Pong 확인</h2>
                 <span class="endpoint">SEND /app/ping | SUBSCRIBE /user/queue/pong</span>
             </div>
             <div class="actions">
