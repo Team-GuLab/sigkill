@@ -9,11 +9,11 @@ public record HostChangedEvent(
         PlayerInfo oldHost,
         String reason
 ) {
-    public static HostChangedEvent of(Player newHost, Player previousHost, String reason) {
+    public static HostChangedEvent of(Player newHost, Player previousHost, Long hostId, String reason) {
         return new HostChangedEvent(
                 RoomResponseType.HOST_CHANGED,
-                PlayerInfo.of(newHost),
-                PlayerInfo.of(previousHost),
+                PlayerInfo.of(newHost, hostId),
+                PlayerInfo.of(previousHost, hostId),
                 reason
         );
     }

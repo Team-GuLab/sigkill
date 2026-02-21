@@ -17,14 +17,14 @@ public record RoomCreateResponse(
     public static RoomCreateResponse of(Room room) {
         return new RoomCreateResponse(
                 RoomInfo.of(room),
-                List.of(new PlayerInfo(room.getHostId(), "", ReadyStatus.NOT_READY))
+                List.of(new PlayerInfo(room.getHostId(), "", ReadyStatus.NOT_READY, "HOST"))
         );
     }
 
     public static RoomCreateResponse of(Room room, Player hostPlayer) {
         return new RoomCreateResponse(
                 RoomInfo.of(room),
-                List.of(PlayerInfo.of(hostPlayer))
+                List.of(PlayerInfo.of(hostPlayer, room.getHostId()))
         );
     }
 

@@ -8,10 +8,10 @@ public record PlayerReadyEvent(
         PlayerInfo player,
         boolean allReady
 ) {
-    public static PlayerReadyEvent of(Player player, boolean allReady) {
+    public static PlayerReadyEvent of(Player player, Long hostId, boolean allReady) {
         return new PlayerReadyEvent(
                 RoomResponseType.PLAYER_READY,
-                PlayerInfo.of(player),
+                PlayerInfo.of(player, hostId),
                 allReady
         );
     }

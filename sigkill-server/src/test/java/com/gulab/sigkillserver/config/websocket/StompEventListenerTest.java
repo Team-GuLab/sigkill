@@ -39,7 +39,7 @@ class StompEventListenerTest {
         // given
         Long userId = 1L;
         Player player = Player.create(userId, "1001", "tester");
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player);
+        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, userId);
         when(playerRepository.findById(userId)).thenReturn(Optional.of(player));
         when(roomService.leaveRoom("1001", userId)).thenReturn(LeaveRoomResult.of(playerLeftEvent));
 
@@ -59,8 +59,8 @@ class StompEventListenerTest {
         Long userId = 1L;
         Player leavingPlayer = Player.create(userId, "1001", "oldHost");
         Player newHost = Player.create(2L, "1001", "newHost");
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(leavingPlayer);
-        HostChangedEvent hostChangedEvent = HostChangedEvent.of(newHost, leavingPlayer, "HOST_LEFT");
+        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(leavingPlayer, userId);
+        HostChangedEvent hostChangedEvent = HostChangedEvent.of(newHost, leavingPlayer, newHost.getUserId(), "HOST_LEFT");
         when(playerRepository.findById(userId)).thenReturn(Optional.of(leavingPlayer));
         when(roomService.leaveRoom("1001", userId))
                 .thenReturn(LeaveRoomResult.of(playerLeftEvent, hostChangedEvent));

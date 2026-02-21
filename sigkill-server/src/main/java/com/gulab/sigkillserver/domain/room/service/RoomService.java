@@ -230,7 +230,7 @@ public class RoomService {
 
         List<Player> playersInRoom = playerRepository.findAllByRoomId(roomId);
         List<PlayerInfo> playerInfos = playersInRoom.stream()
-                .map(PlayerInfo::of)
+                .map(p -> PlayerInfo.of(p, room.getHostId()))
                 .toList();
         return PlayerJoinEvent.of(room, playerInfos);
     }
@@ -253,7 +253,7 @@ public class RoomService {
     public LeaveRoomResult leaveRoom(String roomId, Long userId) {
         Room room = getRoomOrThrow(roomId);
         Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player);
+        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, room.getHostId());
 
         if (getPlayerCountInRoom(roomId) <= 1) {
             roomRepository.deleteById(roomId);
@@ -279,7 +279,7 @@ public class RoomService {
                 .min(Comparator.comparing(Player::getCreatedAt))
                 .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
         room.changeHost(newHost.getUserId());
-        return HostChangedEvent.of(newHost, previousHost, HOST_CHANGED_REASON_HOST_LEFT);
+        return HostChangedEvent.of(newHost, previousHost, room.getHostId(), HOST_CHANGED_REASON_HOST_LEFT);
     }
 
     /**
@@ -295,7 +295,7 @@ public class RoomService {
 
         boolean isAllReady = isAllGuestsReady(room);
 
-        return PlayerReadyEvent.of(player, isAllReady);
+        return PlayerReadyEvent.of(player, room.getHostId(), isAllReady);
     }
 
     private void validateRoomNotInGame(Room room) {
@@ -335,7 +335,7 @@ public class RoomService {
 
         player.unready();
 
-        return PlayerUnreadyEvent.of(player);
+        return PlayerUnreadyEvent.of(player, room.getHostId());
     }
 
     private Room getRoomOrThrow(String roomId) {
