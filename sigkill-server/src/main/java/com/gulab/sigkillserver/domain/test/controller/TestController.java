@@ -4,6 +4,7 @@ import com.gulab.sigkillserver.common.BaseResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
+import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import com.gulab.sigkillserver.domain.user.dto.rest.response.LoginResponse;
 import com.gulab.sigkillserver.domain.user.model.User;
@@ -32,15 +33,18 @@ public class TestController {
     private static final int ROOM_A_OCCUPANCY = 5;
     private static final int ROOM_B_OCCUPANCY = 6;
     private static final int ROOM_C_OCCUPANCY = 2;
+    private static final int ROOM_D_OCCUPANCY = 3;
 
     private final UserRepository userRepository;
     private final PlayerRepository playerRepository;
+    private final RoomRepository roomRepository;
     private final RoomService roomService;
 
     /**
-     * 임의 유저 20명 생성 + 5/6, 6/6, 2/6 상태의 방 3개 생성
+     * 임의 유저 20명 생성 + 5/6, 6/6, 2/6, 3/6 상태의 방 4개 생성
      * - 테스트 방 A(5/6): 참가자 전원 READY
      * - 테스트 방 B/C: 참가자 전원 NOT_READY
+     * - 테스트 방 D(3/6): INGAME 상태
      */
     @PostMapping("/seed-rooms")
     public BaseResponse<TestSeedResponse> seedRooms() {
@@ -54,7 +58,8 @@ public class TestController {
                 ROOM_A_OCCUPANCY,
                 createdUsers,
                 cursor,
-                true
+                true,
+                false
         );
         cursor += ROOM_A_OCCUPANCY;
 
@@ -64,6 +69,7 @@ public class TestController {
                 ROOM_B_OCCUPANCY,
                 createdUsers,
                 cursor,
+                false,
                 false
         );
         cursor += ROOM_B_OCCUPANCY;
@@ -74,15 +80,27 @@ public class TestController {
                 ROOM_C_OCCUPANCY,
                 createdUsers,
                 cursor,
+                false,
                 false
         );
+        cursor += ROOM_C_OCCUPANCY;
 
-        log.info("테스트 데이터 생성 완료 - users: {}, rooms: [{}, {}, {}]",
-                createdUsers.size(), roomA.roomId(), roomB.roomId(), roomC.roomId());
+        SeededRoom roomD = createRoomWithOccupancy(
+                "테스트 방 D",
+                ROOM_CAPACITY,
+                ROOM_D_OCCUPANCY,
+                createdUsers,
+                cursor,
+                false,
+                true
+        );
+
+        log.info("테스트 데이터 생성 완료 - users: {}, rooms: [{}, {}, {}, {}]",
+                createdUsers.size(), roomA.roomId(), roomB.roomId(), roomC.roomId(), roomD.roomId());
 
         return BaseResponse.onSuccess(new TestSeedResponse(
                 createdUsers.size(),
-                List.of(roomA, roomB, roomC)
+                List.of(roomA, roomB, roomC, roomD)
         ));
     }
 
@@ -104,7 +122,8 @@ public class TestController {
             int targetOccupancy,
             List<LoginResponse> users,
             int startIndex,
-            boolean allReady
+            boolean allReady,
+            boolean inGame
     ) {
         if (targetOccupancy < 1 || targetOccupancy > capacity) {
             throw new IllegalArgumentException("targetOccupancy must be between 1 and capacity");
@@ -123,6 +142,12 @@ public class TestController {
         }
         if (allReady) {
             playerRepository.findAllByRoomId(roomId).forEach(Player::ready);
+        }
+        if (inGame) {
+            roomRepository.findById(roomId).ifPresent(room -> {
+                room.startGame();
+                log.info("테스트 방 INGAME 설정 - roomId: {}", roomId);
+            });
         }
 
         return new SeededRoom(roomId, roomTitle, targetOccupancy, capacity);
