@@ -1,6 +1,7 @@
 package com.gulab.sigkillserver.domain.room.dto.rest.response;
 
 import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerInfo;
+import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerRole;
 import com.gulab.sigkillserver.domain.room.dto.stomp.shared.RoomInfo;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.ReadyStatus;
@@ -17,7 +18,7 @@ public record RoomCreateResponse(
     public static RoomCreateResponse of(Room room) {
         return new RoomCreateResponse(
                 RoomInfo.of(room),
-                List.of(new PlayerInfo(room.getHostId(), "", ReadyStatus.NOT_READY, "HOST"))
+                List.of(new PlayerInfo(room.getHostId(), "", ReadyStatus.NOT_READY, PlayerRole.HOST))
         );
     }
 

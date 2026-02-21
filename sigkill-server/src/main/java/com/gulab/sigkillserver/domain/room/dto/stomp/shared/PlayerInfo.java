@@ -8,14 +8,14 @@ public record PlayerInfo(
         Long userId,
         String nickname,
         ReadyStatus status,
-        String role
+        PlayerRole role
 ) {
     public static PlayerInfo of(Player player, Long hostId) {
         return new PlayerInfo(
                 player.getUserId(),
                 player.getNickname(),
                 player.getReadyStatus(),
-                Objects.equals(player.getUserId(), hostId) ? "HOST" : "GUEST"
+                Objects.equals(player.getUserId(), hostId) ? PlayerRole.HOST : PlayerRole.GUEST
         );
     }
 }
