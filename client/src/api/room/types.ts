@@ -24,7 +24,7 @@ export interface CreateRoomParams {
 // 방 생성 응답 데이터
 export interface CreateRoomResponse {
   room: Omit<RoomItem, "playerCount" | "canJoin">;
-  players: Omit<Player, "role">[]; // TODO: 명세에 role 추가 요청 필요
+  players: Player[];
 }
 
 export interface Player {
