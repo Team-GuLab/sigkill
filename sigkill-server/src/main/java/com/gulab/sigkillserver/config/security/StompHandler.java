@@ -2,11 +2,13 @@ package com.gulab.sigkillserver.config.security;
 
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.security.Principal;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.messaging.Message;
@@ -25,12 +27,17 @@ import org.springframework.stereotype.Component;
 public class StompHandler implements ChannelInterceptor {
 
     private static final String ROOM_TOPIC_PREFIX = "/topic/room/";
+    private static final String MDC_CHANNEL = "channel";
+    private static final String MDC_STOMP_COMMAND = "stompCommand";
+    private static final String MDC_DESTINATION = "destination";
+    private static final String MDC_SESSION_ID = "sessionId";
     private static final Set<String> ALLOWED_USER_QUEUE_DESTINATIONS = Set.of(
             "/user/queue/errors",
             "/user/queue/pong"
     );
 
     private final PlayerRepository playerRepository;
+    private final MeterRegistry meterRegistry;
 
     @Override
     public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
@@ -41,53 +48,66 @@ public class StompHandler implements ChannelInterceptor {
             throw new IllegalStateException("STOMP 메시지 처리 중 오류가 발생했습니다.");
         }
 
-        // 메시지에서 STOMP 커맨드 추출
-        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-            // Spring Security가 핸드셰이크 시점에 주입한 Principal 가져오기
-            Principal user = accessor.getUser();
+        populateWsMdc(accessor);
+        recordStompCommandMetric(accessor.getCommand());
+        try {
+            // 메시지에서 STOMP 커맨드 추출
+            if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+                // Spring Security가 핸드셰이크 시점에 주입한 Principal 가져오기
+                Principal user = accessor.getUser();
 
-            if (user == null) {
-                log.error("[CONNECT] 실패: 인증 정보 없음 (세션 만료 또는 쿠키 누락)");
-                throw new AccessDeniedException("로그인이 필요합니다.");
+                if (user == null) {
+                    log.warn("[CONNECT] 실패: 인증 정보 없음 (세션 만료 또는 쿠키 누락)");
+                    throw new AccessDeniedException("로그인이 필요합니다.");
+                }
+
+                log.debug("[CONNECT] 성공: User={}, SessionId={}", user.getName(), accessor.getSessionId());
             }
 
-            log.info("[CONNECT] 성공: User={}, SessionId={}", user.getName(), accessor.getSessionId());
-        }
+            if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+                Principal user = accessor.getUser();
+                if (user == null) {
+                    log.warn("[SUBSCRIBE] 실패: 인증 정보 없음 (세션 만료 또는 쿠키 누락)");
+                    throw new AccessDeniedException("로그인이 필요합니다.");
+                }
 
-        if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
-            Principal user = accessor.getUser();
-            if (user == null) {
-                log.error("[SUBSCRIBE] 실패: 인증 정보 없음 (세션 만료 또는 쿠키 누락)");
-                throw new AccessDeniedException("로그인이 필요합니다.");
+                authorizeSubscribe(user, accessor.getDestination());
+
+                log.debug("[SUBSCRIBE] 성공: User={}, SessionId={}, Destination={}", user.getName(),
+                        accessor.getSessionId(), accessor.getDestination());
             }
 
-            authorizeSubscribe(user, accessor.getDestination());
-
-            log.info("[SUBSCRIBE] 성공: User={}, SessionId={}, Destination={}", user.getName(), accessor.getSessionId(),
-                    accessor.getDestination());
-        }
-
-        if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
-            Principal user = accessor.getUser();
-            if (user != null) {
-                log.info("[DISCONNECT]: User={}, SessionId={}", user.getName(), accessor.getSessionId());
-            } else {
-                log.info("[DISCONNECT]: SessionId={}", accessor.getSessionId());
-            }
-        }
-
-        if (StompCommand.SEND.equals(accessor.getCommand())) {
-            Principal user = accessor.getUser();
-            if (user == null) {
-                log.error("[SEND] 실패: 인증 정보 없음 (세션 만료 또는 쿠키 누락)");
-                throw new AccessDeniedException("로그인이 필요합니다.");
+            if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
+                Principal user = accessor.getUser();
+                if (user != null) {
+                    log.debug("[DISCONNECT]: User={}, SessionId={}", user.getName(), accessor.getSessionId());
+                } else {
+                    log.debug("[DISCONNECT]: SessionId={}", accessor.getSessionId());
+                }
             }
 
-            log.info("[SEND]: User={}, SessionId={}, Destination={}", user.getName(), accessor.getSessionId(),
-                    accessor.getDestination());
-        }
+            if (StompCommand.SEND.equals(accessor.getCommand())) {
+                Principal user = accessor.getUser();
+                if (user == null) {
+                    log.warn("[SEND] 실패: 인증 정보 없음 (세션 만료 또는 쿠키 누락)");
+                    throw new AccessDeniedException("로그인이 필요합니다.");
+                }
 
-        return message;
+                log.debug("[SEND]: User={}, SessionId={}, Destination={}", user.getName(), accessor.getSessionId(),
+                        accessor.getDestination());
+            }
+
+            return message;
+        } catch (RuntimeException e) {
+            clearWsMdc();
+            throw e;
+        }
+    }
+
+    @Override
+    public void afterSendCompletion(@NonNull Message<?> message, @NonNull MessageChannel channel, boolean sent,
+                                    Exception ex) {
+        clearWsMdc();
     }
 
     private void authorizeSubscribe(Principal user, String destination) {
@@ -119,7 +139,7 @@ public class StompHandler implements ChannelInterceptor {
             return;
         }
 
-        log.info("[SUBSCRIBE] join 구독 - userId={}, roomId={}", userId, roomId);
+        log.debug("[SUBSCRIBE] join 구독 - userId={}, roomId={}", userId, roomId);
     }
 
     private void validateCurrentRoomSubscription(Player player, String roomId, String destination, Long userId) {
@@ -138,5 +158,45 @@ public class StompHandler implements ChannelInterceptor {
         } catch (NumberFormatException e) {
             throw new AccessDeniedException("유효하지 않은 사용자 정보입니다.");
         }
+    }
+
+    private void populateWsMdc(StompHeaderAccessor accessor) {
+        MDC.put(MDC_CHANNEL, "WS");
+        if (accessor.getCommand() != null) {
+            MDC.put(MDC_STOMP_COMMAND, accessor.getCommand().name());
+        } else {
+            MDC.remove(MDC_STOMP_COMMAND);
+        }
+
+        if (accessor.getDestination() != null) {
+            MDC.put(MDC_DESTINATION, accessor.getDestination());
+        } else {
+            MDC.remove(MDC_DESTINATION);
+        }
+
+        if (accessor.getSessionId() != null) {
+            MDC.put(MDC_SESSION_ID, accessor.getSessionId());
+        } else {
+            MDC.remove(MDC_SESSION_ID);
+        }
+    }
+
+    private void clearWsMdc() {
+        MDC.remove(MDC_SESSION_ID);
+        MDC.remove(MDC_DESTINATION);
+        MDC.remove(MDC_STOMP_COMMAND);
+        MDC.remove(MDC_CHANNEL);
+    }
+
+    private void recordStompCommandMetric(StompCommand command) {
+        if (command == null) {
+            return;
+        }
+
+        meterRegistry.counter(
+                "sigkill.stomp.frames.total",
+                "command",
+                command.name()
+        ).increment();
     }
 }

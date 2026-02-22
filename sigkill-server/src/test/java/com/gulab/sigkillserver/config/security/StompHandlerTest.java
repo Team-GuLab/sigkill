@@ -10,8 +10,10 @@ import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import java.security.Principal;
 import java.util.Optional;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -28,7 +30,7 @@ class StompHandlerTest {
     @BeforeEach
     void setup() {
         playerRepository = mock(PlayerRepository.class);
-        stompHandler = new StompHandler(playerRepository);
+        stompHandler = new StompHandler(playerRepository, new SimpleMeterRegistry());
         messageChannel = mock(MessageChannel.class);
     }
 
@@ -103,6 +105,22 @@ class StompHandlerTest {
         assertThatThrownBy(() -> stompHandler.preSend(message, messageChannel))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("유효하지 않은 사용자");
+    }
+
+    @Test
+    void afterSendCompletion_호출시_MDC_값을_정리한다() {
+        // given
+        Message<byte[]> message = createMessage(StompCommand.SEND, () -> "1", "/app/room/ready");
+
+        // when
+        stompHandler.preSend(message, messageChannel);
+        stompHandler.afterSendCompletion(message, messageChannel, true, null);
+
+        // then
+        assertThat(MDC.get("channel")).isNull();
+        assertThat(MDC.get("stompCommand")).isNull();
+        assertThat(MDC.get("destination")).isNull();
+        assertThat(MDC.get("sessionId")).isNull();
     }
 
     private Message<byte[]> createMessage(StompCommand command, Principal principal, String destination) {
