@@ -14,3 +14,7 @@ server:
         secure: true
         path: /
       timeout: 24h
+
+logging:
+  file:
+    name: /var/log/sigkill/app.log
