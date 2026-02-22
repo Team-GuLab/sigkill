@@ -2,9 +2,10 @@ package com.gulab.sigkillserver.domain.game.repository;
 
 import com.gulab.sigkillserver.domain.game.model.quiz.Quiz;
 import java.util.List;
+import java.util.Optional;
 
-public interface QuizCatalogRepository {
+public interface QuizRepository {
     List<Quiz> findByCategoryId(String categoryId);
 
-    Quiz findById(long quizId);
+    Optional<Quiz> findById(long quizId);
 }
