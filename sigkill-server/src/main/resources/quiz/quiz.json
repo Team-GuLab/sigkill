@@ -1,0 +1,142 @@
+[
+  {
+    "quizId": 1,
+    "categoryId": "CS",
+    "question": "TCP 3-way 첫 패킷은?",
+    "explanation": "연결 요청은 클라이언트의 SYN으로 시작한다.",
+    "correctChoiceId": 1,
+    "difficulty": 2,
+    "choices": [
+      { "choiceId": 1, "text": "SYN" },
+      { "choiceId": 2, "text": "ACK" },
+      { "choiceId": 3, "text": "FIN" },
+      { "choiceId": 4, "text": "RST" }
+    ]
+  },
+  {
+    "quizId": 2,
+    "categoryId": "CS",
+    "question": "DNS 기본 포트 번호는?",
+    "explanation": "DNS는 기본적으로 53번 포트를 사용한다.",
+    "correctChoiceId": 3,
+    "difficulty": 1,
+    "choices": [
+      { "choiceId": 1, "text": "21" },
+      { "choiceId": 2, "text": "25" },
+      { "choiceId": 3, "text": "53" },
+      { "choiceId": 4, "text": "80" }
+    ]
+  },
+  {
+    "quizId": 3,
+    "categoryId": "CS",
+    "question": "이진 탐색 시간복잡도는?",
+    "explanation": "탐색 범위를 절반씩 줄여 O(log n)이다.",
+    "correctChoiceId": 2,
+    "difficulty": 2,
+    "choices": [
+      { "choiceId": 1, "text": "O(n)" },
+      { "choiceId": 2, "text": "O(log n)" },
+      { "choiceId": 3, "text": "O(n log n)" },
+      { "choiceId": 4, "text": "O(1)" }
+    ]
+  },
+  {
+    "quizId": 4,
+    "categoryId": "CS",
+    "question": "스택 구조 특징은?",
+    "explanation": "스택은 마지막에 넣은 데이터가 먼저 나온다.",
+    "correctChoiceId": 2,
+    "difficulty": 1,
+    "choices": [
+      { "choiceId": 1, "text": "FIFO" },
+      { "choiceId": 2, "text": "LIFO" },
+      { "choiceId": 3, "text": "무작위 접근" },
+      { "choiceId": 4, "text": "우선순위 처리" }
+    ]
+  },
+  {
+    "quizId": 5,
+    "categoryId": "CS",
+    "question": "HTTP의 기본 특성은?",
+    "explanation": "HTTP는 기본적으로 무상태다.",
+    "correctChoiceId": 2,
+    "difficulty": 2,
+    "choices": [
+      { "choiceId": 1, "text": "상태 유지" },
+      { "choiceId": 2, "text": "무상태" },
+      { "choiceId": 3, "text": "암호화 필수" },
+      { "choiceId": 4, "text": "연결 영속 강제" }
+    ]
+  },
+  {
+    "quizId": 6,
+    "categoryId": "CS",
+    "question": "스레드의 특징으로 맞는 것은?",
+    "explanation": "스레드는 같은 프로세스 주소 공간을 공유한다.",
+    "correctChoiceId": 3,
+    "difficulty": 3,
+    "choices": [
+      { "choiceId": 1, "text": "독립 메모리 사용" },
+      { "choiceId": 2, "text": "코드 영역 미공유" },
+      { "choiceId": 3, "text": "주소 공간 공유" },
+      { "choiceId": 4, "text": "커널 없이 실행" }
+    ]
+  },
+  {
+    "quizId": 7,
+    "categoryId": "CS",
+    "question": "교착상태 필요 조건이 아닌 것은?",
+    "explanation": "교착상태는 비선점 조건이 필요하다.",
+    "correctChoiceId": 4,
+    "difficulty": 4,
+    "choices": [
+      { "choiceId": 1, "text": "상호 배제" },
+      { "choiceId": 2, "text": "점유와 대기" },
+      { "choiceId": 3, "text": "환형 대기" },
+      { "choiceId": 4, "text": "선점 가능" }
+    ]
+  },
+  {
+    "quizId": 8,
+    "categoryId": "CS",
+    "question": "INNER JOIN 결과는?",
+    "explanation": "두 테이블에서 조건이 맞는 행만 반환한다.",
+    "correctChoiceId": 3,
+    "difficulty": 2,
+    "choices": [
+      { "choiceId": 1, "text": "왼쪽 전체 행" },
+      { "choiceId": 2, "text": "오른쪽 전체 행" },
+      { "choiceId": 3, "text": "매칭된 행만" },
+      { "choiceId": 4, "text": "모든 행 + NULL" }
+    ]
+  },
+  {
+    "quizId": 9,
+    "categoryId": "CS",
+    "question": "캐시 hit ratio 뜻은?",
+    "explanation": "전체 요청 중 캐시 적중 요청의 비율이다.",
+    "correctChoiceId": 2,
+    "difficulty": 3,
+    "choices": [
+      { "choiceId": 1, "text": "캐시 실패 비율" },
+      { "choiceId": 2, "text": "적중 요청/전체 요청" },
+      { "choiceId": 3, "text": "용량/라인 수" },
+      { "choiceId": 4, "text": "지연/대역폭" }
+    ]
+  },
+  {
+    "quizId": 10,
+    "categoryId": "CS",
+    "question": "가비지 컬렉션의 역할은?",
+    "explanation": "더 이상 참조되지 않는 메모리를 회수한다.",
+    "correctChoiceId": 2,
+    "difficulty": 1,
+    "choices": [
+      { "choiceId": 1, "text": "스레드 생성" },
+      { "choiceId": 2, "text": "미사용 메모리 회수" },
+      { "choiceId": 3, "text": "쿼리 최적화" },
+      { "choiceId": 4, "text": "네트워크 압축" }
+    ]
+  }
+]
