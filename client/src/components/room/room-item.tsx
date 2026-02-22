@@ -23,11 +23,7 @@ export default function RoomItem({
 
   const handleRoomItemClick = async () => {
     try {
-      const { canJoin } = await checkRoomAvailability(roomId);
-
-      if (!canJoin) {
-        throw new Error();
-      }
+      await checkRoomAvailability(roomId);
 
       navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId), { replace: true });
     } catch (error) {
