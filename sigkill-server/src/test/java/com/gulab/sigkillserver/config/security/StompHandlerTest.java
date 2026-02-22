@@ -8,9 +8,10 @@ import static org.mockito.Mockito.when;
 
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.security.Principal;
 import java.util.Optional;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -32,6 +33,11 @@ class StompHandlerTest {
         playerRepository = mock(PlayerRepository.class);
         stompHandler = new StompHandler(playerRepository, new SimpleMeterRegistry());
         messageChannel = mock(MessageChannel.class);
+    }
+
+    @AfterEach
+    void tearDown() {
+        MDC.clear();
     }
 
     @Test

@@ -2,7 +2,7 @@
 <configuration>
     <property name="LOG_PATH" value="/var/log/sigkill"/>
     <property name="LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{channel:-APP}] [%X{traceId:-no-trace}] %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{channel:-APP}] [%X{traceId:-no-trace}] [%X{httpMethod:-no-method}] [%X{path:-no-path}] [%X{stompCommand:-no-stomp}] [%X{destination:-no-destination}] [%X{sessionId:-no-session}] %logger{36} - %msg%n"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>

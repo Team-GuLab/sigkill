@@ -40,7 +40,7 @@
   - Validation/business failure (`CustomException`, access denied): `WARN`
   - Unexpected runtime failure: `ERROR`
   - Polling/read success traces: `DEBUG` only when needed
-- Keep REST/WS logs separated with `logback-spring.xml` channel-based sifting appenders (`logs/REST.log`, `logs/WS.log`).
+- Keep REST/WS logs separated with `logback-spring.xml` channel-based sifting appenders (`/var/log/sigkill/REST.log`, `/var/log/sigkill/WS.log`).
 
 ## Testing Guidelines
 - Use JUnit 5 + Spring Boot Test + AssertJ.

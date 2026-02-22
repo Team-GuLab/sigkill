@@ -31,6 +31,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/v1/users/guest-login", // 게스트 로그인
                                 "/actuator/health",
+                                "/actuator/health/**",
                                 "/actuator/prometheus",
                                 "/ws/**",
                                 "/room-ws-test.html", // TODO: 테스트용 웹소켓 페이지
