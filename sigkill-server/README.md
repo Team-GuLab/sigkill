@@ -144,6 +144,7 @@
 
 - `Dockerfile` 기본 JVM 옵션:
   - 타임존: `Asia/Seoul` (`TZ`, `-Duser.timezone`)
+  - 애플리케이션 로그 파일: `/var/log/sigkill/app.log` (`LOGGING_FILE_NAME`)
   - 힙: `-Xms512m -Xmx1024m`
   - GC: `G1GC` + `MaxGCPauseMillis=200`
   - OOM: `-XX:+HeapDumpOnOutOfMemoryError`, `-XX:HeapDumpPath=/app/logs`, `-XX:+ExitOnOutOfMemoryError`
@@ -155,8 +156,10 @@ docker build -t sigkill-server .
 docker run -d --name sigkill-server -p 8080:8080 \
   --memory=1536m --memory-swap=1536m \
   -e TZ=Asia/Seoul \
+  -e LOGGING_FILE_NAME=/var/log/sigkill/app.log \
   -e JAVA_TOOL_OPTIONS="-Duser.timezone=Asia/Seoul -Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ParallelRefProcEnabled -XX:+UseStringDeduplication -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -XX:+ExitOnOutOfMemoryError" \
   -v "$(pwd)/logs:/app/logs" \
+  -v "$(pwd)/runtime-logs:/var/log/sigkill" \
   sigkill-server
 ```
 
