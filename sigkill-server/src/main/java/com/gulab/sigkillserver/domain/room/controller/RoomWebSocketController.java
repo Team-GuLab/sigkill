@@ -26,7 +26,6 @@ public class RoomWebSocketController {
     @MessageMapping("/room/join")
     public void joinRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("방 참가 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         PlayerJoinEvent playerJoinEvent = roomService.joinRoom(request.roomId(), userId);
 
@@ -39,7 +38,6 @@ public class RoomWebSocketController {
     @MessageMapping("/room/leave")
     public void leaveRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("방 퇴장 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         LeaveRoomResult leaveRoomResult = roomService.leaveRoom(request.roomId(), userId);
 
@@ -53,7 +51,6 @@ public class RoomWebSocketController {
     @MessageMapping("/room/ready")
     public void playerReady(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("준비 상태 변경 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         PlayerReadyEvent playerReadyEvent = roomService.readyPlayer(request.roomId(), userId);
 
@@ -65,7 +62,6 @@ public class RoomWebSocketController {
     @MessageMapping("/room/unready")
     public void playerUnready(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("준비 취소 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         PlayerUnreadyEvent playerUnreadyEvent = roomService.unreadyPlayer(request.roomId(), userId);
 

@@ -3,7 +3,6 @@ package com.gulab.sigkillserver.common.exception.handler;
 import com.gulab.sigkillserver.common.BaseResponse;
 import com.gulab.sigkillserver.common.exception.CustomErrorCode;
 import com.gulab.sigkillserver.common.exception.CustomException;
-import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +19,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<BaseResponse<String>> handleCustomException(CustomException e) {
-        log.error("CustomException 발생: {}", e.getErrorCode().getMessage(), e);
+        log.warn("CustomException 발생: code={}, message={}", e.getErrorCode().getCode(), e.getErrorCode().getMessage());
         return createResponseEntity(e.getErrorCode());
     }
 

@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -29,34 +30,44 @@ public class StompEventListener {
 
     @EventListener
     public void connectHandle(SessionConnectedEvent event) {
-        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
-        sessions.add(accessor.getSessionId());
+        MDC.put("channel", "WS");
+        try {
+            StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+            sessions.add(accessor.getSessionId());
 
-        log.info("WebSocket 연결됨: SessionId={}, TotalSessions={}", accessor.getSessionId(), sessions.size());
+            log.debug("WebSocket 연결됨: SessionId={}, TotalSessions={}", accessor.getSessionId(), sessions.size());
+        } finally {
+            MDC.remove("channel");
+        }
     }
 
     @EventListener
     public void disconnectHandle(SessionDisconnectEvent event) {
-        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
-        sessions.remove(accessor.getSessionId());
-
-        log.info("WebSocket 연결 해제됨: SessionId={}, TotalSessions={}", accessor.getSessionId(), sessions.size());
-
-        Principal user = accessor.getUser();
-        if (user == null) {
-            return;
-        }
-
-        Long userId;
+        MDC.put("channel", "WS");
         try {
-            userId = Long.parseLong(user.getName());
-        } catch (NumberFormatException e) {
-            log.warn("DISCONNECT userId 파싱 실패 - principalName={}", user.getName());
-            return;
-        }
+            StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+            sessions.remove(accessor.getSessionId());
 
-        playerRepository.findById(userId).ifPresentOrElse(this::leaveRoomByDisconnect,
-                () -> log.debug("DISCONNECT 후 정리 대상 플레이어 없음 - userId={}", userId));
+            log.debug("WebSocket 연결 해제됨: SessionId={}, TotalSessions={}", accessor.getSessionId(), sessions.size());
+
+            Principal user = accessor.getUser();
+            if (user == null) {
+                return;
+            }
+
+            Long userId;
+            try {
+                userId = Long.parseLong(user.getName());
+            } catch (NumberFormatException e) {
+                log.warn("DISCONNECT userId 파싱 실패 - principalName={}", user.getName());
+                return;
+            }
+
+            playerRepository.findById(userId).ifPresentOrElse(this::leaveRoomByDisconnect,
+                    () -> log.debug("DISCONNECT 후 정리 대상 플레이어 없음 - userId={}", userId));
+        } finally {
+            MDC.remove("channel");
+        }
     }
 
     private void leaveRoomByDisconnect(Player player) {
@@ -76,6 +87,6 @@ public class StompEventListener {
             messagingTemplate.convertAndSend("/topic/room/" + roomId, leaveRoomResult.hostChangedEvent());
         }
 
-        log.info("DISCONNECT 자동 퇴장 처리 완료 - roomId={}, userId={}", roomId, userId);
+        log.debug("DISCONNECT 자동 퇴장 처리 완료 - roomId={}, userId={}", roomId, userId);
     }
 }
