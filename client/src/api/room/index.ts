@@ -1,6 +1,10 @@
 import { axiosInstance } from "@/api/axios";
 import type { APIResponse } from "@/api/types";
-import type { CreateRoomParams, CreateRoomResponse, RoomListDto } from "./types";
+import type {
+  CreateRoomParams,
+  CreateRoomResponse,
+  RoomListDto,
+} from "./types";
 import type { AxiosResponse } from "axios";
 import { MAX_CAPACITY } from "@/constants/room";
 
