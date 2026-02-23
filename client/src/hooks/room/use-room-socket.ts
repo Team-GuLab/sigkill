@@ -13,6 +13,7 @@ import { subscribeError } from "@/api/error/subscribe-error";
 import { handleErrorMessage } from "@/api/error/handle-error-message";
 import { ROUTE_PATHS } from "@/routes/paths";
 import type { Player, RoomItem } from "@/api/room/types";
+import { useSetGameInfo } from "@/store/game-store";
 
 /**
  * 대기방 웹소켓 연결 및 상태 관리
@@ -32,6 +33,7 @@ export const useRoomSocket = ({
   initialPlayers,
 }: UseRoomSocketProps) => {
   const navigate = useNavigate();
+  const setGameInfo = useSetGameInfo();
   const [isPending, setIsPending] = useState(false);
   const [roomInfo, setRoomInfo] = useState<Omit<
     RoomItem,
@@ -41,6 +43,8 @@ export const useRoomSocket = ({
 
   const unsubscribe = useRef<(() => void) | undefined>(undefined);
   const errorUnsubscribe = useRef<(() => void) | undefined>(undefined);
+
+  const isGameStarted = useRef(false);
 
   useEffect(() => {
     if (!roomId) return;
@@ -62,6 +66,15 @@ export const useRoomSocket = ({
 
         // 웹소켓 메시지 핸들러
         unsubscribe.current = subscribeRoom(roomId, message => {
+          if (message.type === "GAME_START") {
+            isGameStarted.current = true;
+            setGameInfo(message.roomId, message.gameId);
+            toast.success("게임이 시작됩니다!");
+            navigate(`/game/${message.gameId}`, { replace: true });
+            return;
+          }
+
+          // 나머지 메시지는 기존 핸들러로 처리
           handleRoomMessage(message, setRoomInfo, setPlayers, myUserId);
         });
 
@@ -83,6 +96,12 @@ export const useRoomSocket = ({
     setupConnection();
 
     return () => {
+      // TODO: 더 나은 방법으로 개선 필요
+      if (isGameStarted.current) {
+        return;
+      }
+
+      // 게임이 시작되지 않은 경우 정상적으로 cleanup
       const client = getClient();
       if (client && client.active) {
         if (unsubscribe.current) unsubscribe.current();
