@@ -25,8 +25,9 @@ import org.springframework.stereotype.Component;
 @Order(Ordered.HIGHEST_PRECEDENCE + 99)
 @RequiredArgsConstructor
 public class StompHandler implements ChannelInterceptor {
-
+    // TODO: 구독 권한 추가
     private static final String ROOM_TOPIC_PREFIX = "/topic/room/";
+    private static final String GAME_TOPIC_PREFIX = "/topic/game/";
     private static final String MDC_CHANNEL = "channel";
     private static final String MDC_STOMP_COMMAND = "stompCommand";
     private static final String MDC_DESTINATION = "destination";
