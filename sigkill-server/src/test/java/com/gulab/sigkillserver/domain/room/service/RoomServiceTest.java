@@ -129,6 +129,19 @@ class RoomServiceTest {
         }
 
         @Test
+        void 게임_시작_최소_인원_2명을_만족하지_못하면_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host); // 호스트 1명만 존재
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.startGame(TEST_ROOM_ID, host.getUserId()),
+                    RoomErrorCode.NOT_ENOUGH_PLAYERS_TO_START.name());
+            verifyNoInteractions(gameService);
+        }
+
+        @Test
         void 모든_게스트가_준비되지_않으면_게임_시작_요청시_예외를_발생한다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");

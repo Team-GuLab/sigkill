@@ -4,9 +4,11 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.DEFAULT
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TITLE_LENGTH;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
+import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_PLAYERS_TO_START;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.NOT_ENOUGH_PLAYERS_TO_START;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ONLY_HOST_CAN_START_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYERS_NOT_READY;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
@@ -362,12 +364,20 @@ public class RoomService {
         Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
         validateRoomNotInGame(room);
         validatePlayerHost(player, room);
+        validatePlayerCountOverMinimum(room);
 
         if (!isAllGuestsReady(room)) {
             throw new CustomException(PLAYERS_NOT_READY);
         }
 
         return gameService.startGame(room);
+    }
+
+    private void validatePlayerCountOverMinimum(Room room) {
+        int playerCount = getPlayerCountInRoom(room.getRoomId());
+        if (playerCount < MIN_PLAYERS_TO_START) {
+            throw new CustomException(NOT_ENOUGH_PLAYERS_TO_START);
+        }
     }
 
     private Room getRoomOrThrow(String roomId) {

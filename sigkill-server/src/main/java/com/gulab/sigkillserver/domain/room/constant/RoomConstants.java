@@ -25,6 +25,11 @@ public class RoomConstants {
      */
     public static final int MAX_TITLE_LENGTH = 20;
 
+    /**
+     * 게임 시작 최소 인원
+     */
+    public static final int MIN_PLAYERS_TO_START = 2;
+
     private RoomConstants() {
     }
 }
