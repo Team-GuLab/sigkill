@@ -39,14 +39,6 @@ export default function WaitingRoom() {
     Map<number, number>
   >(new Map());
 
-  const isHost = myUserId
-    ? players.find(p => p.userId === myUserId)?.role === "HOST"
-    : false;
-
-  const myReadyStatus = myUserId
-    ? players.find(p => p.userId === myUserId)?.status === "READY"
-    : false;
-
   // 슬롯 배열 생성 (capacity 크기, 각 슬롯에 플레이어 또는 null)
   const playerSlots = useMemo<PlayerSlot[]>(() => {
     const capacity = roomInfo?.capacity || MAX_CAPACITY;
@@ -99,6 +91,21 @@ export default function WaitingRoom() {
     });
   }, [players, roomInfo?.capacity]);
 
+  const isHost = myUserId
+    ? players.find(p => p.userId === myUserId)?.role === "HOST"
+    : false;
+
+  const myReadyStatus = myUserId
+    ? players.find(p => p.userId === myUserId)?.status === "READY"
+    : false;
+
+  // 모든 게스트가 READY 상태인지 확인
+  const isAllGuestsReady = useMemo(() => {
+    const guests = players.filter(p => p.role === "GUEST");
+    if (guests.length === 0) return false;
+    return guests.every(p => p.status === "READY");
+  }, [players]);
+
   if (isPending) {
     return <WaitingRoomSkeleton />;
   }
@@ -141,7 +148,11 @@ export default function WaitingRoom() {
             나가기
           </Button>
           {isHost ? (
-            <GameStartButton roomId={roomId} />
+            <GameStartButton
+              roomId={roomId}
+              players={players}
+              canStart={isAllGuestsReady}
+            />
           ) : (
             <ReadyButton roomId={roomId} myReadyStatus={myReadyStatus} />
           )}
