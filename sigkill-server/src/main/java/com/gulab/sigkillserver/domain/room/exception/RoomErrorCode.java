@@ -25,6 +25,8 @@ public enum RoomErrorCode implements CustomErrorCodeInterface {
     ROOM_PAGING_PARAMETER_INVALID("페이지 번호와 페이지 크기는 0 이상의 정수여야 합니다", HttpStatus.BAD_REQUEST),
     ROOM_ID_ALREADY_EXISTS("이미 존재하는 방 ID입니다", HttpStatus.CONFLICT),
     PLAYER_ID_ALREADY_EXISTS("이미 존재하는 플레이어 ID입니다", HttpStatus.CONFLICT),
+    ONLY_HOST_CAN_START_GAME("게임 시작은 방장만 할 수 있습니다", HttpStatus.FORBIDDEN),
+    PLAYERS_NOT_READY("모든 플레이어가 준비 상태가 아닙니다", HttpStatus.CONFLICT),
     USER_ALREADY_IN_ROOM("사용자가 이미 방에 참여 중입니다", HttpStatus.CONFLICT);
 
     private final String message;

@@ -766,6 +766,31 @@ class RoomServiceTest {
         }
 
         @Test
+        void 준비완료_상태의_게스트가_방장이_되면_준비상태가_NOT_READY로_초기화된다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User guest = createAndSaveUser("guest-session", "게스트유저");
+            Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
+            roomRepository.save(room);
+
+            playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
+            roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
+
+            Player readyGuest = playerRepository.findById(guest.getUserId()).orElseThrow();
+            assertThat(readyGuest.getReadyStatus()).isEqualTo(ReadyStatus.READY);
+
+            // when
+            var result = roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
+
+            // then
+            Player newHost = playerRepository.findById(guest.getUserId()).orElseThrow();
+            assertThat(newHost.getReadyStatus()).isEqualTo(ReadyStatus.NOT_READY);
+            assertThat(result.hostChangedEvent()).isNotNull();
+            assertThat(result.hostChangedEvent().newHost().status()).isEqualTo(ReadyStatus.NOT_READY);
+        }
+
+        @Test
         void 마지막_플레이어가_퇴장할_경우_방이_삭제된다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
