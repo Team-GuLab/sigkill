@@ -333,6 +333,12 @@ public class RoomService {
         }
     }
 
+    private void validatePlayerHost(Player player, Room room) {
+        if (!room.getHostId().equals(player.getUserId())) {
+            throw new CustomException(ONLY_HOST_CAN_START_GAME);
+        }
+    }
+
     /**
      * 플레이어 준비 취소
      */
@@ -354,9 +360,8 @@ public class RoomService {
     public GameStartEvent startGame(String roomId, Long userId) {
         Room room = getRoomOrThrow(roomId);
         Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-        if (room.getHostId().equals(player.getUserId())) {
-            throw new CustomException(ONLY_HOST_CAN_START_GAME);
-        }
+        validateRoomNotInGame(room);
+        validatePlayerHost(player, room);
 
         if (!isAllGuestsReady(room)) {
             throw new CustomException(PLAYERS_NOT_READY);
