@@ -7,6 +7,10 @@ public interface GameRepository {
 
     Game save(Game game);
 
+    Optional<Game> findById(Long gameId);
+
+    void deleteById(Long gameId);
+
     Optional<Game> findByRoomId(String roomId);
 
     void deleteByRoomId(String roomId);

@@ -3,10 +3,12 @@ package com.gulab.sigkillserver.domain.game.model;
 import com.gulab.sigkillserver.common.BaseEntity;
 import java.util.List;
 import lombok.Getter;
+import lombok.With;
 
 @Getter
 public class Game extends BaseEntity {
-    private final long gameId;
+    @With
+    private final Long gameId;
     private final String roomId;
     private final GameStatus status;
 
@@ -14,7 +16,7 @@ public class Game extends BaseEntity {
     private Integer currentQuizIndex;
     private Long quizStartTime;
 
-    private Game(long gameId, String roomId, GameStatus status, List<Long> quizIds, int currentQuizIndex,
+    private Game(Long gameId, String roomId, GameStatus status, List<Long> quizIds, int currentQuizIndex,
                  Long quizStartTime) {
         this.gameId = gameId;
         this.roomId = roomId;
@@ -24,7 +26,7 @@ public class Game extends BaseEntity {
         this.quizStartTime = quizStartTime;
     }
 
-    public static Game create(long gameId, String roomId, List<Long> quizIds) {
-        return new Game(gameId, roomId, GameStatus.INGAME, quizIds, -1, null);
+    public static Game create(String roomId, List<Long> quizIds) {
+        return new Game(null, roomId, GameStatus.INGAME, quizIds, -1, null);
     }
 }
