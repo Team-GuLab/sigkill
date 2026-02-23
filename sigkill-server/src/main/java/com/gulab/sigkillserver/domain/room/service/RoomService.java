@@ -362,7 +362,7 @@ public class RoomService {
             throw new CustomException(PLAYERS_NOT_READY);
         }
 
-        return gameService.startGame(room, player);
+        return gameService.startGame(room);
     }
 
     private Room getRoomOrThrow(String roomId) {
