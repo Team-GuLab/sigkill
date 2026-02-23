@@ -24,7 +24,8 @@ class GameServiceTest {
     @BeforeEach
     void setUp() {
         gameRepository = new GameMemoryRepository();
-        QuizRepository quizRepository = new QuizMemoryRepository(new ObjectMapper(), new ClassPathResource("quiz/quiz.json"));
+        QuizRepository quizRepository = new QuizMemoryRepository(new ObjectMapper(),
+                new ClassPathResource("quiz/quiz.json"));
         gameService = new GameService(gameRepository, quizRepository);
     }
 
@@ -50,6 +51,180 @@ class GameServiceTest {
             assertThat(savedGame.getGameId()).isEqualTo(result.gameId());
             assertThat(savedGame.getRoomId()).isEqualTo("1234");
             assertThat(savedGame.getQuizIds()).hasSize(result.payload().quiz().totalQuizCount());
+        }
+    }
+
+    @Nested
+    class StartQuizTests {
+        @Test
+        void 퀴즈가_시작된다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 게임이_진행중이지_않은_방에서_퀴즈를_시작하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 게임이_종료된_방에서_퀴즈를_시작하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 모든_퀴즈가_끝난_방에서_퀴즈를_시작하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 플레이어가_1명_이하인_게임에서_퀴즈를_시작하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+    }
+
+    @Nested
+    class SubmitChoiceTests {
+        @Test
+        void 플레이어가_선택지를_제출한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 게임이_진행중이지_않은_방에서_선택지를_제출하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 게임이_종료된_방에서_선택지를_제출하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 모든_퀴즈가_끝난_방에서_선택지를_제출하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 플레이어가_1명_이하인_게임에서_선택지를_제출하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+    }
+
+    @Nested
+    class EndQuizTests {
+        @Test
+        void 퀴즈가_종료된다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 게임이_진행중이지_않은_방에서_퀴즈를_종료하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 게임이_종료된_방에서_퀴즈를_종료하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 모든_퀴즈가_끝난_방에서_퀴즈를_종료하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+    }
+
+    @Nested
+    class EndGameTests {
+        @Test
+        void 게임이_종료된다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 게임이_진행중이지_않은_방에서_게임을_종료하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 게임이_종료된_방에서_게임을_종료하지_못한다() {
+            // given
+
+            // when
+
+            // then
+        }
+
+        @Test
+        void 모든_퀴즈가_끝난_방에서_게임을_종료하지_못한다() {
+            // given
+
+            // when
+
+            // then
         }
     }
 }

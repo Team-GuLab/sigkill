@@ -1,7 +1,11 @@
 package com.gulab.sigkillserver.domain.game.service;
 
 import com.gulab.sigkillserver.domain.game.constant.GameConstants;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizEndEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartPayload;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartQuizInfo;
 import com.gulab.sigkillserver.domain.game.model.Game;
@@ -39,5 +43,21 @@ public class GameService {
         return GameStartEvent.of(room.getRoomId(), game.getGameId(),
                 new GameStartPayload(new GameStartQuizInfo(0, quizIds.size()))
         );
+    }
+
+    public QuizStartEvent startQuiz(String roomId) {
+        return null;
+    }
+
+    public ChoiceSubmitEvent submitChoice(Long gameId, Long quizId, Integer choiceNumber) {
+        return null;
+    }
+
+    public QuizEndEvent endQuiz(Long gameId, Long quizId) {
+        return null;
+    }
+
+    public GameEndEvent endGame(Long gameId) {
+        return null;
     }
 }
