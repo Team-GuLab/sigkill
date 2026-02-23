@@ -3,8 +3,16 @@ package com.gulab.sigkillserver.domain.room.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartPayload;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartQuizInfo;
+import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
@@ -30,6 +38,7 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 class RoomServiceTest {
 
@@ -42,13 +51,15 @@ class RoomServiceTest {
     private RoomRepository roomRepository;
     private UserMemoryRepository userRepository;
     private PlayerRepository playerRepository;
+    private GameService gameService;
 
     @BeforeEach
     void setup() {
         roomRepository = new RoomMemoryRepository();
         userRepository = new UserMemoryRepository();
         playerRepository = new PlayerMemoryRepository();
-        roomService = new RoomService(roomRepository, userRepository, playerRepository);
+        gameService = Mockito.mock(GameService.class);
+        roomService = new RoomService(roomRepository, userRepository, playerRepository, gameService);
     }
 
     /**
@@ -74,6 +85,80 @@ class RoomServiceTest {
                 .isInstanceOf(CustomException.class)
                 .satisfies(throwable ->
                         assertThat(((CustomException) throwable).getErrorCode().getCode()).isEqualTo(expectedCode));
+    }
+
+    @Nested
+    class StartGameTests {
+        @Test
+        void 방장이_모든_게스트가_준비된_상태에서_게임을_시작할_수_있다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User guest = createAndSaveUser("guest-session", "게스트유저");
+            Room room = createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
+            roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
+
+            GameStartEvent expected = GameStartEvent.of(
+                    TEST_ROOM_ID,
+                    1L,
+                    new GameStartPayload(new GameStartQuizInfo(0, 1))
+            );
+            when(gameService.startGame(room)).thenReturn(expected);
+
+            // when
+            GameStartEvent result = roomService.startGame(TEST_ROOM_ID, host.getUserId());
+
+            // then
+            assertThat(result).isEqualTo(expected);
+            verify(gameService).startGame(room);
+        }
+
+        @Test
+        void 방장이_아닌_플레이어가_게임_시작을_요청하면_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User guest = createAndSaveUser("guest-session", "게스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+            playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.startGame(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.ONLY_HOST_CAN_START_GAME.name());
+            verify(gameService, never()).startGame(org.mockito.ArgumentMatchers.any(Room.class));
+        }
+
+        @Test
+        void 모든_게스트가_준비되지_않으면_게임_시작_요청시_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User guest1 = createAndSaveUser("guest-session-1", "게스트유저1");
+            User guest2 = createAndSaveUser("guest-session-2", "게스트유저2");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+            playerRepository.create(Player.create(guest1.getUserId(), TEST_ROOM_ID, guest1.getNickname()));
+            playerRepository.create(Player.create(guest2.getUserId(), TEST_ROOM_ID, guest2.getNickname()));
+            roomService.readyPlayer(TEST_ROOM_ID, guest1.getUserId()); // guest2는 NOT_READY
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.startGame(TEST_ROOM_ID, host.getUserId()),
+                    RoomErrorCode.PLAYERS_NOT_READY.name());
+            verifyNoInteractions(gameService);
+        }
+
+        @Test
+        void 게임중인_방에서는_게임_시작_요청시_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            Room room = createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+            room.startGame();
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.startGame(TEST_ROOM_ID, host.getUserId()),
+                    RoomErrorCode.ROOM_IN_GAME.name());
+            verifyNoInteractions(gameService);
+        }
     }
 
     @Nested
