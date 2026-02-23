@@ -6,10 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.common.exception.CustomException;
-import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameResponseType;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
 import com.gulab.sigkillserver.domain.game.service.GameService;
@@ -32,6 +34,7 @@ import com.gulab.sigkillserver.domain.user.exception.UserErrorCode;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
+import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.util.HashSet;
 import java.util.Set;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
@@ -47,21 +50,34 @@ class RoomServiceTest {
     private static final String TEST_ROOM_TITLE = "테스트 방";
     private static final Integer TEST_CAPACITY = 10;
     private static final Long NON_EXISTENT_USER_ID = -1L;
-    private RoomService roomService;
-    private RoomRepository roomRepository;
-    private UserMemoryRepository userRepository;
-    private PlayerRepository playerRepository;
+    private UserRepository userRepository;
     private GameRepository gameRepository;
+    private QuizRepository quizRepository;
+    private PlayerRepository playerRepository;
+    private RoomRepository roomRepository;
+    private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
+
+    private RoomService roomService;
     private GameService gameService;
 
     @BeforeEach
     void setup() {
-        roomRepository = new RoomMemoryRepository();
         userRepository = new UserMemoryRepository();
-        playerRepository = new PlayerMemoryRepository();
         gameRepository = new GameMemoryRepository();
-        QuizRepository quizRepository = new QuizMemoryRepository(new ObjectMapper(), new ClassPathResource("quiz/quiz.json"));
-        gameService = new GameService(gameRepository, quizRepository);
+        quizRepository = new QuizMemoryRepository(new ObjectMapper(),
+                new ClassPathResource("quiz/quiz.json"));
+        playerRepository = new PlayerMemoryRepository();
+        roomRepository = new RoomMemoryRepository();
+        quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
+
+        gameService = new GameService(
+                userRepository,
+                gameRepository,
+                quizRepository,
+                playerRepository,
+                roomRepository,
+                quizChoiceNumberMappingRepository
+        );
         roomService = new RoomService(roomRepository, userRepository, playerRepository, gameService);
     }
 

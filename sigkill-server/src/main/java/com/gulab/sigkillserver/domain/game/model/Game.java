@@ -27,4 +27,18 @@ public class Game extends BaseEntity {
     public static Game create(String roomId, List<Long> quizIds) {
         return new Game(null, roomId, quizIds, -1, null);
     }
+
+    public boolean isQuizIndexOutOfBounds() {
+        return currentQuizIndex < 0 || currentQuizIndex >= quizIds.size();
+    }
+
+    public long startNextQuiz(long quizStartTime) {
+        this.currentQuizIndex++;
+        this.quizStartTime = quizStartTime;
+        return quizIds.get(currentQuizIndex);
+    }
+
+    public int getTotalQuizCount() {
+        return quizIds.size();
+    }
 }

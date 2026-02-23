@@ -8,9 +8,17 @@ import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.model.Game;
 import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
 import com.gulab.sigkillserver.domain.room.model.Room;
+import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
+import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
+import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
+import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
+import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
+import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,15 +26,35 @@ import org.springframework.core.io.ClassPathResource;
 
 class GameServiceTest {
 
+    private UserRepository userRepository;
     private GameRepository gameRepository;
+    private QuizRepository quizRepository;
+    private PlayerRepository playerRepository;
+    private RoomRepository roomRepository;
+    private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
     private GameService gameService;
 
     @BeforeEach
     void setUp() {
+        userRepository = new UserMemoryRepository();
+        gameRepository = new GameMemoryRepository();
+        quizRepository = new QuizMemoryRepository(new ObjectMapper(),
+                new ClassPathResource("quiz/quiz.json"));
+        playerRepository = new PlayerMemoryRepository();
+        roomRepository = new RoomMemoryRepository();
+        quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
+
         gameRepository = new GameMemoryRepository();
         QuizRepository quizRepository = new QuizMemoryRepository(new ObjectMapper(),
                 new ClassPathResource("quiz/quiz.json"));
-        gameService = new GameService(gameRepository, quizRepository);
+        gameService = new GameService(
+                userRepository,
+                gameRepository,
+                quizRepository,
+                playerRepository,
+                roomRepository,
+                quizChoiceNumberMappingRepository
+        );
     }
 
     @Nested

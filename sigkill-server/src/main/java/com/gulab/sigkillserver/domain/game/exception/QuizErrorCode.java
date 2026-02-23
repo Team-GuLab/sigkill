@@ -18,7 +18,7 @@ public enum QuizErrorCode implements CustomErrorCodeInterface {
     QUIZ_CHOICE_ID_DUPLICATED("퀴즈 선택지 ID가 중복되었습니다", HttpStatus.INTERNAL_SERVER_ERROR),
     QUIZ_CORRECT_CHOICE_INVALID("정답 선택지가 존재하지 않습니다", HttpStatus.INTERNAL_SERVER_ERROR),
     QUIZ_ID_DUPLICATED("퀴즈 ID가 중복되었습니다", HttpStatus.INTERNAL_SERVER_ERROR),
-    ;
+    QUIZ_INDEX_OUT_OF_BOUNDS("퀴즈 인덱스가 범위를 벗어났습니다", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String message;
     private final HttpStatus httpStatus;
