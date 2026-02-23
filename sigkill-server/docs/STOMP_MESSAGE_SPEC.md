@@ -4,7 +4,8 @@
 
 ## 1. 범위
 
-- 현재 구현/계약 범위: Room 도메인 이벤트 (`join`, `leave`, `ready`, `unready`), Game 도메인 이벤트 (`game/start`, `quiz/start`, `submit`, `quiz/end`, `game/end`), 연결 상태 확인 이벤트 (`ping`)
+- 현재 구현/계약 범위: Room 도메인 이벤트 (`join`, `leave`, `ready`, `unready`), Game 도메인 이벤트 (`game/start`, `quiz/start`, `submit`,
+  `quiz/end`, `game/end`), 연결 상태 확인 이벤트 (`ping`)
 
 ## 2. 연결 및 목적지 규칙
 
@@ -251,12 +252,12 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 
 ### 6.1 게임 시작
 
-- SEND: `/app/game/start`
+- SEND: `/app/room/start`
 - SUBSCRIBE: `/topic/room/{roomId}`
 - Response type: `GAME_START`
 - 권한/조건:
-  - 방장만 시작 가능
-  - 게임 시작 시 호스트를 제외한 모든 플레이어가 `READY`여야 함
+    - 방장만 시작 가능
+    - 게임 시작 시 호스트를 제외한 모든 플레이어가 `READY`여야 함
 
 요청 예시:
 
