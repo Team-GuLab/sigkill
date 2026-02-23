@@ -3,15 +3,15 @@ package com.gulab.sigkillserver.domain.room.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
-import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartPayload;
-import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartQuizInfo;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameResponseType;
+import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.GameRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
@@ -38,7 +38,7 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.springframework.core.io.ClassPathResource;
 
 class RoomServiceTest {
 
@@ -51,6 +51,7 @@ class RoomServiceTest {
     private RoomRepository roomRepository;
     private UserMemoryRepository userRepository;
     private PlayerRepository playerRepository;
+    private GameRepository gameRepository;
     private GameService gameService;
 
     @BeforeEach
@@ -58,7 +59,9 @@ class RoomServiceTest {
         roomRepository = new RoomMemoryRepository();
         userRepository = new UserMemoryRepository();
         playerRepository = new PlayerMemoryRepository();
-        gameService = Mockito.mock(GameService.class);
+        gameRepository = new GameMemoryRepository();
+        QuizRepository quizRepository = new QuizMemoryRepository(new ObjectMapper(), new ClassPathResource("quiz/quiz.json"));
+        gameService = new GameService(gameRepository, quizRepository);
         roomService = new RoomService(roomRepository, userRepository, playerRepository, gameService);
     }
 
@@ -98,19 +101,21 @@ class RoomServiceTest {
             playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
             roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
 
-            GameStartEvent expected = GameStartEvent.of(
-                    TEST_ROOM_ID,
-                    1L,
-                    new GameStartPayload(new GameStartQuizInfo(0, 1))
-            );
-            when(gameService.startGame(room)).thenReturn(expected);
-
             // when
             GameStartEvent result = roomService.startGame(TEST_ROOM_ID, host.getUserId());
 
             // then
-            assertThat(result).isEqualTo(expected);
-            verify(gameService).startGame(room);
+            assertThat(result.type()).isEqualTo(GameResponseType.GAME_START);
+            assertThat(result.roomId()).isEqualTo(TEST_ROOM_ID);
+            assertThat(result.gameId()).isNotNull();
+            assertThat(result.payload().quiz().currentQuizIndex()).isZero();
+            assertThat(result.payload().quiz().totalQuizCount()).isPositive();
+            assertThat(room.isInGame()).isTrue();
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID))
+                    .isPresent()
+                    .get()
+                    .extracting(game -> game.getGameId())
+                    .isEqualTo(result.gameId());
         }
 
         @Test
@@ -125,7 +130,7 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.startGame(TEST_ROOM_ID, guest.getUserId()),
                     RoomErrorCode.ONLY_HOST_CAN_START_GAME.name());
-            verify(gameService, never()).startGame(org.mockito.ArgumentMatchers.any(Room.class));
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
 
         @Test
@@ -138,7 +143,7 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.startGame(TEST_ROOM_ID, host.getUserId()),
                     RoomErrorCode.NOT_ENOUGH_PLAYERS_TO_START.name());
-            verifyNoInteractions(gameService);
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
 
         @Test
@@ -156,7 +161,7 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.startGame(TEST_ROOM_ID, host.getUserId()),
                     RoomErrorCode.PLAYERS_NOT_READY.name());
-            verifyNoInteractions(gameService);
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
 
         @Test
@@ -170,7 +175,7 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.startGame(TEST_ROOM_ID, host.getUserId()),
                     RoomErrorCode.ROOM_IN_GAME.name());
-            verifyNoInteractions(gameService);
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
     }
 
