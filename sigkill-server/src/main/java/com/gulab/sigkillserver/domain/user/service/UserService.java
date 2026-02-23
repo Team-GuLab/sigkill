@@ -49,9 +49,7 @@ public class UserService {
                 HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                 securityContext
         );
-
-        log.info("비회원 로그인 처리 완료 - userId: {}, sessionId: {}, userName: {}", user.getUserId(), sessionId,
-                user.getNickname());
+        
         return new LoginResponse(user.getUserId(), user.getNickname());
     }
 

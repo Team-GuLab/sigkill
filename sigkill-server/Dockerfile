@@ -2,7 +2,7 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 ARG JAR_FILE=build/libs/*.jar
 COPY ${JAR_FILE} app.jar
-RUN mkdir -p /app/logs
+RUN mkdir -p /app/logs /var/log/sigkill
 
 # Container defaults (can be overridden with docker run -e ...)
 ENV TZ=Asia/Seoul

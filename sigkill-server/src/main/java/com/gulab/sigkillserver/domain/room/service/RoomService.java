@@ -63,7 +63,6 @@ public class RoomService {
      * 방 목록 조회
      */
     public RoomListResponse fetchRooms(int page, int size) {
-        log.info("방 목록 조회 - page: {}, size: {}", page, size);
         validatePaginationParameters(page, size);
 
         Comparator<Room> comparator = Comparator.comparing(this::canJoinRoom).reversed()
@@ -137,7 +136,6 @@ public class RoomService {
     public RoomCreateResponse createRoom(String roomTitle, Integer capacity, Long userId) {
         roomTitle = roomTitle.strip();
         int resolvedCapacity = capacity != null ? capacity : DEFAULT_CAPACITY;
-        log.info("방 생성 - title: {}, capacity: {}, userId: {}", roomTitle, resolvedCapacity, userId);
         validateRoomCreateRequest(roomTitle, resolvedCapacity);
 
         User host = getUserOrThrow(userId);
@@ -154,7 +152,7 @@ public class RoomService {
                 Player hostPlayer = Player.create(userId, roomId, host.getNickname());
                 playerRepository.create(hostPlayer);
 
-                log.info("방 생성 완료 - roomId: {}, hostId: {}", roomId, userId);
+                log.info("room.create success - roomId={}, hostId={}, capacity={}", roomId, userId, resolvedCapacity);
                 return RoomCreateResponse.of(room, hostPlayer);
             } catch (IllegalStateException e) {
                 log.debug("Room ID 중복 발생, 재시도 중 (attempt: {}): {}", i + 1, e.getMessage());
@@ -191,7 +189,6 @@ public class RoomService {
      * 방 참가 가능 여부 확인
      */
     public RoomAvailabilityResponse checkRoomAvailability(String roomId, Long userId) {
-        log.info("방 참가 가능 여부 확인 - roomId: {}, userId: {}", roomId, userId);
         validateRoomId(roomId);
 
         Room room = getRoomOrThrow(roomId);
@@ -232,6 +229,7 @@ public class RoomService {
         List<PlayerInfo> playerInfos = playersInRoom.stream()
                 .map(p -> PlayerInfo.of(p, room.getHostId()))
                 .toList();
+        log.info("room.join success - roomId={}, userId={}, players={}", roomId, userId, playerInfos.size());
         return PlayerJoinEvent.of(room, playerInfos);
     }
 
@@ -258,6 +256,7 @@ public class RoomService {
         if (getPlayerCountInRoom(roomId) <= 1) {
             roomRepository.deleteById(roomId);
             playerRepository.deleteById(userId);
+            log.info("room.leave success - roomId={}, userId={}, roomDeleted=true", roomId, userId);
             return LeaveRoomResult.of(playerLeftEvent);
         }
 
@@ -265,9 +264,11 @@ public class RoomService {
 
         if (room.getHostId().equals(userId)) {
             HostChangedEvent hostChangedEvent = changeHost(room, player);
+            log.info("room.leave success - roomId={}, userId={}, hostChanged=true", roomId, userId);
             return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
         }
 
+        log.info("room.leave success - roomId={}, userId={}, hostChanged=false", roomId, userId);
         return LeaveRoomResult.of(playerLeftEvent);
     }
 
@@ -295,6 +296,7 @@ public class RoomService {
 
         boolean isAllReady = isAllGuestsReady(room);
 
+        log.info("room.ready success - roomId={}, userId={}, allReady={}", roomId, userId, isAllReady);
         return PlayerReadyEvent.of(player, room.getHostId(), isAllReady);
     }
 
@@ -335,6 +337,7 @@ public class RoomService {
 
         player.unready();
 
+        log.info("room.unready success - roomId={}, userId={}", roomId, userId);
         return PlayerUnreadyEvent.of(player, room.getHostId());
     }
 

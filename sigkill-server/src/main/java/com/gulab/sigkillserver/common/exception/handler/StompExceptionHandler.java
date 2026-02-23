@@ -24,7 +24,8 @@ public class StompExceptionHandler {
     @MessageExceptionHandler(CustomException.class)
     @SendToUser("/queue/errors")
     public ErrorMessage handleCustomException(CustomException e) {
-        log.error("WebSocket CustomException 발생: {}", e.getErrorCode().getMessage(), e);
+        log.warn("WebSocket CustomException 발생: code={}, message={}",
+                e.getErrorCode().getCode(), e.getErrorCode().getMessage());
         return ErrorMessage.of(
                 e.getErrorCode().getCode(),
                 e.getErrorCode().getMessage()
@@ -37,7 +38,7 @@ public class StompExceptionHandler {
     @MessageExceptionHandler(AccessDeniedException.class)
     @SendToUser("/queue/errors")
     public ErrorMessage handleAccessDeniedException(AccessDeniedException e) {
-        log.error("WebSocket 접근 거부: {}", e.getMessage(), e);
+        log.warn("WebSocket 접근 거부: {}", e.getMessage());
         return ErrorMessage.of(
                 "ACCESS_DENIED",
                 "접근 권한이 없습니다."

@@ -9,5 +9,7 @@ export function useRooms(params: RoomListParams = {}) {
     // staleTime: 10000,
     gcTime: 0,
     refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000,
   });
 }

@@ -56,6 +56,22 @@
   - 에러 enum: `*ErrorCode`, 비즈니스 예외는 `CustomException`
 - DTO는 가능한 `record` 등 불변 모델 선호
 
+## Logging Policy
+- Use channel-based MDC for log separation:
+  - REST: `channel=REST` via `RestMdcFilter`
+  - WebSocket/STOMP: `channel=WS` via `StompHandler` and `StompEventListener`
+- Use metrics-first for performance measurement:
+  - REST RPS/RPM: use Actuator `http.server.requests` metrics
+  - WS traffic: use `sigkill.stomp.frames.total{command=...}` counter
+  - Prometheus scrape endpoint: `/actuator/prometheus`
+- Do not emit per-request `INFO` logs from REST controllers for polling/read APIs.
+- Log level guideline:
+  - Success: `INFO` only for state-changing operations (create/join/leave/ready/start/end)
+  - Validation/business failure (`CustomException`, access denied): `WARN`
+  - Unexpected runtime failure: `ERROR`
+  - Polling/read success traces: `DEBUG` only when needed
+- Keep REST/WS logs separated with `logback-spring.xml` channel-based sifting appenders (`/var/log/sigkill/REST.log`, `/var/log/sigkill/WS.log`).
+
 ## Testing Guidelines
 - JUnit 5 + Spring Boot Test + AssertJ
 - `@Nested`, 명시적 Given/When/Then 주석

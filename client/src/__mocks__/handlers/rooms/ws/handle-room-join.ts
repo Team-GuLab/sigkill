@@ -26,17 +26,13 @@ ${JSON.stringify(data)}\0`;
 export function handleRoomJoin(
   room: ReturnType<typeof ws.link>,
   subscriptionId: string,
-  payload: any, // payload 인자 추가
 ) {
   console.log("[MSW] Handling /app/room/join request");
-
-  // payload에서 roomId 추출 (기본값 "1234")
-  const roomId = payload?.roomId || "1234";
 
   const responseData = {
     type: "PLAYER_JOIN",
     room: {
-      roomId: roomId, // 요청받은 roomId로 응답
+      roomId: "1234", // 요청받은 roomId로 응답
       roomTitle: "재미있는 퀴즈방 [MSW]",
       capacity: 6,
       status: "WAITING",
@@ -63,8 +59,7 @@ export function handleRoomJoin(
     ],
   };
 
-  // 클라이언트가 구독한 채널(/topic/room/${roomId})로 정확하게 전송
   setTimeout(() => {
-    sendMessage(room, subscriptionId, `/topic/room/${roomId}`, responseData);
+    sendMessage(room, subscriptionId, `/topic/room/1234`, responseData);
   }, 200);
 }

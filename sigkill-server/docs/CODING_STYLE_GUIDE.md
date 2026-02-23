@@ -976,9 +976,10 @@ public record MemberAddRequest(
 - Optional 사용으로 null 처리 명확화
 
 ### 로깅 (Logging)
-- `@Slf4j`로 모든 Controller/Service 로깅
-- 예외 발생 시 자동 로깅
-- 중요 비즈니스 로직 실행 시 로그 기록
+- Metrics-first 원칙: 성능 측정은 로그가 아니라 Micrometer/Prometheus 사용
+- 폴링/조회성 API의 요청 단위 `INFO` 로그 금지 (`DEBUG` 필요 시 한시적 활성화)
+- 상태 변경 성공만 `INFO`, 비즈니스/검증 실패는 `WARN`, 예기치 못한 장애만 `ERROR`
+- REST/WS 채널 분리 로깅(`channel=REST|WS`) 유지
 
 ### 문서화 (Documentation)
 - Swagger `@Operation`, `@ApiResponse`로 API 자동 문서화
