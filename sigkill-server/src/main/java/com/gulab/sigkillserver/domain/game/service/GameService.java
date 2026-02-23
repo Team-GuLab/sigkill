@@ -1,8 +1,6 @@
 package com.gulab.sigkillserver.domain.game.service;
 
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_NOT_FOUND;
-import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_NOT_IN_PROGRESS;
-import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.INVALID_GAME_STATE;
 import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
@@ -136,14 +134,8 @@ public class GameService {
     }
 
     private void validateGameInProgress(Room room, Game game) {
-        if (room.isInGame() != game.isInProgress()) {
-            throw new CustomException(INVALID_GAME_STATE);
-        }
         if (!room.isInGame()) {
             throw new CustomException(ROOM_NOT_STARTED);
-        }
-        if (!game.isInProgress()) {
-            throw new CustomException(GAME_NOT_IN_PROGRESS);
         }
     }
 
