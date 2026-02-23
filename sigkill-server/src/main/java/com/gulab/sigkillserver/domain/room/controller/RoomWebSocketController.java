@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.domain.room.controller;
 
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
@@ -68,5 +69,16 @@ public class RoomWebSocketController {
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerUnreadyEvent);
 
         log.debug("준비 취소 완료 - roomId: {}, userId: {}", request.roomId(), userId);
+    }
+
+    @MessageMapping("/room/start")
+    public void startGame(@Valid @Payload RoomIdCommand request, Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+
+        GameStartEvent gameStartEvent = roomService.startGame(request.roomId(), userId);
+
+        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), gameStartEvent);
+
+        log.debug("게임 시작 브로드캐스트 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
 }
