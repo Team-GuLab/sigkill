@@ -24,16 +24,35 @@ class QuizMemoryRepositoryTest {
     class FindByCategoryIdTests {
 
         @Test
-        void 카테고리로_조회하면_해당_퀴즈_목록을_반환한다() {
+        void 카테고리와_개수로_조회하면_랜덤_추출_후_난이도_오름차순_목록을_반환한다() {
             // given
             QuizMemoryRepository repository = createRepositoryWithDefaultResource();
 
             // when
-            List<Quiz> quizzes = repository.findByCategoryId("CS");
+            List<Quiz> quizzes = repository.findByCategoryId("CS", 5);
+
+            // then
+            assertThat(quizzes).hasSize(5);
+            assertThat(quizzes).allMatch(quiz -> quiz.categoryId().equals("CS"));
+            assertThat(quizzes)
+                    .extracting(Quiz::difficulty)
+                    .isSorted();
+        }
+
+        @Test
+        void 요청_개수가_보유_문제보다_많으면_가능한_개수만큼_반환한다() {
+            // given
+            QuizMemoryRepository repository = createRepositoryWithDefaultResource();
+
+            // when
+            List<Quiz> quizzes = repository.findByCategoryId("CS", 100);
 
             // then
             assertThat(quizzes).hasSize(10);
             assertThat(quizzes).allMatch(quiz -> quiz.categoryId().equals("CS"));
+            assertThat(quizzes)
+                    .extracting(Quiz::difficulty)
+                    .isSorted();
         }
 
         @Test
@@ -42,7 +61,19 @@ class QuizMemoryRepositoryTest {
             QuizMemoryRepository repository = createRepositoryWithDefaultResource();
 
             // when
-            List<Quiz> quizzes = repository.findByCategoryId("UNKNOWN");
+            List<Quiz> quizzes = repository.findByCategoryId("UNKNOWN", 5);
+
+            // then
+            assertThat(quizzes).isEmpty();
+        }
+
+        @Test
+        void count가_0_이하면_빈_목록을_반환한다() {
+            // given
+            QuizMemoryRepository repository = createRepositoryWithDefaultResource();
+
+            // when
+            List<Quiz> quizzes = repository.findByCategoryId("CS", 0);
 
             // then
             assertThat(quizzes).isEmpty();

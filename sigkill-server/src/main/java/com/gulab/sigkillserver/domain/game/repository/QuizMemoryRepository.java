@@ -8,10 +8,12 @@ import com.gulab.sigkillserver.domain.game.model.quiz.QuizChoice;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -34,11 +36,23 @@ public class QuizMemoryRepository implements QuizRepository {
     }
 
     @Override
-    public List<Quiz> findByCategoryId(String categoryId) {
-        if (categoryId == null) {
+    public List<Quiz> findByCategoryId(String categoryId, int count) {
+        if (categoryId == null || count <= 0) {
             return List.of();
         }
-        return quizzesByCategoryId.getOrDefault(categoryId, List.of());
+
+        List<Quiz> quizzes = quizzesByCategoryId.get(categoryId);
+        if (quizzes == null || quizzes.isEmpty()) {
+            return List.of();
+        }
+
+        List<Quiz> shuffled = new ArrayList<>(quizzes);
+        shuffleInPlace(shuffled);
+
+        return shuffled.stream()
+                .limit(Math.min(count, shuffled.size()))
+                .sorted(Comparator.comparingInt(Quiz::difficulty).thenComparingLong(Quiz::quizId))
+                .toList();
     }
 
     @Override
@@ -112,6 +126,15 @@ public class QuizMemoryRepository implements QuizRepository {
 
         if (!hasCorrectChoice) {
             throw new CustomException(QuizErrorCode.QUIZ_CORRECT_CHOICE_INVALID);
+        }
+    }
+
+    private void shuffleInPlace(List<Quiz> quizzes) {
+        for (int i = quizzes.size() - 1; i > 0; i--) {
+            int swapIndex = ThreadLocalRandom.current().nextInt(i + 1);
+            Quiz temp = quizzes.get(i);
+            quizzes.set(i, quizzes.get(swapIndex));
+            quizzes.set(swapIndex, temp);
         }
     }
 }

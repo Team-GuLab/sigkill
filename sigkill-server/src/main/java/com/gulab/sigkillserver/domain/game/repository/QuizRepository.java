@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface QuizRepository {
-    List<Quiz> findByCategoryId(String categoryId);
+    List<Quiz> findByCategoryId(String categoryId, int count);
 
     Optional<Quiz> findById(long quizId);
 }
