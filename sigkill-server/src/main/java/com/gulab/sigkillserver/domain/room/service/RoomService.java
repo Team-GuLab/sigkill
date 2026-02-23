@@ -7,6 +7,8 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAP
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ONLY_HOST_CAN_START_GAME;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYERS_NOT_READY;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
@@ -19,6 +21,8 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_A
 import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_NOT_FOUND;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
@@ -58,6 +62,8 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final PlayerRepository playerRepository;
+
+    private final GameService gameService;
 
     /**
      * 방 목록 조회
@@ -279,6 +285,7 @@ public class RoomService {
         Player newHost = playerRepository.findAllByRoomId(room.getRoomId()).stream()
                 .min(Comparator.comparing(Player::getCreatedAt))
                 .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
+        newHost.unready();
         room.changeHost(newHost.getUserId());
         return HostChangedEvent.of(newHost, previousHost, room.getHostId(), HOST_CHANGED_REASON_HOST_LEFT);
     }
@@ -326,6 +333,12 @@ public class RoomService {
         }
     }
 
+    private void validatePlayerHost(Player player, Room room) {
+        if (!room.getHostId().equals(player.getUserId())) {
+            throw new CustomException(ONLY_HOST_CAN_START_GAME);
+        }
+    }
+
     /**
      * 플레이어 준비 취소
      */
@@ -339,6 +352,22 @@ public class RoomService {
 
         log.info("room.unready success - roomId={}, userId={}", roomId, userId);
         return PlayerUnreadyEvent.of(player, room.getHostId());
+    }
+
+    /**
+     * 게임 시작
+     */
+    public GameStartEvent startGame(String roomId, Long userId) {
+        Room room = getRoomOrThrow(roomId);
+        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+        validateRoomNotInGame(room);
+        validatePlayerHost(player, room);
+
+        if (!isAllGuestsReady(room)) {
+            throw new CustomException(PLAYERS_NOT_READY);
+        }
+
+        return gameService.startGame(room);
     }
 
     private Room getRoomOrThrow(String roomId) {

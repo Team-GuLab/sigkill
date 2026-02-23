@@ -4,8 +4,8 @@
 
 ## 1. 범위
 
-- 현재 구현 범위: Room 도메인 이벤트 (`join`, `leave`, `ready`, `unready`), 연결 상태 확인 이벤트 (`ping`)
-- 미구현 범위: Game 도메인 실시간 이벤트 (계약 미확정)
+- 현재 구현/계약 범위: Room 도메인 이벤트 (`join`, `leave`, `ready`, `unready`), Game 도메인 이벤트 (`game/start`, `quiz/start`, `submit`,
+  `quiz/end`, `game/end`), 연결 상태 확인 이벤트 (`ping`)
 
 ## 2. 연결 및 목적지 규칙
 
@@ -13,6 +13,7 @@
 - Application Prefix: `/app`
 - Broker Prefix: `/topic`, `/queue`
 - Room Broadcast 채널: `/topic/room/{roomId}`
+- Game Broadcast 채널: `/topic/game/{gameId}`
 - 사용자 에러 채널: `/user/queue/errors`
 - 사용자 pong 채널: `/user/queue/pong`
 - Heartbeat: `10000ms / 10000ms` (server->client / client->server)
@@ -65,6 +66,40 @@
 - `RoomInfo.status`: `WAITING | INGAME`
 - `PlayerInfo.status`: `READY | NOT_READY`
 - `PlayerInfo.role`: `HOST | GUEST`
+
+### 4.3 Game Request DTO
+
+`GAME_START` 요청
+
+```json
+{
+  "roomId": "1234"
+}
+```
+
+`CHOICE_SUBMIT` 요청
+
+```json
+{
+  "gameId": 77,
+  "quizId": 1001,
+  "choiceNumber": 3
+}
+```
+
+### 4.4 Game Response Envelope (MVP)
+
+Game 이벤트 응답은 공통 Envelope를 사용한다.
+
+```json
+{
+  "type": "EVENT_TYPE",
+  "roomId": "1234",
+  "gameId": 77,
+  "occurredAt": 1771417642829,
+  "payload": {}
+}
+```
 
 ## 5. Room 이벤트 계약
 
@@ -213,7 +248,248 @@
 - `userId`는 서버가 `Principal`에서 추출한다.
 - `serverTime`은 서버 시각의 Unix epoch milliseconds(`long`)이다.
 
-## 6. 에러 계약
+## 6. Game 이벤트 계약 (MVP)
+
+### 6.1 게임 시작
+
+- SEND: `/app/room/start`
+- SUBSCRIBE: `/topic/room/{roomId}`
+- Response type: `GAME_START`
+- 권한/조건:
+    - 방장만 시작 가능
+    - 게임 시작 시 호스트를 제외한 모든 플레이어가 `READY`여야 함
+
+요청 예시:
+
+```json
+{
+  "roomId": "1234"
+}
+```
+
+응답 예시:
+
+```json
+{
+  "type": "GAME_START",
+  "roomId": "1234",
+  "gameId": 77,
+  "occurredAt": 1771417642829,
+  "payload": {
+    "quiz": {
+      "currentQuizIndex": 0,
+      "totalQuizCount": 10
+    }
+  }
+}
+```
+
+### 6.2 퀴즈 시작
+
+- SUBSCRIBE: `/topic/game/{gameId}`
+- Response type: `QUIZ_START`
+
+응답 예시:
+
+```json
+{
+  "type": "QUIZ_START",
+  "roomId": "1234",
+  "gameId": 77,
+  "occurredAt": 1771417642829,
+  "payload": {
+    "quiz": {
+      "quizId": 1001,
+      "currentQuizIndex": 1,
+      "totalQuizCount": 10,
+      "startTime": 1771417642829,
+      "endTime": 1771417647829,
+      "question": "리액트의 핵심 개념이 아닌것은?",
+      "choices": [
+        {
+          "number": 1,
+          "text": "Component"
+        },
+        {
+          "number": 2,
+          "text": "Virtual DOM"
+        },
+        {
+          "number": 3,
+          "text": "JSX"
+        },
+        {
+          "number": 4,
+          "text": "SQL Query"
+        }
+      ]
+    }
+  }
+}
+```
+
+### 6.3 답 제출
+
+- SEND: `/app/game/submit`
+- SUBSCRIBE: `/topic/game/{gameId}`
+- Response type: `CHOICE_SUBMIT`
+
+요청 예시:
+
+```json
+{
+  "gameId": 77,
+  "quizId": 1001,
+  "choiceNumber": 3
+}
+```
+
+응답 예시:
+
+```json
+{
+  "type": "CHOICE_SUBMIT",
+  "roomId": "1234",
+  "gameId": 77,
+  "occurredAt": 1771417645000,
+  "payload": {
+    "quiz": {
+      "quizId": 1001,
+      "currentQuizIndex": 1,
+      "totalQuizCount": 10
+    },
+    "actor": {
+      "userId": 2,
+      "nickname": "차분한 모닥이"
+    },
+    "choiceNumber": 1
+  }
+}
+```
+
+### 6.4 퀴즈 종료
+
+- SUBSCRIBE: `/topic/game/{gameId}`
+- Response type: `QUIZ_END`
+
+응답 예시:
+
+```json
+{
+  "type": "QUIZ_END",
+  "roomId": "1234",
+  "gameId": 77,
+  "occurredAt": 1771417647829,
+  "payload": {
+    "quiz": {
+      "quizId": 1001,
+      "currentQuizIndex": 1,
+      "totalQuizCount": 10
+    },
+    "answer": {
+      "correctChoiceNumber": 4,
+      "explanation": "SQL Query는 데이터베이스의 개념입니다."
+    },
+    "players": [
+      {
+        "userId": 1,
+        "nickname": "원일",
+        "status": "ALIVE",
+        "quizResult": "CORRECT",
+        "score": 3
+      },
+      {
+        "userId": 15432,
+        "nickname": "선호",
+        "status": "DEAD",
+        "quizResult": "WRONG",
+        "score": 1
+      },
+      {
+        "userId": 53,
+        "nickname": "성재",
+        "status": "DEAD",
+        "quizResult": "NO_SUBMISSION",
+        "score": 0
+      },
+      {
+        "userId": 12,
+        "nickname": "상현",
+        "status": "DEAD",
+        "quizResult": "SKIPPED_DEAD",
+        "score": 2
+      }
+    ]
+  }
+}
+```
+
+### 6.5 게임 종료
+
+- SUBSCRIBE: `/topic/game/{gameId}`
+- Response type: `GAME_END`
+
+응답 예시:
+
+```json
+{
+  "type": "GAME_END",
+  "roomId": "1234",
+  "gameId": 77,
+  "occurredAt": 1771417655000,
+  "payload": {
+    "reason": "ONE_SURVIVOR",
+    "rankings": [
+      {
+        "rank": 1,
+        "userId": 1,
+        "nickname": "원일",
+        "score": 5
+      },
+      {
+        "rank": 2,
+        "userId": 12,
+        "nickname": "상현",
+        "score": 2
+      },
+      {
+        "rank": 3,
+        "userId": 15432,
+        "nickname": "선호",
+        "score": 1
+      },
+      {
+        "rank": 4,
+        "userId": 53,
+        "nickname": "성재",
+        "score": 0
+      }
+    ]
+  }
+}
+```
+
+### 6.6 Game Enum
+
+`PlayerStatus`
+
+- `ALIVE`
+- `DEAD`
+
+`QuizResult`
+
+- `CORRECT`
+- `WRONG`
+- `NO_SUBMISSION`
+- `SKIPPED_DEAD`
+
+`GameEndReason`
+
+- `ALL_DEAD`: 전원 탈락으로 종료
+- `ONE_SURVIVOR`: 생존자 1명 남아 종료
+- `QUIZ_EXHAUSTED`: 마지막 문제까지 모두 진행해서 종료
+
+## 7. 에러 계약
 
 에러는 모두 사용자 채널(`/user/queue/errors`)로 내려간다.
 Response type: `ERROR`
@@ -236,7 +512,7 @@ Response type: `ERROR`
 - 요청 검증: `INVALID_REQUEST` (`@Valid @Payload` 검증 실패 포함)
 - 상태/기타: `INVALID_STATE`, `INTERNAL_SERVER_ERROR`
 
-## 7. 현재 서버 enum 값
+## 8. 현재 서버 enum 값
 
 ```java
 public enum RoomResponseType {
@@ -249,7 +525,7 @@ public enum RoomResponseType {
 }
 ```
 
-## 8. 문서 동기화 규칙
+## 9. 문서 동기화 규칙
 
 다음 항목이 변경되면 같은 PR에서 이 문서를 반드시 갱신한다.
 
