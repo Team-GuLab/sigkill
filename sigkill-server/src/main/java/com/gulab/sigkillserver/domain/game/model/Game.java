@@ -29,4 +29,8 @@ public class Game extends BaseEntity {
     public static Game create(String roomId, List<Long> quizIds) {
         return new Game(null, roomId, GameStatus.INGAME, quizIds, -1, null);
     }
+
+    public boolean isInProgress() {
+        return status == GameStatus.INGAME;
+    }
 }

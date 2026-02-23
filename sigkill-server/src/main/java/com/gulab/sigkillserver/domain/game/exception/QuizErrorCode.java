@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum QuizErrorCode implements CustomErrorCodeInterface {
+    QUIZ_NOT_FOUND("퀴즈를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     QUIZ_CATALOG_LOAD_FAILED("퀴즈 데이터 로드에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR),
     QUIZ_CATALOG_EMPTY("퀴즈 데이터가 비어 있습니다", HttpStatus.INTERNAL_SERVER_ERROR),
     QUIZ_DATA_NULL("퀴즈 데이터가 null 입니다", HttpStatus.INTERNAL_SERVER_ERROR),

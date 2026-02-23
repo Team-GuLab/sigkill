@@ -9,8 +9,8 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum PlayerErrorCode implements CustomErrorCodeInterface {
-    PLAYER_NOT_IN_ANY_ROOM("플레이어가 어떤 방에도 참여 중이지 않습니다", HttpStatus.NOT_FOUND),
-    PLAYER_NOT_IN_ROOM("플레이어가 해당 방에 참여 중이지 않습니다", HttpStatus.NOT_FOUND),
+    PLAYER_NOT_IN_ANY_ROOM("유저가 어떤 방에도 참여 중이지 않습니다", HttpStatus.NOT_FOUND),
+    PLAYER_NOT_IN_ROOM("유저가 해당 방에 참여 중이지 않습니다", HttpStatus.NOT_FOUND),
     ;
 
     private final String message;
