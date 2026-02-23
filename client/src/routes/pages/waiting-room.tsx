@@ -138,7 +138,6 @@ export default function WaitingRoom() {
       <div className="bg-background sticky bottom-0 flex-none">
         <div className="flex h-10 items-center gap-2">
           <Button
-            disabled={myReadyStatus === true}
             variant="gray"
             className="text-md h-full w-28"
             onClick={() => {
