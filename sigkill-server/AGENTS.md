@@ -145,7 +145,6 @@
 - Fields:
   - `gameId` (BIGINT)
   - `roomId` (STRING)
-  - `gameStatus` (INGAME / ENDED)
   - `quizIds` (List<BIGINT>)
   - `currentQuizIndex` (INT)
   - `roundStartedAtMillis` (LONG, epoch ms)
