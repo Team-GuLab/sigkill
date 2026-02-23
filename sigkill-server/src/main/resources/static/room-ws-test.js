@@ -10,6 +10,7 @@
     const joinFlowBtn = document.getElementById("joinFlowBtn");
     const readyBtn = document.getElementById("readyBtn");
     const unreadyBtn = document.getElementById("unreadyBtn");
+    const startBtn = document.getElementById("startBtn");
     const leaveDisconnectBtn = document.getElementById("leaveDisconnectBtn");
     const pingBtn = document.getElementById("pingBtn");
     const clearLogBtn = document.getElementById("clearLogBtn");
@@ -22,11 +23,13 @@
 
     const joinRoomIdInput = document.getElementById("joinRoomId");
     const readyRoomIdInput = document.getElementById("readyRoomId");
+    const startRoomIdInput = document.getElementById("startRoomId");
     const leaveRoomIdInput = document.getElementById("leaveRoomId");
 
     const roomTopicPreviewInput = document.getElementById("roomTopicPreview");
     const errorTopicPreviewInput = document.getElementById("errorTopicPreview");
     const readyPayloadPreviewInput = document.getElementById("readyPayloadPreview");
+    const startPayloadPreviewInput = document.getElementById("startPayloadPreview");
     const leavePayloadPreviewInput = document.getElementById("leavePayloadPreview");
 
     const loginResponseEl = document.getElementById("loginResponse");
@@ -38,6 +41,7 @@
     const createResponseEl = document.getElementById("createResponse");
     const createWsResultEl = document.getElementById("createWsResult");
     const readyResponseEl = document.getElementById("readyResponse");
+    const startResponseEl = document.getElementById("startResponse");
     const leaveResponseEl = document.getElementById("leaveResponse");
 
     const roomEventPanelEl = document.getElementById("roomEventPanel");
@@ -136,6 +140,9 @@
         if (sourceInput !== readyRoomIdInput) {
             readyRoomIdInput.value = roomId;
         }
+        if (sourceInput !== startRoomIdInput) {
+            startRoomIdInput.value = roomId;
+        }
         if (sourceInput !== leaveRoomIdInput) {
             leaveRoomIdInput.value = roomId;
         }
@@ -156,6 +163,9 @@
 
         const readyRoomId = readyRoomIdInput.value.trim();
         readyPayloadPreviewInput.value = readyRoomId ? JSON.stringify({roomId: readyRoomId}) : "{\"roomId\":\"{roomId}\"}";
+
+        const startRoomId = startRoomIdInput.value.trim();
+        startPayloadPreviewInput.value = startRoomId ? JSON.stringify({roomId: startRoomId}) : "{\"roomId\":\"{roomId}\"}";
 
         const leaveRoomId = leaveRoomIdInput.value.trim();
         leavePayloadPreviewInput.value = leaveRoomId ? JSON.stringify({roomId: leaveRoomId}) : "{\"roomId\":\"{roomId}\"}";
@@ -223,6 +233,7 @@
     function syncRoomIdToAllInputs(roomId) {
         joinRoomIdInput.value = roomId;
         readyRoomIdInput.value = roomId;
+        startRoomIdInput.value = roomId;
         leaveRoomIdInput.value = roomId;
         refreshComputedFields();
     }
@@ -433,6 +444,14 @@
         log("5) " + command.toUpperCase() + " 전송 완료");
     }
 
+    function executeStartGame() {
+        const roomId = getValueOrThrow(startRoomIdInput, "roomId");
+        normalizeRoomIdAcrossSections(startRoomIdInput);
+        const sendResult = sendRoomCommand("start", roomId);
+        setPanel(startResponseEl, sendResult);
+        log("6) START 전송 완료");
+    }
+
     function disconnectStomp() {
         if (state.roomSubscription) {
             state.roomSubscription.unsubscribe();
@@ -465,9 +484,9 @@
             setPanel(leaveResponseEl, sendResult);
             await new Promise((resolve) => setTimeout(resolve, 150));
             disconnectStomp();
-            log("6) LEAVE 전송 + WS 연결 해제 완료");
+            log("7) LEAVE 전송 + WS 연결 해제 완료");
         } else {
-            log("6) WS 미연결 상태로 연결해제 단계만 스킵");
+            log("7) WS 미연결 상태로 연결해제 단계만 스킵");
         }
     }
 
@@ -484,6 +503,7 @@
     serverBaseInput.addEventListener("input", refreshComputedFields);
     joinRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(joinRoomIdInput));
     readyRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(readyRoomIdInput));
+    startRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startRoomIdInput));
     leaveRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(leaveRoomIdInput));
 
     bindAsync(loginBtn, executeGuestLogin);
@@ -492,6 +512,7 @@
     bindAsync(joinFlowBtn, executeJoinFlow);
     bindAsync(readyBtn, async () => executeReadyLike("ready"));
     bindAsync(unreadyBtn, async () => executeReadyLike("unready"));
+    bindAsync(startBtn, async () => executeStartGame());
     bindAsync(leaveDisconnectBtn, executeLeaveAndDisconnect);
     bindAsync(pingBtn, executePing);
     bindAsync(seedRoomsTopBtn, executeSeedRoomsTop);
