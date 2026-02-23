@@ -3,6 +3,7 @@ package com.gulab.sigkillserver.domain.room.exception;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TITLE_LENGTH;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
+import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_PLAYERS_TO_START;
 
 import com.gulab.sigkillserver.common.exception.CustomErrorCode;
 import com.gulab.sigkillserver.common.exception.CustomErrorCodeInterface;
@@ -26,6 +27,7 @@ public enum RoomErrorCode implements CustomErrorCodeInterface {
     ROOM_ID_ALREADY_EXISTS("이미 존재하는 방 ID입니다", HttpStatus.CONFLICT),
     PLAYER_ID_ALREADY_EXISTS("이미 존재하는 플레이어 ID입니다", HttpStatus.CONFLICT),
     ONLY_HOST_CAN_START_GAME("게임 시작은 방장만 할 수 있습니다", HttpStatus.FORBIDDEN),
+    NOT_ENOUGH_PLAYERS_TO_START(String.format("게임 시작 최소 인원은 %d명입니다.", MIN_PLAYERS_TO_START), HttpStatus.CONFLICT),
     PLAYERS_NOT_READY("모든 플레이어가 준비 상태여야 합니다.", HttpStatus.CONFLICT),
     USER_ALREADY_IN_ROOM("사용자가 이미 방에 참여 중입니다", HttpStatus.CONFLICT);
 
