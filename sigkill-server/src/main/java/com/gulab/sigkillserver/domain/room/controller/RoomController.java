@@ -10,7 +10,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
-@Slf4j
 @Validated
 public class RoomController {
 
@@ -41,7 +39,6 @@ public class RoomController {
             @AuthenticationPrincipal Long userId,
             @RequestParam(defaultValue = "0") @Min(value = 0, message = "페이지 번호는 0 이상이어야 합니다") int page,
             @RequestParam(defaultValue = "6") @Min(value = 1, message = "페이지 크기는 1 이상이어야 합니다") @Max(value = 100, message = "페이지 크기는 100 이하여야 합니다") int size) {
-        log.info("GET /api/v1/rooms - userId: {}, page: {}, size: {}", userId, page, size);
         RoomListResponse response = roomService.fetchRooms(page, size);
         return BaseResponse.onSuccess(response);
     }
@@ -54,7 +51,6 @@ public class RoomController {
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody RoomCreateRequest request
     ) {
-        log.info("POST /api/v1/rooms - userId: {}, title: {}", userId, request.roomTitle());
         RoomCreateResponse response = roomService.createRoom(request.roomTitle(), request.capacity(), userId);
         return BaseResponse.onSuccess(response);
     }
@@ -67,7 +63,6 @@ public class RoomController {
             @AuthenticationPrincipal Long userId,
             @PathVariable String roomId
     ) {
-        log.info("GET /api/v1/rooms/{}/availability - userId: {}", roomId, userId);
         RoomAvailabilityResponse response = roomService.checkRoomAvailability(roomId, userId);
         return BaseResponse.onSuccess(response);
     }

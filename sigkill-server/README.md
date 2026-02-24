@@ -27,6 +27,14 @@
 - Swagger UI: [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)
 - STOMP 계약 문서: [docs/STOMP_MESSAGE_SPEC.md](docs/STOMP_MESSAGE_SPEC.md)
 
+## 정적 퀴즈 데이터
+
+- 파일 위치: `src/main/resources/quiz/quiz.json`
+- 로딩 시점: 애플리케이션 시작 시 1회 로딩
+- 관리 방식: `QuizMemoryRepository`가 시작 시 메모리 `Map` 인덱스로 로드 후 조회
+- 로딩 실패/스키마 오류: 시작 단계에서 예외를 발생시켜 fail-fast
+- 예외 코드: 로드/검증 실패는 `QuizErrorCode` 기반 `CustomException` 사용
+
 ## REST 기능
 
 ### 인증

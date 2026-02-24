@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.domain.room.controller;
 
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
@@ -26,7 +27,6 @@ public class RoomWebSocketController {
     @MessageMapping("/room/join")
     public void joinRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("방 참가 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         PlayerJoinEvent playerJoinEvent = roomService.joinRoom(request.roomId(), userId);
 
@@ -39,7 +39,6 @@ public class RoomWebSocketController {
     @MessageMapping("/room/leave")
     public void leaveRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("방 퇴장 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         LeaveRoomResult leaveRoomResult = roomService.leaveRoom(request.roomId(), userId);
 
@@ -53,7 +52,6 @@ public class RoomWebSocketController {
     @MessageMapping("/room/ready")
     public void playerReady(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("준비 상태 변경 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         PlayerReadyEvent playerReadyEvent = roomService.readyPlayer(request.roomId(), userId);
 
@@ -65,12 +63,22 @@ public class RoomWebSocketController {
     @MessageMapping("/room/unready")
     public void playerUnready(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("준비 취소 요청 - roomId: {}, userId: {}", request.roomId(), userId);
 
         PlayerUnreadyEvent playerUnreadyEvent = roomService.unreadyPlayer(request.roomId(), userId);
 
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerUnreadyEvent);
 
         log.debug("준비 취소 완료 - roomId: {}, userId: {}", request.roomId(), userId);
+    }
+
+    @MessageMapping("/room/start")
+    public void startGame(@Valid @Payload RoomIdCommand request, Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+
+        GameStartEvent gameStartEvent = roomService.startGame(request.roomId(), userId);
+
+        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), gameStartEvent);
+
+        log.debug("게임 시작 브로드캐스트 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
 }

@@ -211,7 +211,7 @@
                 3) <code>/ws</code> 연결<br/>
                 4) <code>/user/queue/errors</code>, <code>/user/queue/pong</code> 구독<br/>
                 5) <code>/topic/room/{roomId}</code> 구독<br/>
-                6) 생성된 <code>roomId</code>를 아래 참가/준비/나가기 입력창에 자동 반영
+                6) 생성된 <code>roomId</code>를 아래 참가/준비/시작/나가기 입력창에 자동 반영
             </div>
             <div class="hint">
                 생성 직후에는 이미 host가 방에 들어가 있으므로 <code>/app/room/join</code> 전송은 필요 없습니다.
@@ -308,7 +308,29 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>6. 방 나가기 + WS 연결 해제</h2>
+                <h2>6. 게임 시작</h2>
+                <span class="endpoint">SEND /app/room/start</span>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="startRoomId">roomId</label>
+                    <input id="startRoomId" placeholder="예: 1001" type="text"/>
+                </div>
+                <div>
+                    <label for="startPayloadPreview">payload</label>
+                    <input id="startPayloadPreview" readonly type="text"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="startBtn">START 실행</button>
+            </div>
+            <div class="hint">표시: SEND JSON</div>
+            <pre class="panel" id="startResponse">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>7. 방 나가기 + WS 연결 해제</h2>
                 <span class="endpoint">SEND /app/room/leave + DISCONNECT</span>
             </div>
             <div class="grid-2">
@@ -330,7 +352,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>7. Ping / Pong 확인</h2>
+                <h2>8. Ping / Pong 확인</h2>
                 <span class="endpoint">SEND /app/ping | SUBSCRIBE /user/queue/pong</span>
             </div>
             <div class="actions">

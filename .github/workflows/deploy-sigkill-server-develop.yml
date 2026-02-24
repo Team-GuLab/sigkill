@@ -95,12 +95,15 @@ jobs:
             docker stop sigkill-server || true
             docker rm sigkill-server || true
 
+            sudo mkdir -p /var/log/sigkill
+
             docker run -d \
               --name sigkill-server \
               --restart unless-stopped \
               -p 8080:8080 \
               --memory=1536m \
               --memory-swap=1536m \
+              -v /var/log/sigkill:/var/log/sigkill \
               -e SPRING_PROFILES_ACTIVE=dev \
               "${{ env.APP_IMAGE }}"
 
