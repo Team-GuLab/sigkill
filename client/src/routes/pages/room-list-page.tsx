@@ -37,14 +37,11 @@ export default function RoomListPage() {
   };
 
   return (
-    <div className="relative flex h-full flex-col pb-20">
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-foreground text-xl font-bold">방 목록</h1>
-        <Button className="cursor-pointer" onClick={handleButtonClick}>
-          방 생성
-        </Button>
+    <div className="relative flex h-full flex-col">
+      <header className="mb-6 flex items-center justify-between px-2">
+        <h1 className="text-foreground text-lg font-bold">방 목록</h1>
       </header>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto px-2">
         <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
           <Suspense
             fallback={
@@ -56,6 +53,15 @@ export default function RoomListPage() {
             <Rooms />
           </Suspense>
         </ErrorBoundary>
+      </div>
+
+      <div className="my-2 flex justify-end px-2">
+        <Button
+          className="text-md h-10 min-w-28 cursor-pointer rounded-lg"
+          onClick={handleButtonClick}
+        >
+          방 생성
+        </Button>
       </div>
 
       {/* 하단 사용자 프로필 영역 */}
