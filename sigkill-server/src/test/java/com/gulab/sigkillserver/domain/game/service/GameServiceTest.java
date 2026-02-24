@@ -2,22 +2,29 @@ package com.gulab.sigkillserver.domain.game.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameResponseType;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPlayerInfo;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizResult;
 import com.gulab.sigkillserver.domain.game.exception.GameErrorCode;
 import com.gulab.sigkillserver.domain.game.exception.QuizErrorCode;
 import com.gulab.sigkillserver.domain.game.model.Game;
+import com.gulab.sigkillserver.domain.game.model.GamePlayerStatus;
 import com.gulab.sigkillserver.domain.game.model.quiz.Quiz;
 import com.gulab.sigkillserver.domain.game.model.quiz.QuizChoiceNumberMapping;
+import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GamePlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GamePlayerRepository;
-import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
@@ -595,39 +602,243 @@ class GameServiceTest {
     @Nested
     class EndQuizTests {
         @Test
-        void 퀴즈가_종료된다() {
+        void 플레이어별_제출결과대로_정답_오답_미제출이_채점된다() {
             // given
+            EndQuizFixture fixture = prepareEndQuizFixture("2034");
+            gameService.submitChoice(
+                    fixture.host().getUserId(),
+                    fixture.room().getRoomId(),
+                    fixture.game().getGameId(),
+                    fixture.quiz().quizId(),
+                    fixture.correctNumber()
+            );
+            gameService.submitChoice(
+                    fixture.secondPlayer().getUserId(),
+                    fixture.room().getRoomId(),
+                    fixture.game().getGameId(),
+                    fixture.quiz().quizId(),
+                    fixture.wrongNumber()
+            );
 
             // when
+            QuizEndEvent result = gameService.endQuiz(
+                    fixture.host().getUserId(),
+                    fixture.room().getRoomId(),
+                    fixture.game().getGameId(),
+                    fixture.quiz().quizId()
+            ).quizEndEvent();
 
             // then
+            assertThat(result.type()).isEqualTo(GameResponseType.QUIZ_END);
+            assertThat(result.payload().quiz().quizId()).isEqualTo(fixture.quiz().quizId());
+            assertThat(result.payload().answer().correctChoiceNumber()).isEqualTo(fixture.correctNumber());
+
+            Map<Long, QuizEndPlayerInfo> playersByUserId = result.payload().players().stream()
+                    .collect(Collectors.toMap(QuizEndPlayerInfo::userId, info -> info));
+            assertThat(playersByUserId).hasSize(3);
+
+            assertThat(playersByUserId.get(fixture.host().getUserId()).status()).isEqualTo(GamePlayerStatus.ALIVE);
+            assertThat(playersByUserId.get(fixture.host().getUserId()).quizResult()).isEqualTo(QuizResult.CORRECT);
+            assertThat(playersByUserId.get(fixture.host().getUserId()).score()).isEqualTo(1);
+
+            assertThat(playersByUserId.get(fixture.secondPlayer().getUserId()).status()).isEqualTo(
+                    GamePlayerStatus.DEAD);
+            assertThat(playersByUserId.get(fixture.secondPlayer().getUserId()).quizResult()).isEqualTo(
+                    QuizResult.WRONG);
+            assertThat(playersByUserId.get(fixture.secondPlayer().getUserId()).score()).isZero();
+
+            assertThat(playersByUserId.get(fixture.thirdPlayer().getUserId()).status()).isEqualTo(
+                    GamePlayerStatus.DEAD);
+            assertThat(playersByUserId.get(fixture.thirdPlayer().getUserId()).quizResult())
+                    .isEqualTo(QuizResult.NO_SUBMISSION);
+            assertThat(playersByUserId.get(fixture.thirdPlayer().getUserId()).score()).isZero();
+        }
+
+        @Test
+        void 같은_플레이어가_여러번_제출하면_마지막_제출로_채점된다() {
+            // given
+            EndQuizFixture fixture = prepareEndQuizFixture("2134");
+            gameService.submitChoice(
+                    fixture.host().getUserId(),
+                    fixture.room().getRoomId(),
+                    fixture.game().getGameId(),
+                    fixture.quiz().quizId(),
+                    fixture.wrongNumber()
+            );
+            gameService.submitChoice(
+                    fixture.host().getUserId(),
+                    fixture.room().getRoomId(),
+                    fixture.game().getGameId(),
+                    fixture.quiz().quizId(),
+                    fixture.correctNumber()
+            );
+
+            // when
+            QuizEndEvent result = gameService.endQuiz(
+                    fixture.host().getUserId(),
+                    fixture.room().getRoomId(),
+                    fixture.game().getGameId(),
+                    fixture.quiz().quizId()
+            ).quizEndEvent();
+
+            // then
+            assertThat(result.payload().players())
+                    .filteredOn(player -> player.userId().equals(fixture.host().getUserId()))
+                    .singleElement()
+                    .satisfies(player -> {
+                        assertThat(player.status()).isEqualTo(GamePlayerStatus.ALIVE);
+                        assertThat(player.quizResult()).isEqualTo(QuizResult.CORRECT);
+                        assertThat(player.score()).isEqualTo(1);
+                    });
         }
 
         @Test
         void 게임이_진행중이지_않은_방에서_퀴즈를_종료하지_못한다() {
             // given
+            User user = saveUser("end-quiz-not-started-session", "end-quiz-not-started");
+            Room room = saveRoom("2234");
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+            Long quizId = game.getQuizIds().get(0);
 
             // when
+            Runnable call = () -> gameService.endQuiz(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    quizId
+            );
 
             // then
+            assertThrowsCustomExceptionWithCode(call, RoomErrorCode.ROOM_NOT_STARTED.name());
         }
 
         @Test
         void 게임이_종료된_방에서_퀴즈를_종료하지_못한다() {
             // given
+            EndQuizFixture fixture = prepareEndQuizFixture("2334");
+            fixture.room().endGame();
 
             // when
+            Runnable call = () -> gameService.endQuiz(
+                    fixture.host().getUserId(),
+                    fixture.room().getRoomId(),
+                    fixture.game().getGameId(),
+                    fixture.quiz().quizId()
+            );
 
             // then
+            assertThrowsCustomExceptionWithCode(call, RoomErrorCode.ROOM_NOT_STARTED.name());
         }
 
         @Test
-        void 모든_퀴즈가_끝난_방에서_퀴즈를_종료하지_못한다() {
+        void 마지막_퀴즈가_끝나면_생존자가_여러명이어도_endGame을_호출한다() {
             // given
+            User host = saveUser("last-quiz-host-session", "last-quiz-host");
+            User second = saveUser("last-quiz-second-session", "last-quiz-second");
+            User third = saveUser("last-quiz-third-session", "last-quiz-third");
+            Room room = Room.create("2434", "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(Player.create(third.getUserId(), room.getRoomId(), third.getNickname()));
+            gameService.startGame(room);
+
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+            long lastQuizId = -1L;
+            for (int i = 0; i < game.getTotalQuizCount(); i++) {
+                lastQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
+            }
+            Quiz lastQuiz = quizRepository.findById(lastQuizId).orElseThrow();
+            Map<Integer, Long> numberToChoiceId = createNumberToChoiceIdMap(lastQuiz);
+            quizChoiceNumberMappingRepository.save(
+                    QuizChoiceNumberMapping.create(game.getGameId(), lastQuiz.quizId(), numberToChoiceId)
+            );
+            int correctNumber = findChoiceNumber(numberToChoiceId, lastQuiz.correctChoiceId());
+
+            GameService spyGameService = spy(gameService);
+            spyGameService.submitChoice(host.getUserId(), room.getRoomId(), game.getGameId(), lastQuiz.quizId(), correctNumber);
+            spyGameService.submitChoice(second.getUserId(), room.getRoomId(), game.getGameId(), lastQuiz.quizId(), correctNumber);
+            spyGameService.submitChoice(third.getUserId(), room.getRoomId(), game.getGameId(), lastQuiz.quizId(), correctNumber);
 
             // when
+            EndQuizOrGameEvent result = spyGameService.endQuiz(
+                    host.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    lastQuiz.quizId()
+            );
 
             // then
+            verify(spyGameService).endGame(host.getUserId(), room.getRoomId(), game.getGameId());
+            assertThat(result.quizEndEvent()).isNotNull();
+        }
+
+        private EndQuizFixture prepareEndQuizFixture(String roomId) {
+            User host = saveUser(roomId + "-host-session", roomId + "-host");
+            User secondPlayer = saveUser(roomId + "-second-session", roomId + "-second");
+            User thirdPlayer = saveUser(roomId + "-third-session", roomId + "-third");
+
+            Room room = Room.create(roomId, "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(
+                    Player.create(secondPlayer.getUserId(), room.getRoomId(), secondPlayer.getNickname()));
+            playerRepository.create(
+                    Player.create(thirdPlayer.getUserId(), room.getRoomId(), thirdPlayer.getNickname()));
+
+            gameService.startGame(room);
+
+            Game game = gameRepository.findByRoomId(roomId).orElseThrow();
+            long quizId = game.startNextQuiz(Instant.now().toEpochMilli());
+            Quiz quiz = quizRepository.findById(quizId).orElseThrow();
+
+            Map<Integer, Long> numberToChoiceId = createNumberToChoiceIdMap(quiz);
+            quizChoiceNumberMappingRepository.save(
+                    QuizChoiceNumberMapping.create(game.getGameId(), quiz.quizId(), numberToChoiceId)
+            );
+
+            int correctNumber = findChoiceNumber(numberToChoiceId, quiz.correctChoiceId());
+            int wrongNumber = findWrongChoiceNumber(numberToChoiceId, quiz.correctChoiceId());
+
+            return new EndQuizFixture(host, secondPlayer, thirdPlayer, room, game, quiz, correctNumber, wrongNumber);
+        }
+
+        private Map<Integer, Long> createNumberToChoiceIdMap(Quiz quiz) {
+            Map<Integer, Long> numberToChoiceId = new LinkedHashMap<>();
+            for (int i = 0; i < quiz.choices().size(); i++) {
+                numberToChoiceId.put(i + 1, quiz.choices().get(i).choiceId());
+            }
+            return numberToChoiceId;
+        }
+
+        private int findChoiceNumber(Map<Integer, Long> numberToChoiceId, long choiceId) {
+            return numberToChoiceId.entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(choiceId))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElseThrow();
+        }
+
+        private int findWrongChoiceNumber(Map<Integer, Long> numberToChoiceId, long correctChoiceId) {
+            return numberToChoiceId.entrySet().stream()
+                    .filter(entry -> !entry.getValue().equals(correctChoiceId))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElseThrow();
+        }
+
+        private record EndQuizFixture(
+                User host,
+                User secondPlayer,
+                User thirdPlayer,
+                Room room,
+                Game game,
+                Quiz quiz,
+                int correctNumber,
+                int wrongNumber
+        ) {
         }
     }
 
