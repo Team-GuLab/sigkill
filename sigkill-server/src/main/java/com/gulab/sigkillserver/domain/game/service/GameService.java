@@ -1,6 +1,7 @@
 package com.gulab.sigkillserver.domain.game.service;
 
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_NOT_FOUND;
+import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_IN_PROGRESS;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.SUBMIT_CHOICE_IS_AFTER_DEADLINE;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.SUBMIT_CHOICE_NOT_CURRENT_QUIZ;
 import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_CHOICE_NUMBER_MAPPING_ERROR;
@@ -221,6 +222,7 @@ public class GameService {
         Room room = getRoomOrThrow(roomId);
         Game game = getGameInRoomOrThrow(gameId, room);
         validateGameInProgress(room, game);
+        validateSubmitChoiceIsForCurrentQuiz(game, quizId);
         Quiz quiz = getQuizOrThrow(quizId);
 
         // 정답 번호 가져오기
@@ -294,7 +296,7 @@ public class GameService {
 
         // 게임 결과 확인
         List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
-        GameEndReason reason = determineGameEndReason(gamePlayers);
+        GameEndReason reason = determineGameEndReason(gamePlayers, game);
         List<GameRankingInfo> rankings = gameEventBuilder.buildRankings(gamePlayers);
         long occurredAt = Instant.now().toEpochMilli();
         GameEndEvent gameEndEvent = gameEventBuilder.toGameEndEvent(room, game, reason, rankings, occurredAt);
@@ -309,10 +311,11 @@ public class GameService {
         return gameEndEvent;
     }
 
-    private GameEndReason determineGameEndReason(List<GamePlayer> gamePlayers) {
+    private GameEndReason determineGameEndReason(List<GamePlayer> gamePlayers, Game game) {
         long aliveCount = gamePlayers.stream()
                 .filter(GamePlayer::isAlive)
                 .count();
+        boolean isQuizExhausted = game.getCurrentQuizIndex() >= game.getTotalQuizCount() - 1;
 
         if (aliveCount == 0) {
             return GameEndReason.ALL_DEAD;
@@ -320,7 +323,10 @@ public class GameService {
         if (aliveCount == 1) {
             return GameEndReason.ONE_SURVIVOR;
         }
-        return GameEndReason.QUIZ_EXHAUSTED;
+        if (isQuizExhausted) {
+            return GameEndReason.QUIZ_EXHAUSTED;
+        }
+        throw new CustomException(GAME_IN_PROGRESS);
     }
 
     private Player getPlayerInRoomOrThrow(Long userId, String roomId) {

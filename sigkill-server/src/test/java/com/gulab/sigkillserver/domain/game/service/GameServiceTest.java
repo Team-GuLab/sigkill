@@ -735,6 +735,27 @@ class GameServiceTest {
         }
 
         @Test
+        void 현재_퀴즈가_아닌_quizId로_퀴즈를_종료하지_못한다() {
+            // given
+            EndQuizFixture fixture = prepareEndQuizFixture("2434");
+            Long nonCurrentQuizId = fixture.game().getQuizIds().stream()
+                    .filter(id -> !id.equals(fixture.quiz().quizId()))
+                    .findFirst()
+                    .orElseThrow();
+
+            // when
+            Runnable call = () -> gameService.endQuiz(
+                    fixture.host().getUserId(),
+                    fixture.room().getRoomId(),
+                    fixture.game().getGameId(),
+                    nonCurrentQuizId
+            );
+
+            // then
+            assertThrowsCustomExceptionWithCode(call, GameErrorCode.SUBMIT_CHOICE_NOT_CURRENT_QUIZ.name());
+        }
+
+        @Test
         void 마지막_퀴즈가_끝나면_생존자가_여러명이어도_endGame을_호출한다() {
             // given
             User host = saveUser("last-quiz-host-session", "last-quiz-host");
@@ -967,6 +988,25 @@ class GameServiceTest {
 
             // then
             assertThat(result.payload().reason()).isEqualTo(GameEndReason.QUIZ_EXHAUSTED);
+        }
+
+        @Test
+        void 종료_조건이_충족되지_않으면_게임을_종료하지_못한다() {
+            // given
+            User host = saveUser("end-game-guard-host-session", "end-game-guard-host");
+            User second = saveUser("end-game-guard-second-session", "end-game-guard-second");
+            Room room = Room.create("2844", "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            gameService.startGame(room);
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+
+            // when
+            Runnable call = () -> gameService.endGame(host.getUserId(), room.getRoomId(), game.getGameId());
+
+            // then
+            assertThrowsCustomExceptionWithCode(call, GameErrorCode.GAME_IN_PROGRESS.name());
         }
 
         @Test
