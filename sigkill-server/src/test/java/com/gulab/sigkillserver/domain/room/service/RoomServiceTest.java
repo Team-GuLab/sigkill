@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameResponseType;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.repository.GamePlayerMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.GamePlayerRepository;
 import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMemoryRepository;
@@ -60,6 +62,7 @@ class RoomServiceTest {
     private RoomRepository roomRepository;
     private SelectedChoiceRepository selectedChoiceRepository;
     private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
+    private GamePlayerRepository gamePlayerRepository;
     private GameEventBuilder gameEventBuilder;
 
     private RoomService roomService;
@@ -75,6 +78,7 @@ class RoomServiceTest {
         roomRepository = new RoomMemoryRepository();
         selectedChoiceRepository = new SelectedChoiceMemoryRepository();
         quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
+        gamePlayerRepository = new GamePlayerMemoryRepository();
         gameEventBuilder = new GameEventBuilder();
 
         gameService = new GameService(
@@ -85,6 +89,7 @@ class RoomServiceTest {
                 roomRepository,
                 selectedChoiceRepository,
                 quizChoiceNumberMappingRepository,
+                gamePlayerRepository,
                 gameEventBuilder
         );
         roomService = new RoomService(roomRepository, userRepository, playerRepository, gameService);

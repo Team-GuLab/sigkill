@@ -15,6 +15,8 @@ import com.gulab.sigkillserver.domain.game.exception.QuizErrorCode;
 import com.gulab.sigkillserver.domain.game.model.Game;
 import com.gulab.sigkillserver.domain.game.model.quiz.Quiz;
 import com.gulab.sigkillserver.domain.game.model.quiz.QuizChoiceNumberMapping;
+import com.gulab.sigkillserver.domain.game.repository.GamePlayerMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.GamePlayerRepository;
 import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMemoryRepository;
@@ -55,6 +57,7 @@ class GameServiceTest {
     private RoomRepository roomRepository;
     private SelectedChoiceRepository selectedChoiceRepository;
     private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
+    private GamePlayerRepository gamePlayerRepository;
     private GameEventBuilder gameEventBuilder;
     private GameService gameService;
 
@@ -68,6 +71,7 @@ class GameServiceTest {
         roomRepository = new RoomMemoryRepository();
         selectedChoiceRepository = new SelectedChoiceMemoryRepository();
         quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
+        gamePlayerRepository = new GamePlayerMemoryRepository();
         gameEventBuilder = new GameEventBuilder();
 
         gameService = new GameService(
@@ -78,6 +82,7 @@ class GameServiceTest {
                 roomRepository,
                 selectedChoiceRepository,
                 quizChoiceNumberMappingRepository,
+                gamePlayerRepository,
                 gameEventBuilder
         );
     }

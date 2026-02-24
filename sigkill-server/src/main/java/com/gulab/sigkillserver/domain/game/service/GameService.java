@@ -23,10 +23,12 @@ import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizChoiceInfo;
 import com.gulab.sigkillserver.domain.game.model.Game;
+import com.gulab.sigkillserver.domain.game.model.GamePlayer;
 import com.gulab.sigkillserver.domain.game.model.SelectedChoice;
 import com.gulab.sigkillserver.domain.game.model.quiz.Quiz;
 import com.gulab.sigkillserver.domain.game.model.quiz.QuizChoice;
 import com.gulab.sigkillserver.domain.game.model.quiz.QuizChoiceNumberMapping;
+import com.gulab.sigkillserver.domain.game.repository.GamePlayerRepository;
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
@@ -59,6 +61,7 @@ public class GameService {
     private final RoomRepository roomRepository;
     private final SelectedChoiceRepository selectedChoiceRepository;
     private final QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
+    private final GamePlayerRepository gamePlayerRepository;
     private final GameEventBuilder gameEventBuilder;
 
     /**
@@ -80,7 +83,14 @@ public class GameService {
         Game game = Game.create(room.getRoomId(), quizIds);
         game = gameRepository.save(game);
 
-        // TODO: Player 객체 생성
+        // Player 객체 생성
+        List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
+        List<GamePlayer> gamePlayers = new ArrayList<>();
+        for (Player p : players) {
+            GamePlayer gp = GamePlayer.create(p.getUserId(), game.getGameId());
+            gamePlayerRepository.save(gp);
+            gamePlayers.add(gp);
+        }
 
         // 게임 시작
         room.startGame();
@@ -206,6 +216,8 @@ public class GameService {
         // 정답 판별, 점수 계산
 
         // 각 플레이어 상태 업데이트
+
+        // 게임 종료 판별
 
         // 선지 제출 정보 삭제
 
