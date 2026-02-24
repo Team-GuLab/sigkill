@@ -330,7 +330,49 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>7. 방 나가기 + WS 연결 해제</h2>
+                <h2>7. 퀴즈 시작 (Game 토픽)</h2>
+                <span class="endpoint">SUBSCRIBE /topic/game/{gameId} + SEND /app/game/quiz/start</span>
+            </div>
+            <div class="hint">
+                <code>GAME_START</code> 이벤트를 수신하면 <code>gameId</code>가 자동 반영되고 Game 토픽을 자동 구독합니다.<br/>
+                참고: 서버의 게임 MessageMapping이 미구현이면 SEND는 에러 응답 또는 무응답일 수 있습니다.
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="startQuizRoomId">roomId</label>
+                    <input id="startQuizRoomId" placeholder="예: 1001" type="text"/>
+                </div>
+                <div>
+                    <label for="startQuizGameId">gameId</label>
+                    <input id="startQuizGameId" placeholder="예: 77" type="number"/>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="gameTopicPreview">gameTopic</label>
+                    <input id="gameTopicPreview" readonly type="text"/>
+                </div>
+                <div>
+                    <label for="quizStartDestination">destination</label>
+                    <input id="quizStartDestination" type="text" value="/app/game/quiz/start"/>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div style="grid-column: 1 / -1;">
+                    <label for="quizStartPayloadPreview">payload</label>
+                    <input id="quizStartPayloadPreview" readonly type="text"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="quizStartBtn">QUIZ START 전송</button>
+            </div>
+            <div class="hint">표시: SEND JSON</div>
+            <pre class="panel" id="quizStartResponse">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>8. 방 나가기 + WS 연결 해제</h2>
                 <span class="endpoint">SEND /app/room/leave + DISCONNECT</span>
             </div>
             <div class="grid-2">
@@ -352,7 +394,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>8. Ping / Pong 확인</h2>
+                <h2>9. Ping / Pong 확인</h2>
                 <span class="endpoint">SEND /app/ping | SUBSCRIBE /user/queue/pong</span>
             </div>
             <div class="actions">
@@ -366,11 +408,14 @@
         <div class="card">
             <div class="card-head">
                 <h3>구독 상태</h3>
-                <span class="endpoint">FIXED 3 ENDPOINTS</span>
+                <span class="endpoint">ROOM / GAME / ERROR / PONG</span>
             </div>
             <div class="hint">표시: 수신 이벤트 JSON (마지막 수신 1건)</div>
             <label>Room 이벤트 응답 (/topic/room/{roomId})</label>
             <pre class="panel" id="roomEventPanel">-</pre>
+            <div style="height:8px;"></div>
+            <label>Game 이벤트 응답 (/topic/game/{gameId})</label>
+            <pre class="panel" id="gameEventPanel">-</pre>
             <div style="height:8px;"></div>
             <label>Error 이벤트 응답 (/user/queue/errors)</label>
             <pre class="panel" id="errorEventPanel">-</pre>

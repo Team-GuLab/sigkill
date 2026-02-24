@@ -11,6 +11,7 @@
     const readyBtn = document.getElementById("readyBtn");
     const unreadyBtn = document.getElementById("unreadyBtn");
     const startBtn = document.getElementById("startBtn");
+    const quizStartBtn = document.getElementById("quizStartBtn");
     const leaveDisconnectBtn = document.getElementById("leaveDisconnectBtn");
     const pingBtn = document.getElementById("pingBtn");
     const clearLogBtn = document.getElementById("clearLogBtn");
@@ -24,12 +25,17 @@
     const joinRoomIdInput = document.getElementById("joinRoomId");
     const readyRoomIdInput = document.getElementById("readyRoomId");
     const startRoomIdInput = document.getElementById("startRoomId");
+    const startQuizRoomIdInput = document.getElementById("startQuizRoomId");
+    const startQuizGameIdInput = document.getElementById("startQuizGameId");
     const leaveRoomIdInput = document.getElementById("leaveRoomId");
 
     const roomTopicPreviewInput = document.getElementById("roomTopicPreview");
+    const gameTopicPreviewInput = document.getElementById("gameTopicPreview");
     const errorTopicPreviewInput = document.getElementById("errorTopicPreview");
     const readyPayloadPreviewInput = document.getElementById("readyPayloadPreview");
     const startPayloadPreviewInput = document.getElementById("startPayloadPreview");
+    const quizStartDestinationInput = document.getElementById("quizStartDestination");
+    const quizStartPayloadPreviewInput = document.getElementById("quizStartPayloadPreview");
     const leavePayloadPreviewInput = document.getElementById("leavePayloadPreview");
 
     const loginResponseEl = document.getElementById("loginResponse");
@@ -42,9 +48,11 @@
     const createWsResultEl = document.getElementById("createWsResult");
     const readyResponseEl = document.getElementById("readyResponse");
     const startResponseEl = document.getElementById("startResponse");
+    const quizStartResponseEl = document.getElementById("quizStartResponse");
     const leaveResponseEl = document.getElementById("leaveResponse");
 
     const roomEventPanelEl = document.getElementById("roomEventPanel");
+    const gameEventPanelEl = document.getElementById("gameEventPanel");
     const errorEventPanelEl = document.getElementById("errorEventPanel");
     const pongEventPanelEl = document.getElementById("pongEventPanel");
     const logEl = document.getElementById("log");
@@ -52,9 +60,11 @@
     const state = {
         stompClient: null,
         roomSubscription: null,
+        gameSubscription: null,
         errorSubscription: null,
         pongSubscription: null,
-        subscribedRoomId: null
+        subscribedRoomId: null,
+        subscribedGameId: null
     };
 
     function initialize() {
@@ -143,6 +153,9 @@
         if (sourceInput !== startRoomIdInput) {
             startRoomIdInput.value = roomId;
         }
+        if (sourceInput !== startQuizRoomIdInput) {
+            startQuizRoomIdInput.value = roomId;
+        }
         if (sourceInput !== leaveRoomIdInput) {
             leaveRoomIdInput.value = roomId;
         }
@@ -166,6 +179,15 @@
 
         const startRoomId = startRoomIdInput.value.trim();
         startPayloadPreviewInput.value = startRoomId ? JSON.stringify({roomId: startRoomId}) : "{\"roomId\":\"{roomId}\"}";
+
+        const startQuizRoomId = startQuizRoomIdInput.value.trim();
+        const startQuizGameId = startQuizGameIdInput.value.trim();
+        gameTopicPreviewInput.value = startQuizGameId ? "/topic/game/" + startQuizGameId : "/topic/game/{gameId}";
+        if (startQuizRoomId && startQuizGameId) {
+            quizStartPayloadPreviewInput.value = JSON.stringify({roomId: startQuizRoomId, gameId: Number(startQuizGameId)});
+        } else {
+            quizStartPayloadPreviewInput.value = "{\"roomId\":\"{roomId}\",\"gameId\":{gameId}}";
+        }
 
         const leaveRoomId = leaveRoomIdInput.value.trim();
         leavePayloadPreviewInput.value = leaveRoomId ? JSON.stringify({roomId: leaveRoomId}) : "{\"roomId\":\"{roomId}\"}";
@@ -234,6 +256,7 @@
         joinRoomIdInput.value = roomId;
         readyRoomIdInput.value = roomId;
         startRoomIdInput.value = roomId;
+        startQuizRoomIdInput.value = roomId;
         leaveRoomIdInput.value = roomId;
         refreshComputedFields();
     }
@@ -368,10 +391,39 @@
             const parsed = parseJsonSafe(frame.body);
             setPanel(roomEventPanelEl, parsed || frame.body);
             log("Room 이벤트 수신");
+
+            if (parsed && parsed.type === "GAME_START" && parsed.gameId !== null && parsed.gameId !== undefined) {
+                startQuizGameIdInput.value = String(parsed.gameId);
+                if (parsed.roomId) {
+                    startQuizRoomIdInput.value = String(parsed.roomId);
+                    normalizeRoomIdAcrossSections(startQuizRoomIdInput);
+                } else {
+                    refreshComputedFields();
+                }
+
+                const gameSubscribeResult = subscribeGameTopic(String(parsed.gameId));
+                log("GAME_START 감지: gameId 자동 반영 및 Game 토픽 구독 (" + gameSubscribeResult.topic + ")");
+            }
         });
 
         state.subscribedRoomId = roomId;
         return {subscribed: true, topic: "/topic/room/" + roomId};
+    }
+
+    function subscribeGameTopic(gameId) {
+        if (state.gameSubscription) {
+            state.gameSubscription.unsubscribe();
+            state.gameSubscription = null;
+        }
+
+        state.gameSubscription = state.stompClient.subscribe("/topic/game/" + gameId, (frame) => {
+            const parsed = parseJsonSafe(frame.body);
+            setPanel(gameEventPanelEl, parsed || frame.body);
+            log("Game 이벤트 수신");
+        });
+
+        state.subscribedGameId = String(gameId);
+        return {subscribed: true, topic: "/topic/game/" + gameId};
     }
 
     function sendRoomCommand(command, roomId) {
@@ -386,6 +438,20 @@
         return {
             destination: destination,
             payload: {roomId: roomId}
+        };
+    }
+
+    function sendGameCommand(destination, payload) {
+        if (!state.stompClient || !state.stompClient.connected) {
+            throw new Error("WebSocket 연결이 필요합니다.");
+        }
+
+        const payloadJson = JSON.stringify(payload);
+        state.stompClient.send(destination, {"content-type": "application/json"}, payloadJson);
+
+        return {
+            destination: destination,
+            payload: payload
         };
     }
 
@@ -452,6 +518,26 @@
         log("6) START 전송 완료");
     }
 
+    async function executeStartQuiz() {
+        const roomId = getValueOrThrow(startQuizRoomIdInput, "roomId");
+        const gameIdRaw = getValueOrThrow(startQuizGameIdInput, "gameId");
+        const destination = getValueOrThrow(quizStartDestinationInput, "destination");
+        const gameId = Number(gameIdRaw);
+        if (!Number.isFinite(gameId)) {
+            throw new Error("gameId는 숫자여야 합니다.");
+        }
+
+        normalizeRoomIdAcrossSections(startQuizRoomIdInput);
+        await connectStompIfNeeded();
+        subscribeErrorQueueOnce();
+        subscribePongQueueOnce();
+        subscribeGameTopic(String(gameId));
+
+        const sendResult = sendGameCommand(destination, {roomId: roomId, gameId: gameId});
+        setPanel(quizStartResponseEl, sendResult);
+        log("7) QUIZ START 전송 완료 (" + destination + ")");
+    }
+
     function disconnectStomp() {
         if (state.roomSubscription) {
             state.roomSubscription.unsubscribe();
@@ -460,6 +546,10 @@
         if (state.errorSubscription) {
             state.errorSubscription.unsubscribe();
             state.errorSubscription = null;
+        }
+        if (state.gameSubscription) {
+            state.gameSubscription.unsubscribe();
+            state.gameSubscription = null;
         }
         if (state.pongSubscription) {
             state.pongSubscription.unsubscribe();
@@ -473,6 +563,7 @@
         }
 
         state.subscribedRoomId = null;
+        state.subscribedGameId = null;
     }
 
     async function executeLeaveAndDisconnect() {
@@ -484,9 +575,9 @@
             setPanel(leaveResponseEl, sendResult);
             await new Promise((resolve) => setTimeout(resolve, 150));
             disconnectStomp();
-            log("7) LEAVE 전송 + WS 연결 해제 완료");
+            log("8) LEAVE 전송 + WS 연결 해제 완료");
         } else {
-            log("7) WS 미연결 상태로 연결해제 단계만 스킵");
+            log("8) WS 미연결 상태로 연결해제 단계만 스킵");
         }
     }
 
@@ -504,6 +595,9 @@
     joinRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(joinRoomIdInput));
     readyRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(readyRoomIdInput));
     startRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startRoomIdInput));
+    startQuizRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startQuizRoomIdInput));
+    startQuizGameIdInput.addEventListener("input", refreshComputedFields);
+    quizStartDestinationInput.addEventListener("input", refreshComputedFields);
     leaveRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(leaveRoomIdInput));
 
     bindAsync(loginBtn, executeGuestLogin);
@@ -513,6 +607,7 @@
     bindAsync(readyBtn, async () => executeReadyLike("ready"));
     bindAsync(unreadyBtn, async () => executeReadyLike("unready"));
     bindAsync(startBtn, async () => executeStartGame());
+    bindAsync(quizStartBtn, executeStartQuiz);
     bindAsync(leaveDisconnectBtn, executeLeaveAndDisconnect);
     bindAsync(pingBtn, executePing);
     bindAsync(seedRoomsTopBtn, executeSeedRoomsTop);
