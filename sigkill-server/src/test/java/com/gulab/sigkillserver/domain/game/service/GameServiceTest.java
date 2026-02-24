@@ -10,16 +10,19 @@ import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameResponseType;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameEndReason;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPlayerInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizResult;
 import com.gulab.sigkillserver.domain.game.exception.GameErrorCode;
 import com.gulab.sigkillserver.domain.game.exception.QuizErrorCode;
 import com.gulab.sigkillserver.domain.game.model.Game;
 import com.gulab.sigkillserver.domain.game.model.GamePlayerStatus;
+import com.gulab.sigkillserver.domain.game.model.SelectedChoice;
 import com.gulab.sigkillserver.domain.game.model.quiz.Quiz;
 import com.gulab.sigkillserver.domain.game.model.quiz.QuizChoiceNumberMapping;
 import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
@@ -737,7 +740,7 @@ class GameServiceTest {
             User host = saveUser("last-quiz-host-session", "last-quiz-host");
             User second = saveUser("last-quiz-second-session", "last-quiz-second");
             User third = saveUser("last-quiz-third-session", "last-quiz-third");
-            Room room = Room.create("2434", "테스트 방", host.getUserId(), 6);
+            Room room = Room.create("2454", "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
             playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
             playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
@@ -847,37 +850,160 @@ class GameServiceTest {
         @Test
         void 게임이_종료된다() {
             // given
+            User host = saveUser("end-game-host-session", "end-game-host");
+            User second = saveUser("end-game-second-session", "end-game-second");
+            User third = saveUser("end-game-third-session", "end-game-third");
+            Room room = Room.create("2534", "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(Player.create(third.getUserId(), room.getRoomId(), third.getNickname()));
+            gameService.startGame(room);
+
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+            List<Long> quizIds = game.getQuizIds();
+            Long quizId = quizIds.get(0);
+            quizChoiceNumberMappingRepository.save(
+                    QuizChoiceNumberMapping.create(game.getGameId(), quizId, Map.of(1, 1L))
+            );
+            selectedChoiceRepository.save(
+                    SelectedChoice.create(game.getGameId(), quizId, host.getUserId(), 1L, Instant.now().toEpochMilli())
+            );
+
+            gamePlayerRepository.getByGameId(game.getGameId()).forEach(gp -> {
+                if (gp.getUserId() == host.getUserId()) {
+                    gp.addScore(5);
+                    return;
+                }
+                if (gp.getUserId() == second.getUserId()) {
+                    gp.addScore(2);
+                    gp.kill();
+                    return;
+                }
+                gp.addScore(1);
+                gp.kill();
+            });
 
             // when
+            GameEndEvent result = gameService.endGame(host.getUserId(), room.getRoomId(), game.getGameId());
 
             // then
+            assertThat(result.type()).isEqualTo(GameResponseType.GAME_END);
+            assertThat(result.roomId()).isEqualTo(room.getRoomId());
+            assertThat(result.gameId()).isEqualTo(game.getGameId());
+            assertThat(result.payload().reason()).isEqualTo(GameEndReason.ONE_SURVIVOR);
+            assertThat(result.payload().rankings())
+                    .extracting(ranking -> ranking.userId())
+                    .containsExactly(host.getUserId(), second.getUserId(), third.getUserId());
+
+            assertThat(room.isInGame()).isFalse();
+            assertThat(gameRepository.findById(game.getGameId())).isEmpty();
+            assertThat(gamePlayerRepository.getByGameId(game.getGameId())).isEmpty();
+            assertThat(quizChoiceNumberMappingRepository.findByGameIdAndQuizId(game.getGameId(), quizId)).isEmpty();
+            assertThat(selectedChoiceRepository.findByGameIdAndQuizId(game.getGameId(), quizId)).isEmpty();
         }
 
         @Test
         void 게임이_진행중이지_않은_방에서_게임을_종료하지_못한다() {
             // given
+            User user = saveUser("end-game-not-started-session", "end-game-not-started");
+            Room room = saveRoom("2634");
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
+            Runnable call = () -> gameService.endGame(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId()
+            );
 
             // then
+            assertThrowsCustomExceptionWithCode(call, RoomErrorCode.ROOM_NOT_STARTED.name());
         }
 
         @Test
         void 게임이_종료된_방에서_게임을_종료하지_못한다() {
             // given
+            User host = saveUser("end-game-finished-host-session", "end-game-finished-host");
+            User second = saveUser("end-game-finished-second-session", "end-game-finished-second");
+            Room room = Room.create("2734", "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            gameService.startGame(room);
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+            room.endGame();
 
             // when
+            Runnable call = () -> gameService.endGame(
+                    host.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId()
+            );
 
             // then
+            assertThrowsCustomExceptionWithCode(call, RoomErrorCode.ROOM_NOT_STARTED.name());
         }
 
         @Test
-        void 모든_퀴즈가_끝난_방에서_게임을_종료하지_못한다() {
+        void 생존자가_둘_이상이고_마지막_퀴즈이면_QUIZ_EXHAUSTED_사유로_종료된다() {
             // given
+            User host = saveUser("end-game-exhaust-host-session", "end-game-exhaust-host");
+            User second = saveUser("end-game-exhaust-second-session", "end-game-exhaust-second");
+            Room room = Room.create("2834", "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            gameService.startGame(room);
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+
+            for (int i = 0; i < game.getTotalQuizCount(); i++) {
+                game.startNextQuiz(Instant.now().toEpochMilli());
+            }
 
             // when
+            GameEndEvent result = gameService.endGame(host.getUserId(), room.getRoomId(), game.getGameId());
 
             // then
+            assertThat(result.payload().reason()).isEqualTo(GameEndReason.QUIZ_EXHAUSTED);
+        }
+
+        @Test
+        void 동점자는_같은_rank를_부여한다() {
+            // given
+            User host = saveUser("end-game-tie-host-session", "end-game-tie-host");
+            User second = saveUser("end-game-tie-second-session", "end-game-tie-second");
+            User third = saveUser("end-game-tie-third-session", "end-game-tie-third");
+            Room room = Room.create("2934", "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(Player.create(third.getUserId(), room.getRoomId(), third.getNickname()));
+            gameService.startGame(room);
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+
+            gamePlayerRepository.getByGameId(game.getGameId()).forEach(gp -> {
+                if (gp.getUserId() == host.getUserId()) {
+                    gp.addScore(5);
+                    return;
+                }
+                if (gp.getUserId() == second.getUserId()) {
+                    gp.addScore(5);
+                    gp.kill();
+                    return;
+                }
+                gp.addScore(1);
+                gp.kill();
+            });
+
+            // when
+            GameEndEvent result = gameService.endGame(host.getUserId(), room.getRoomId(), game.getGameId());
+
+            // then
+            assertThat(result.payload().rankings())
+                    .extracting(ranking -> ranking.rank())
+                    .containsExactly(1, 1, 3);
         }
     }
 }

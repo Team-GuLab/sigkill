@@ -2,11 +2,15 @@ package com.gulab.sigkillserver.domain.game.service;
 
 import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.ActorInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.ChoiceSubmitPayload;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameEndPayload;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameEndReason;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameRankingInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartPayload;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartQuizInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizAnswerInfo;
@@ -23,6 +27,8 @@ import com.gulab.sigkillserver.domain.game.model.GamePlayerStatus;
 import com.gulab.sigkillserver.domain.game.model.quiz.Quiz;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -132,5 +138,51 @@ public class GameEventBuilder {
                 quizResult,
                 gamePlayer.getScore()
         );
+    }
+
+    public GameEndEvent toGameEndEvent(
+            Room room,
+            Game game,
+            GameEndReason reason,
+            List<GameRankingInfo> rankings,
+            long occurredAt
+    ) {
+        return GameEndEvent.of(
+                room.getRoomId(),
+                game.getGameId(),
+                occurredAt,
+                new GameEndPayload(reason, rankings)
+        );
+    }
+
+    public List<GameRankingInfo> buildRankings(List<GamePlayer> gamePlayers) {
+        List<GamePlayer> sortedPlayers = gamePlayers.stream()
+                .sorted(
+                        Comparator.comparingInt(GamePlayer::getScore)
+                                .reversed()
+                                .thenComparingLong(GamePlayer::getUserId)
+                )
+                .toList();
+
+        List<GameRankingInfo> rankings = new ArrayList<>();
+        Integer previousScore = null;
+        int currentRank = 0;
+        for (int i = 0; i < sortedPlayers.size(); i++) {
+            GamePlayer gamePlayer = sortedPlayers.get(i);
+
+            if (previousScore == null || gamePlayer.getScore() != previousScore) {
+                currentRank = i + 1;
+                previousScore = gamePlayer.getScore();
+            }
+
+            rankings.add(new GameRankingInfo(
+                    currentRank,
+                    gamePlayer.getUserId(),
+                    gamePlayer.getNickname(),
+                    gamePlayer.getScore()
+            ));
+        }
+
+        return rankings;
     }
 }

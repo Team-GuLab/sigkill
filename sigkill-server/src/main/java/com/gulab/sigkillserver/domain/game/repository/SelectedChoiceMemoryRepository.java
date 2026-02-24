@@ -34,5 +34,10 @@ public class SelectedChoiceMemoryRepository implements SelectedChoiceRepository 
         store.remove(new GameQuizKey(gameId, quizId));
     }
 
+    @Override
+    public void deleteByGameId(long gameId) {
+        store.keySet().removeIf(key -> key.gameId() == gameId);
+    }
+
     private record GameQuizKey(long gameId, long quizId) {}
 }

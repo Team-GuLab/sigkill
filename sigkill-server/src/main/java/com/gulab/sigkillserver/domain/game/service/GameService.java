@@ -21,6 +21,8 @@ import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameEndReason;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameRankingInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizChoiceInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPlayerInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizResult;
@@ -285,17 +287,40 @@ public class GameService {
      */
     public GameEndEvent endGame(Long userId, String roomId, Long gameId) {
         // 검증
-        Player player = getPlayerInRoomOrThrow(userId, roomId);
+        getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
         Game game = getGameInRoomOrThrow(gameId, room);
         validateGameInProgress(room, game);
 
         // 게임 결과 확인
+        List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
+        GameEndReason reason = determineGameEndReason(gamePlayers);
+        List<GameRankingInfo> rankings = gameEventBuilder.buildRankings(gamePlayers);
+        long occurredAt = Instant.now().toEpochMilli();
+        GameEndEvent gameEndEvent = gameEventBuilder.toGameEndEvent(room, game, reason, rankings, occurredAt);
 
         // 데이터 정리 - 게임플레이어, 게임, 퀴즈 선택지 매핑, 제출한 선지 정보 등
-
+        room.endGame();
+        selectedChoiceRepository.deleteByGameId(gameId);
         quizChoiceNumberMappingRepository.deleteByGameId(gameId);
-        return null;
+        gamePlayerRepository.deleteByGameId(gameId);
+        gameRepository.deleteById(gameId);
+
+        return gameEndEvent;
+    }
+
+    private GameEndReason determineGameEndReason(List<GamePlayer> gamePlayers) {
+        long aliveCount = gamePlayers.stream()
+                .filter(GamePlayer::isAlive)
+                .count();
+
+        if (aliveCount == 0) {
+            return GameEndReason.ALL_DEAD;
+        }
+        if (aliveCount == 1) {
+            return GameEndReason.ONE_SURVIVOR;
+        }
+        return GameEndReason.QUIZ_EXHAUSTED;
     }
 
     private Player getPlayerInRoomOrThrow(Long userId, String roomId) {

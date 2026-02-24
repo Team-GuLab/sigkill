@@ -9,4 +9,6 @@ public interface SelectedChoiceRepository {
     List<SelectedChoice> findByGameIdAndQuizId(long gameId, long quizId);
 
     void deleteByGameIdAndQuizId(long gameId, long quizId);
+
+    void deleteByGameId(long gameId);
 }
