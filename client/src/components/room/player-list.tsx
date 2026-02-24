@@ -1,21 +1,82 @@
+import type { Player } from "@/api/room/types";
+import { MAX_CAPACITY } from "@/constants/room";
 import type { PlayerSlot } from "@/routes/pages/waiting-room";
 import { Avatar, AvatarBadge, AvatarFallback } from "@/ui/avatar";
 import { Badge } from "@/ui/badge";
 import { Crown, User } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 /**
  * 대기방의 플레이어 목록
- * @param slots 플레이어 슬롯 배열
+ * @param players 플레이어 목록
  * @param capacity 방 정원
  * @returns
  */
 export default function PlayerList({
-  slots,
-  capacity,
+  players,
+  capacity = MAX_CAPACITY,
 }: {
-  slots: PlayerSlot[];
+  players: Player[];
   capacity: number;
 }) {
+  // userId -> slotIndex 매핑 (플레이어를 특정 슬롯에 고정)
+  const [playerSlotMapping, setPlayerSlotMapping] = useState<
+    Map<number, number>
+  >(new Map());
+
+  // 슬롯 배열 생성 (capacity 크기, 각 슬롯에 플레이어 또는 null)
+  const playerSlots = useMemo<PlayerSlot[]>(() => {
+    const playerSlots: PlayerSlot[] = Array.from(
+      { length: capacity },
+      (_, i) => ({
+        slotIndex: i,
+        player: null,
+      }),
+    );
+
+    // 매핑된 슬롯에 플레이어 배치
+    players.forEach(player => {
+      const slotIndex = playerSlotMapping.get(player.userId);
+      if (slotIndex !== undefined && slotIndex < capacity) {
+        playerSlots[slotIndex].player = player;
+      }
+    });
+
+    return playerSlots;
+  }, [players, playerSlotMapping, capacity]);
+
+  // 플레이어 변경 시 슬롯 매핑 업데이트
+  useEffect(() => {
+    setPlayerSlotMapping(prevMapping => {
+      const newMapping = new Map(prevMapping);
+
+      // 새로 입장한 플레이어를 빈 슬롯에 할당
+      players.forEach(player => {
+        if (!newMapping.has(player.userId)) {
+          // 빈 슬롯 찾기 (가장 앞쪽부터)
+          const occupiedSlots = new Set(newMapping.values());
+
+          for (let i = 0; i < capacity; i++) {
+            if (!occupiedSlots.has(i)) {
+              newMapping.set(player.userId, i);
+              break;
+            }
+          }
+        }
+      });
+
+      // 퇴장한 플레이어의 매핑 제거
+      const currentUserIds = new Set(players.map(p => p.userId));
+      Array.from(newMapping.keys()).forEach(userId => {
+        if (!currentUserIds.has(userId)) {
+          newMapping.delete(userId);
+        }
+      });
+
+      return newMapping;
+    });
+  }, [players, capacity]);
+
   return (
     <div
       className="space-y-2"
@@ -24,7 +85,7 @@ export default function PlayerList({
         minHeight: `${capacity * 64}px`,
       }}
     >
-      {slots.map(slot => {
+      {playerSlots.map(slot => {
         const player = slot.player;
 
         // 빈 슬롯
