@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useLocation, useNavigate, useParams } from "react-router";
-import type { Player } from "@/api/room/types";
+import { useNavigate, useParams } from "react-router";
 import PlayerList from "@/components/room/player-list";
 import { Button } from "@/ui/button";
 import { ROUTE_PATHS } from "@/routes/paths";
@@ -10,6 +9,9 @@ import GameStartButton from "@/components/room/game-start-button";
 import ReadyButton from "@/components/room/ready-button";
 import { useRoomSocket } from "@/hooks/room/use-room-socket";
 import { WaitingRoomSkeleton } from "@/components/room/waiting-room-skeleton";
+import { useRoomInfo, usePlayers } from "@/store/room-store";
+
+import type { Player } from "@/api/room/types";
 
 export type PlayerSlot = {
   slotIndex: number;
@@ -18,21 +20,18 @@ export type PlayerSlot = {
 
 export default function WaitingRoom() {
   const { roomId } = useParams<{ roomId: string }>();
-
-  const location = useLocation();
-  const state = location.state as { players: Player[] } | null;
-  const initialPlayers = state?.players ?? [];
-
   const navigate = useNavigate();
 
   const user = useUser();
   const myUserId = user!.userId;
 
-  const { roomInfo, players, isPending } = useRoomSocket({
+  const { isPending: isRoomSocketPending } = useRoomSocket({
     roomId,
     myUserId,
-    initialPlayers,
   });
+
+  const roomInfo = useRoomInfo();
+  const players = usePlayers();
 
   // userId -> slotIndex 매핑 (플레이어를 특정 슬롯에 고정)
   const [playerSlotMapping, setPlayerSlotMapping] = useState<
@@ -99,7 +98,7 @@ export default function WaitingRoom() {
     });
   }, [players, roomInfo?.capacity]);
 
-  if (isPending) {
+  if (isRoomSocketPending) {
     return <WaitingRoomSkeleton />;
   }
 
