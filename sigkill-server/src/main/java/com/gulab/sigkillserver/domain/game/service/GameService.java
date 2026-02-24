@@ -95,7 +95,7 @@ public class GameService {
         // 게임 시작
         room.startGame();
 
-        return gameEventBuilder.toGameStartEvent(room, game);
+        return gameEventBuilder.toGameStartEvent(room, game, players);
     }
 
     /**

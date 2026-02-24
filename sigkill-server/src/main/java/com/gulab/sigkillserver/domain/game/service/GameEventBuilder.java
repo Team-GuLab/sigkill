@@ -27,11 +27,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class GameEventBuilder {
 
-    public GameStartEvent toGameStartEvent(Room room, Game game) {
+    public GameStartEvent toGameStartEvent(Room room, Game game, List<Player> players) {
+        List<ActorInfo> playerInfos = players.stream()
+                .map(player -> new ActorInfo(player.getUserId(), player.getNickname()))
+                .toList();
         return GameStartEvent.of(
                 room.getRoomId(),
                 game.getGameId(),
-                new GameStartPayload(new GameStartQuizInfo(0, game.getTotalQuizCount()))
+                new GameStartPayload(
+                        new GameStartQuizInfo(0, game.getTotalQuizCount()),
+                        playerInfos
+                )
         );
     }
 

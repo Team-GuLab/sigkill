@@ -140,6 +140,13 @@ class RoomServiceTest {
             assertThat(result.gameId()).isNotNull();
             assertThat(result.payload().quiz().currentQuizIndex()).isZero();
             assertThat(result.payload().quiz().totalQuizCount()).isPositive();
+            assertThat(result.payload().players()).hasSize(2);
+            assertThat(result.payload().players())
+                    .extracting(actor -> actor.userId())
+                    .containsExactlyInAnyOrder(host.getUserId(), guest.getUserId());
+            assertThat(result.payload().players())
+                    .extracting(actor -> actor.nickname())
+                    .containsExactlyInAnyOrder(host.getNickname(), guest.getNickname());
             assertThat(room.isInGame()).isTrue();
             assertThat(gameRepository.findByRoomId(TEST_ROOM_ID))
                     .isPresent()

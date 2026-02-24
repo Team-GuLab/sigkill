@@ -118,6 +118,10 @@ class GameServiceTest {
         void 메모리_저장소_기반으로_GAME_START를_생성하고_게임을_저장한다() {
             // given
             Room room = Room.create("1234", "테스트 방", 1L, 6);
+            User user1 = saveUser("start-game-session-1", "start-game-user-1");
+            User user2 = saveUser("start-game-session-2", "start-game-user-2");
+            playerRepository.create(Player.create(user1.getUserId(), room.getRoomId(), user1.getNickname()));
+            playerRepository.create(Player.create(user2.getUserId(), room.getRoomId(), user2.getNickname()));
 
             // when
             GameStartEvent result = gameService.startGame(room);
@@ -128,6 +132,13 @@ class GameServiceTest {
             assertThat(result.gameId()).isNotNull();
             assertThat(result.payload().quiz().currentQuizIndex()).isZero();
             assertThat(result.payload().quiz().totalQuizCount()).isPositive();
+            assertThat(result.payload().players()).hasSize(2);
+            assertThat(result.payload().players())
+                    .extracting(actor -> actor.userId())
+                    .containsExactlyInAnyOrder(user1.getUserId(), user2.getUserId());
+            assertThat(result.payload().players())
+                    .extracting(actor -> actor.nickname())
+                    .containsExactlyInAnyOrder(user1.getNickname(), user2.getNickname());
             assertThat(room.isInGame()).isTrue();
 
             Game savedGame = gameRepository.findByRoomId("1234").orElseThrow();
