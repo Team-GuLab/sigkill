@@ -1,6 +1,10 @@
 package com.gulab.sigkillserver.domain.game.model;
 
+import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_INDEX_OUT_OF_BOUNDS;
+
 import com.gulab.sigkillserver.common.BaseEntity;
+import com.gulab.sigkillserver.common.exception.CustomException;
+import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import java.util.List;
 import lombok.Getter;
 import lombok.With;
@@ -40,12 +44,19 @@ public class Game extends BaseEntity {
 
     public long getCurrentQuizId() {
         if (isQuizIndexOutOfBounds()) {
-            throw new IllegalStateException("현재 퀴즈 인덱스가 범위를 벗어났습니다.");
+            throw new CustomException(QUIZ_INDEX_OUT_OF_BOUNDS);
         }
         return quizIds.get(currentQuizIndex);
     }
 
     public int getTotalQuizCount() {
         return quizIds.size();
+    }
+
+    public boolean hasExceededDeadline(long submitTime) {
+        long deadline = quizStartTime
+                + GameConstants.QUIZ_COUNTDOWN_MILLIS
+                + GameConstants.QUIZ_ANSWER_ALLOWANCE_MILLIS;
+        return submitTime > deadline;
     }
 }

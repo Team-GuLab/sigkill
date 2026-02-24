@@ -1,6 +1,7 @@
 package com.gulab.sigkillserver.domain.game.service;
 
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_NOT_FOUND;
+import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.SUBMIT_CHOICE_IS_AFTER_DEADLINE;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.SUBMIT_CHOICE_NOT_CURRENT_QUIZ;
 import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_CHOICE_NUMBER_MAPPING_ERROR;
 import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_CHOICE_NUMBER_MAPPING_NOT_FOUND;
@@ -123,19 +124,28 @@ public class GameService {
         Room room = getRoomOrThrow(roomId);
         Game game = getGameInRoomOrThrow(gameId, room);
         validateGameInProgress(room, game);
-
         validateSubmitChoiceIsForCurrentQuiz(game, quizId);
+        validateDeadline(game, submitTime);
 
-        long choiceId = quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId)
-                .orElseThrow(() -> new CustomException(QUIZ_CHOICE_NUMBER_MAPPING_NOT_FOUND))
-                .findChoiceIdByNumber(choiceNumber)
-                .orElseThrow(() -> new CustomException(QUIZ_CHOICE_NUMBER_MAPPING_ERROR));
-
+        long choiceId = getChoiceId(gameId, quizId, choiceNumber);
         Quiz quiz = getQuizOrThrow(quizId);
 
         SelectedChoice selectedChoice = SelectedChoice.create(gameId, quizId, userId, choiceId, submitTime);
         selectedChoiceRepository.save(selectedChoice);
         return gameEventBuilder.toChoiceSubmitEvent(room, game, quiz, player, choiceNumber, submitTime);
+    }
+
+    private void validateDeadline(Game game, long submitTime) {
+        if (game.hasExceededDeadline(submitTime)) {
+            throw new CustomException(SUBMIT_CHOICE_IS_AFTER_DEADLINE);
+        }
+    }
+
+    private long getChoiceId(Long gameId, Long quizId, Integer choiceNumber) {
+        return quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId)
+                .orElseThrow(() -> new CustomException(QUIZ_CHOICE_NUMBER_MAPPING_NOT_FOUND))
+                .findChoiceIdByNumber(choiceNumber)
+                .orElseThrow(() -> new CustomException(QUIZ_CHOICE_NUMBER_MAPPING_ERROR));
     }
 
     private void validateSubmitChoiceIsForCurrentQuiz(Game game, Long quizId) {

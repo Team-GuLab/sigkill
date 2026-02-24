@@ -428,6 +428,43 @@ class GameServiceTest {
         }
 
         @Test
+        void 제출_마감시간이_지나면_선택지를_제출하지_못한다() {
+            // given
+            User user = saveUser("submit-session-deadline", "submitter-deadline");
+            Room room = saveRoom("7334");
+            room.startGame();
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+
+            long startedAt = Instant.now().toEpochMilli()
+                    - GameConstants.QUIZ_COUNTDOWN_MILLIS
+                    - GameConstants.QUIZ_ANSWER_ALLOWANCE_MILLIS
+                    - 1L;
+
+            long currentQuizId = game.startNextQuiz(startedAt);
+            Quiz quiz = quizRepository.findById(currentQuizId).orElseThrow();
+            Map<Integer, Long> numberToChoiceId = new LinkedHashMap<>();
+            for (int i = 0; i < quiz.choices().size(); i++) {
+                numberToChoiceId.put(i + 1, quiz.choices().get(i).choiceId());
+            }
+            quizChoiceNumberMappingRepository.save(
+                    QuizChoiceNumberMapping.create(game.getGameId(), quiz.quizId(), numberToChoiceId)
+            );
+
+            // when
+            Runnable call = () -> gameService.submitChoice(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    quiz.quizId(),
+                    1
+            );
+
+            // then
+            assertThrowsCustomExceptionWithCode(call, GameErrorCode.SUBMIT_CHOICE_IS_AFTER_DEADLINE.name());
+        }
+
+        @Test
         void 게임이_진행중이지_않은_방에서_선택지를_제출하지_못한다() {
             // given
             User user = saveUser("submit-session-2", "submitter2");
