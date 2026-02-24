@@ -19,10 +19,12 @@ import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMem
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
+import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
 import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
-import com.gulab.sigkillserver.domain.room.model.Room;
-import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
+import com.gulab.sigkillserver.domain.room.model.Player;
+import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
@@ -45,7 +47,9 @@ class GameServiceTest {
     private QuizRepository quizRepository;
     private PlayerRepository playerRepository;
     private RoomRepository roomRepository;
+    private SelectedChoiceRepository selectedChoiceRepository;
     private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
+    private GameEventBuilder gameEventBuilder;
     private GameService gameService;
 
     @BeforeEach
@@ -56,7 +60,9 @@ class GameServiceTest {
                 new ClassPathResource("quiz/quiz.json"));
         playerRepository = new PlayerMemoryRepository();
         roomRepository = new RoomMemoryRepository();
+        selectedChoiceRepository = new SelectedChoiceMemoryRepository();
         quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
+        gameEventBuilder = new GameEventBuilder();
 
         gameService = new GameService(
                 userRepository,
@@ -64,8 +70,28 @@ class GameServiceTest {
                 quizRepository,
                 playerRepository,
                 roomRepository,
-                quizChoiceNumberMappingRepository
+                selectedChoiceRepository,
+                quizChoiceNumberMappingRepository,
+                gameEventBuilder
         );
+    }
+
+    private User saveUser(String sessionId, String nickname) {
+        return userRepository.save(User.create(sessionId, nickname, UserRole.GUEST));
+    }
+
+    private Room saveRoom(String roomId) {
+        Room room = Room.create(roomId, "테스트 방", 1L, 6);
+        roomRepository.save(room);
+        return room;
+    }
+
+    private Game saveGameWithQuizIds(String roomId, int quizCount) {
+        List<Long> quizIds = quizRepository.findByCategoryId(GameConstants.DEFAULT_CATEGORY_ID, quizCount)
+                .stream()
+                .map(Quiz::quizId)
+                .toList();
+        return gameRepository.save(Game.create(roomId, quizIds));
     }
 
     @Nested
@@ -158,7 +184,8 @@ class GameServiceTest {
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
-            Throwable thrown = catchThrowable(() -> gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId()));
+            Throwable thrown = catchThrowable(
+                    () -> gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId()));
 
             // then
             assertCustomErrorCode(thrown, RoomErrorCode.ROOM_NOT_STARTED.name());
@@ -173,7 +200,8 @@ class GameServiceTest {
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
-            Throwable thrown = catchThrowable(() -> gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId()));
+            Throwable thrown = catchThrowable(
+                    () -> gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId()));
 
             // then
             assertCustomErrorCode(thrown, PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
@@ -189,7 +217,8 @@ class GameServiceTest {
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
-            Throwable thrown = catchThrowable(() -> gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId()));
+            Throwable thrown = catchThrowable(
+                    () -> gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId()));
 
             // then
             assertCustomErrorCode(thrown, PlayerErrorCode.PLAYER_NOT_IN_ROOM.name());
@@ -205,7 +234,8 @@ class GameServiceTest {
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
-            Throwable thrown = catchThrowable(() -> gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId()));
+            Throwable thrown = catchThrowable(
+                    () -> gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId()));
 
             // then
             assertCustomErrorCode(thrown, QuizErrorCode.QUIZ_INDEX_OUT_OF_BOUNDS.name());
@@ -355,23 +385,5 @@ class GameServiceTest {
 
             // then
         }
-    }
-
-    private User saveUser(String sessionId, String nickname) {
-        return userRepository.save(User.create(sessionId, nickname, UserRole.GUEST));
-    }
-
-    private Room saveRoom(String roomId) {
-        Room room = Room.create(roomId, "테스트 방", 1L, 6);
-        roomRepository.save(room);
-        return room;
-    }
-
-    private Game saveGameWithQuizIds(String roomId, int quizCount) {
-        List<Long> quizIds = quizRepository.findByCategoryId(GameConstants.DEFAULT_CATEGORY_ID, quizCount)
-                .stream()
-                .map(Quiz::quizId)
-                .toList();
-        return gameRepository.save(Game.create(roomId, quizIds));
     }
 }
