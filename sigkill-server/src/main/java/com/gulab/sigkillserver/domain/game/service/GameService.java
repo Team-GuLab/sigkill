@@ -65,15 +65,24 @@ public class GameService {
      * 게임 시작. RoomService 에서 호출
      */
     public GameStartEvent startGame(Room room) {
+        // 검증
         validateGameNotInProgress(room);
+
+        // 퀴즈 정보 가져오기
         List<Long> quizIds = quizRepository.findByCategoryId(
                         GameConstants.DEFAULT_CATEGORY_ID,
                         GameConstants.QUIZ_COUNT)
                 .stream()
                 .map(Quiz::quizId)
                 .toList();
+
+        // Game 객체 생성
         Game game = Game.create(room.getRoomId(), quizIds);
         game = gameRepository.save(game);
+
+        // TODO: Player 객체 생성
+
+        // 게임 시작
         room.startGame();
 
         return gameEventBuilder.toGameStartEvent(room, game);
@@ -83,6 +92,7 @@ public class GameService {
      * 게임 중 다음 퀴즈 시작. 클라이언트에서 호출
      */
     public QuizStartEvent startQuiz(Long userId, String roomId, Long gameId) {
+        // 검증
         getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
         Game game = getGameInRoomOrThrow(gameId, room);
@@ -92,10 +102,12 @@ public class GameService {
             throw new CustomException(QUIZ_INDEX_OUT_OF_BOUNDS);
         }
 
+        // 퀴즈 시작
         long quizStartTime = Instant.now().toEpochMilli();
         long quizId = game.startNextQuiz(quizStartTime);
         Quiz quiz = getQuizOrThrow(quizId);
 
+        // 퀴즈 정보 불러오기 및 퀴즈 선택지 ID - 번호 매핑 정보 생성
         List<QuizChoice> shuffled = new ArrayList<>(quiz.choices());
         Collections.shuffle(shuffled);
         Map<Integer, Long> numberToChoiceId = new LinkedHashMap<>();
@@ -108,6 +120,7 @@ public class GameService {
             quizChoiceInfos.add(new QuizChoiceInfo(number, c.text()));
         }
 
+        // 퀴즈 선택지 ID - 번호 매핑 정보 저장
         quizChoiceNumberMappingRepository.save(
                 QuizChoiceNumberMapping.create(gameId, quizId, numberToChoiceId)
         );
@@ -119,7 +132,10 @@ public class GameService {
      * 퀴즈에 대한 선택지 제출. 클라이언트에서 호출
      */
     public ChoiceSubmitEvent submitChoice(Long userId, String roomId, Long gameId, Long quizId, Integer choiceNumber) {
+        // 시간 측정
         long submitTime = Instant.now().toEpochMilli();
+
+        // 검증
         Player player = getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
         Game game = getGameInRoomOrThrow(gameId, room);
@@ -127,9 +143,11 @@ public class GameService {
         validateSubmitChoiceIsForCurrentQuiz(game, quizId);
         validateDeadline(game, submitTime);
 
-        long choiceId = getChoiceId(gameId, quizId, choiceNumber);
+        // 선택지 번호 -> 선택지 ID 변환
+        long choiceId = getChoiceIdFromNumber(gameId, quizId, choiceNumber);
         Quiz quiz = getQuizOrThrow(quizId);
 
+        // 선택 정보 덮어쓰기
         SelectedChoice selectedChoice = SelectedChoice.create(gameId, quizId, userId, choiceId, submitTime);
         selectedChoiceRepository.save(selectedChoice);
         return gameEventBuilder.toChoiceSubmitEvent(room, game, quiz, player, choiceNumber, submitTime);
@@ -141,10 +159,22 @@ public class GameService {
         }
     }
 
-    private long getChoiceId(Long gameId, Long quizId, Integer choiceNumber) {
+    private long getChoiceIdFromNumber(Long gameId, Long quizId, Integer choiceNumber) {
         return quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId)
                 .orElseThrow(() -> new CustomException(QUIZ_CHOICE_NUMBER_MAPPING_NOT_FOUND))
                 .findChoiceIdByNumber(choiceNumber)
+                .orElseThrow(() -> new CustomException(QUIZ_CHOICE_NUMBER_MAPPING_ERROR));
+    }
+
+    private int getChoiceNumberFromId(Long gameId, Long quizId, Long choiceId) {
+        return quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId)
+                .orElseThrow(() -> new CustomException(QUIZ_CHOICE_NUMBER_MAPPING_NOT_FOUND))
+                .getNumberToChoiceId()
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getValue().equals(choiceId))
+                .map(Map.Entry::getKey)
+                .findFirst()
                 .orElseThrow(() -> new CustomException(QUIZ_CHOICE_NUMBER_MAPPING_ERROR));
     }
 
@@ -158,12 +188,28 @@ public class GameService {
      * 퀴즈 종료. 서버 에서 호출
      */
     public QuizEndEvent endQuiz(Long userId, String roomId, Long gameId, Long quizId) {
+        // 검증
         Player player = getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
         Game game = getGameInRoomOrThrow(gameId, room);
         validateGameInProgress(room, game);
+        Quiz quiz = getQuizOrThrow(quizId);
 
-        quizChoiceNumberMappingRepository.deleteByGameIdAndQuizId(gameId, quizId);
+        // 정답 번호 가져오기
+        int answerNumber = getChoiceNumberFromId(gameId, quizId, quiz.correctChoiceId());
+
+        // 선택 정보 가져오기
+        List<SelectedChoice> selectedChoices = selectedChoiceRepository.findByGameIdAndQuizId(gameId, quizId);
+
+        // GamePlayer 객체 가져오기
+
+        // 정답 판별, 점수 계산
+
+        // 각 플레이어 상태 업데이트
+
+        // 선지 제출 정보 삭제
+
+        // 결과 반환
         return null;
     }
 
@@ -171,10 +217,15 @@ public class GameService {
      * 게임 종료. 서버 에서 호출
      */
     public GameEndEvent endGame(Long userId, String roomId, Long gameId) {
+        // 검증
         Player player = getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
         Game game = getGameInRoomOrThrow(gameId, room);
         validateGameInProgress(room, game);
+
+        // 게임 결과 확인
+
+        // 데이터 정리 - 게임플레이어, 게임
 
         quizChoiceNumberMappingRepository.deleteByGameId(gameId);
         return null;
