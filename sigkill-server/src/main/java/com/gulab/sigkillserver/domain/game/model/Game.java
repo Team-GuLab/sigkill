@@ -38,6 +38,13 @@ public class Game extends BaseEntity {
         return quizIds.get(currentQuizIndex);
     }
 
+    public long getCurrentQuizId() {
+        if (isQuizIndexOutOfBounds()) {
+            throw new IllegalStateException("현재 퀴즈 인덱스가 범위를 벗어났습니다.");
+        }
+        return quizIds.get(currentQuizIndex);
+    }
+
     public int getTotalQuizCount() {
         return quizIds.size();
     }
