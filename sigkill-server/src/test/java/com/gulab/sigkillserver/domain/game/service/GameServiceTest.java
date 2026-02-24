@@ -6,9 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.constant.GameConstants;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameResponseType;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
+import com.gulab.sigkillserver.domain.game.exception.GameErrorCode;
 import com.gulab.sigkillserver.domain.game.exception.QuizErrorCode;
 import com.gulab.sigkillserver.domain.game.model.Game;
 import com.gulab.sigkillserver.domain.game.model.quiz.Quiz;
@@ -34,7 +36,11 @@ import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -92,6 +98,13 @@ class GameServiceTest {
                 .map(Quiz::quizId)
                 .toList();
         return gameRepository.save(Game.create(roomId, quizIds));
+    }
+
+    private void assertThrowsCustomExceptionWithCode(Runnable call, String code) {
+        assertThatThrownBy(call::run)
+                .isInstanceOf(CustomException.class)
+                .satisfies(throwable ->
+                        assertThat(((CustomException) throwable).getErrorCode().getCode()).isEqualTo(code));
     }
 
     @Nested
@@ -264,48 +277,265 @@ class GameServiceTest {
     @Nested
     class SubmitChoiceTests {
         @Test
-        void 플레이어가_선택지를_제출한다() {
+        void 퀴즈_시작시_생성된_번호와_실제_choiceId_매핑이_정합하다() {
             // given
+            User user = saveUser("submit-map-session-1", "submit-map-user");
+            Room room = saveRoom("6134");
+            room.startGame();
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 4);
+
+            // startQuiz 사전 조건 충족(현재 구현 기준)
+            game.startNextQuiz(Instant.now().toEpochMilli());
 
             // when
+            QuizStartEvent startEvent = gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId());
+            Long startedQuizId = startEvent.payload().quiz().quizId();
+            QuizChoiceNumberMapping mapping = quizChoiceNumberMappingRepository
+                    .findByGameIdAndQuizId(game.getGameId(), startedQuizId)
+                    .orElseThrow();
+            Quiz startedQuiz = quizRepository.findById(startedQuizId).orElseThrow();
 
             // then
+            Map<Long, String> choiceIdToText = startedQuiz.choices().stream()
+                    .collect(Collectors.toMap(choice -> choice.choiceId(), choice -> choice.text()));
+
+            Set<Long> mappedChoiceIds = startEvent.payload().quiz().choices().stream()
+                    .map(choiceInfo -> mapping.findChoiceIdByNumber(choiceInfo.number()).orElseThrow())
+                    .collect(Collectors.toSet());
+
+            // number -> choiceId -> text가 이벤트의 number/text와 1:1로 일치해야 한다.
+            for (var choiceInfo : startEvent.payload().quiz().choices()) {
+                Long mappedChoiceId = mapping.findChoiceIdByNumber(choiceInfo.number()).orElseThrow();
+                assertThat(choiceIdToText.get(mappedChoiceId)).isEqualTo(choiceInfo.text());
+            }
+
+            assertThat(mappedChoiceIds)
+                    .containsExactlyInAnyOrderElementsOf(
+                            startedQuiz.choices().stream().map(choice -> choice.choiceId()).toList()
+                    );
+        }
+
+        @Test
+        void 퀴즈_시작시_생성된_모든_번호로_submitChoice가_성공한다() {
+            // given
+            User user = saveUser("submit-map-session-2", "submit-map-user-2");
+            Room room = saveRoom("6144");
+            room.startGame();
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 4);
+
+            // startQuiz 사전 조건 충족(현재 구현 기준)
+            game.startNextQuiz(Instant.now().toEpochMilli());
+            QuizStartEvent startEvent = gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId());
+            Long startedQuizId = startEvent.payload().quiz().quizId();
+
+            // when then
+            for (var choiceInfo : startEvent.payload().quiz().choices()) {
+                ChoiceSubmitEvent submitEvent = gameService.submitChoice(
+                        user.getUserId(),
+                        room.getRoomId(),
+                        game.getGameId(),
+                        startedQuizId,
+                        choiceInfo.number()
+                );
+
+                assertThat(submitEvent.type()).isEqualTo(GameResponseType.CHOICE_SUBMIT);
+                assertThat(submitEvent.payload().quiz().quizId()).isEqualTo(startedQuizId);
+                assertThat(submitEvent.payload().choiceNumber()).isEqualTo(choiceInfo.number());
+            }
+        }
+
+        @Test
+        void 플레이어가_현재_퀴즈의_선택지를_정상적으로_제출한다() {
+            // given
+            User user = saveUser("submit-session-1", "submitter");
+            Room room = saveRoom("6234");
+            room.startGame();
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+            long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
+            Quiz quiz = quizRepository.findById(currentQuizId).orElseThrow();
+            Map<Integer, Long> numberToChoiceId = new LinkedHashMap<>();
+            for (int i = 0; i < quiz.choices().size(); i++) {
+                numberToChoiceId.put(i + 1, quiz.choices().get(i).choiceId());
+            }
+            quizChoiceNumberMappingRepository.save(
+                    QuizChoiceNumberMapping.create(game.getGameId(), quiz.quizId(), numberToChoiceId)
+            );
+
+            // when
+            ChoiceSubmitEvent result = gameService.submitChoice(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    quiz.quizId(),
+                    1
+            );
+
+            // then
+            assertThat(result.type()).isEqualTo(GameResponseType.CHOICE_SUBMIT);
+            assertThat(result.roomId()).isEqualTo(room.getRoomId());
+            assertThat(result.gameId()).isEqualTo(game.getGameId());
+            assertThat(result.occurredAt()).isPositive();
+            assertThat(result.payload().quiz().quizId()).isEqualTo(quiz.quizId());
+            assertThat(result.payload().quiz().currentQuizIndex()).isEqualTo(game.getCurrentQuizIndex() + 1);
+            assertThat(result.payload().quiz().totalQuizCount()).isEqualTo(game.getTotalQuizCount());
+            assertThat(result.payload().actor().userId()).isEqualTo(user.getUserId());
+            assertThat(result.payload().actor().nickname()).isEqualTo(user.getNickname());
+            assertThat(result.payload().choiceNumber()).isEqualTo(1);
+        }
+
+        @Test
+        void 플레이어가_현재_퀴즈의_선택지를_여러개_제출한다() {
+            // given
+            User user = saveUser("submit-session-multi", "submitter-multi");
+            Room room = saveRoom("6334");
+            room.startGame();
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+            long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
+            Quiz quiz = quizRepository.findById(currentQuizId).orElseThrow();
+            Map<Integer, Long> numberToChoiceId = new LinkedHashMap<>();
+            for (int i = 0; i < quiz.choices().size(); i++) {
+                numberToChoiceId.put(i + 1, quiz.choices().get(i).choiceId());
+            }
+            quizChoiceNumberMappingRepository.save(
+                    QuizChoiceNumberMapping.create(game.getGameId(), quiz.quizId(), numberToChoiceId)
+            );
+
+            // when
+            ChoiceSubmitEvent firstSubmit = gameService.submitChoice(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    quiz.quizId(),
+                    1
+            );
+            ChoiceSubmitEvent secondSubmit = gameService.submitChoice(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    quiz.quizId(),
+                    2
+            );
+
+            // then
+            assertThat(firstSubmit.payload().choiceNumber()).isEqualTo(1);
+            assertThat(secondSubmit.payload().choiceNumber()).isEqualTo(2);
+            assertThat(secondSubmit.payload().quiz().quizId()).isEqualTo(quiz.quizId());
+            assertThat(secondSubmit.payload().actor().userId()).isEqualTo(user.getUserId());
         }
 
         @Test
         void 게임이_진행중이지_않은_방에서_선택지를_제출하지_못한다() {
             // given
+            User user = saveUser("submit-session-2", "submitter2");
+            Room room = saveRoom("7234");
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+            long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
 
             // when
+            Runnable call = () -> gameService.submitChoice(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    currentQuizId,
+                    1
+            );
 
             // then
+            assertThrowsCustomExceptionWithCode(call, RoomErrorCode.ROOM_NOT_STARTED.name());
         }
 
         @Test
-        void 게임이_종료된_방에서_선택지를_제출하지_못한다() {
+        void 현재_퀴즈가_아닌_quizId를_제출하면_예외가_발생한다() {
             // given
+            User user = saveUser("submit-session-3", "submitter3");
+            Room room = saveRoom("8234");
+            room.startGame();
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+            long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
+            Quiz currentQuiz = quizRepository.findById(currentQuizId).orElseThrow();
+            Map<Integer, Long> numberToChoiceId = new LinkedHashMap<>();
+            for (int i = 0; i < currentQuiz.choices().size(); i++) {
+                numberToChoiceId.put(i + 1, currentQuiz.choices().get(i).choiceId());
+            }
+            quizChoiceNumberMappingRepository.save(
+                    QuizChoiceNumberMapping.create(game.getGameId(), currentQuiz.quizId(), numberToChoiceId)
+            );
+            Long nonCurrentQuizId = game.getQuizIds().stream()
+                    .filter(id -> !id.equals(currentQuizId))
+                    .findFirst()
+                    .orElseThrow();
 
             // when
+            Runnable call = () -> gameService.submitChoice(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    nonCurrentQuizId,
+                    1
+            );
 
             // then
+            assertThrowsCustomExceptionWithCode(call, GameErrorCode.SUBMIT_CHOICE_NOT_CURRENT_QUIZ.name());
         }
 
         @Test
-        void 모든_퀴즈가_끝난_방에서_선택지를_제출하지_못한다() {
+        void 선택지_번호_매핑이_없으면_예외가_발생한다() {
             // given
+            User user = saveUser("submit-session-4", "submitter4");
+            Room room = saveRoom("9234");
+            room.startGame();
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+            long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
 
             // when
+            Runnable call = () -> gameService.submitChoice(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    currentQuizId,
+                    1
+            );
 
             // then
+            assertThrowsCustomExceptionWithCode(call, QuizErrorCode.QUIZ_CHOICE_NUMBER_MAPPING_NOT_FOUND.name());
         }
 
         @Test
-        void 플레이어가_1명_이하인_게임에서_선택지를_제출하지_못한다() {
+        void 매핑에_없는_선택지_번호를_제출하면_예외가_발생한다() {
             // given
+            User user = saveUser("submit-session-5", "submitter5");
+            Room room = saveRoom("1034");
+            room.startGame();
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+            long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
+            Quiz quiz = quizRepository.findById(currentQuizId).orElseThrow();
+            quizChoiceNumberMappingRepository.save(
+                    QuizChoiceNumberMapping.create(
+                            game.getGameId(),
+                            quiz.quizId(),
+                            Map.of(1, quiz.choices().get(0).choiceId())
+                    )
+            );
 
             // when
+            Runnable call = () -> gameService.submitChoice(
+                    user.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    quiz.quizId(),
+                    999
+            );
 
             // then
+            assertThrowsCustomExceptionWithCode(call, QuizErrorCode.QUIZ_CHOICE_NUMBER_MAPPING_ERROR.name());
         }
     }
 
