@@ -279,7 +279,17 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
     "quiz": {
       "currentQuizIndex": 0,
       "totalQuizCount": 10
-    }
+    },
+    "players": [
+      {
+        "userId": 1,
+        "nickname": "호스트유저"
+      },
+      {
+        "userId": 2,
+        "nickname": "게스트유저"
+      }
+    ]
   }
 }
 ```
