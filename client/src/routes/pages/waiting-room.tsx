@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 import PlayerList from "@/components/room/player-list";
 import { Button } from "@/ui/button";
@@ -32,6 +33,13 @@ export default function WaitingRoom() {
   const myReadyStatus = myUserId
     ? players.find(p => p.userId === myUserId)?.status === "READY"
     : false;
+
+  // 모든 게스트가 READY 상태인지 확인
+  const isAllGuestsReady = useMemo(() => {
+    const guests = players.filter(p => p.role === "GUEST");
+    if (guests.length === 0) return false;
+    return guests.every(p => p.status === "READY");
+  }, [players]);
 
   if (isRoomSocketPending) {
     return <WaitingRoomSkeleton />;
