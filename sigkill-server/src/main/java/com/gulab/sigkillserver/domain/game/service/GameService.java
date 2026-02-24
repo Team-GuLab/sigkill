@@ -17,11 +17,13 @@ import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_N
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
-import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizChoiceInfo;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPlayerInfo;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizResult;
 import com.gulab.sigkillserver.domain.game.model.Game;
 import com.gulab.sigkillserver.domain.game.model.GamePlayer;
 import com.gulab.sigkillserver.domain.game.model.SelectedChoice;
@@ -45,6 +47,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -87,7 +91,7 @@ public class GameService {
         List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
         List<GamePlayer> gamePlayers = new ArrayList<>();
         for (Player p : players) {
-            GamePlayer gp = GamePlayer.create(p.getUserId(), game.getGameId());
+            GamePlayer gp = GamePlayer.create(p.getUserId(), game.getGameId(), p.getNickname());
             gamePlayerRepository.save(gp);
             gamePlayers.add(gp);
         }
@@ -194,10 +198,22 @@ public class GameService {
         }
     }
 
+    private QuizResult resolveQuizResult(GamePlayer gamePlayer, SelectedChoice selectedChoice, long correctChoiceId) {
+        if (!gamePlayer.isAlive()) {
+            return QuizResult.SKIPPED_DEAD;
+        }
+        if (selectedChoice == null) {
+            return QuizResult.NO_SUBMISSION;
+        }
+        return selectedChoice.choiceId() == correctChoiceId
+                ? QuizResult.CORRECT
+                : QuizResult.WRONG;
+    }
+
     /**
      * 퀴즈 종료. 서버 에서 호출
      */
-    public QuizEndEvent endQuiz(Long userId, String roomId, Long gameId, Long quizId) {
+    public EndQuizOrGameEvent endQuiz(Long userId, String roomId, Long gameId, Long quizId) {
         // 검증
         Player player = getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
@@ -206,23 +222,62 @@ public class GameService {
         Quiz quiz = getQuizOrThrow(quizId);
 
         // 정답 번호 가져오기
-        int answerNumber = getChoiceNumberFromId(gameId, quizId, quiz.correctChoiceId());
+        long correctChoiceId = quiz.correctChoiceId();
+        int correctChoiceNumber = getChoiceNumberFromId(gameId, quizId, quiz.correctChoiceId());
 
         // 선택 정보 가져오기
         List<SelectedChoice> selectedChoices = selectedChoiceRepository.findByGameIdAndQuizId(gameId, quizId);
+        Map<Long, SelectedChoice> userIdToSelectedChoice = selectedChoices.stream()
+                .collect(Collectors.toMap(
+                        SelectedChoice::userId,
+                        Function.identity()
+                ));
 
         // GamePlayer 객체 가져오기
+        List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
+
+        List<QuizEndPlayerInfo> quizAnswerInfoList = new ArrayList<>();
 
         // 정답 판별, 점수 계산
+        for (GamePlayer gp : gamePlayers) {
+            SelectedChoice selectedChoice = userIdToSelectedChoice.get(gp.getUserId());
+            QuizResult quizResult = resolveQuizResult(gp, selectedChoice, correctChoiceId);
+
+            switch (quizResult) {
+                case CORRECT -> gp.addScore(1);
+                case WRONG, NO_SUBMISSION -> gp.kill();
+                case SKIPPED_DEAD -> {}
+            }
+
+            quizAnswerInfoList.add(gameEventBuilder.toQuizEndPlayerInfo(gp, quizResult));
+        }
 
         // 각 플레이어 상태 업데이트
 
         // 게임 종료 판별
+        int livePlayerCount = (int) gamePlayers.stream()
+                .filter(GamePlayer::isAlive)
+                .count();
+        boolean isQuizExhausted = game.getCurrentQuizIndex() >= game.getTotalQuizCount() - 1;
+        GameEndEvent gameEndEvent = null;
+        if (livePlayerCount <= 1 || isQuizExhausted) {
+            gameEndEvent = endGame(player.getUserId(), room.getRoomId(), game.getGameId());
+        }
 
         // 선지 제출 정보 삭제
+        selectedChoiceRepository.deleteByGameIdAndQuizId(gameId, quizId);
+        quizChoiceNumberMappingRepository.deleteByGameIdAndQuizId(gameId, quizId);
 
         // 결과 반환
-        return null;
+        return new EndQuizOrGameEvent(
+                gameEventBuilder.toQuizEndEvent(
+                        room, game, quiz,
+                        quizAnswerInfoList,
+                        correctChoiceNumber,
+                        Instant.now().toEpochMilli()
+                ),
+                gameEndEvent
+        );
     }
 
     /**
@@ -237,7 +292,7 @@ public class GameService {
 
         // 게임 결과 확인
 
-        // 데이터 정리 - 게임플레이어, 게임
+        // 데이터 정리 - 게임플레이어, 게임, 퀴즈 선택지 매핑, 제출한 선지 정보 등
 
         quizChoiceNumberMappingRepository.deleteByGameId(gameId);
         return null;

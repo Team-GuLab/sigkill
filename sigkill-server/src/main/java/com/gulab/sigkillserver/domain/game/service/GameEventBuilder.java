@@ -14,13 +14,15 @@ import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizChoiceInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPayload;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPlayerInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizProgressInfo;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizResult;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizStartInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizStartPayload;
 import com.gulab.sigkillserver.domain.game.model.Game;
+import com.gulab.sigkillserver.domain.game.model.GamePlayer;
+import com.gulab.sigkillserver.domain.game.model.GamePlayerStatus;
 import com.gulab.sigkillserver.domain.game.model.quiz.Quiz;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
-import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -93,6 +95,7 @@ public class GameEventBuilder {
             Room room,
             Game game,
             Quiz quiz,
+            List<QuizEndPlayerInfo> quizAnswerInfoList,
             int answerNumber,
             long occurredAt
     ) {
@@ -102,7 +105,6 @@ public class GameEventBuilder {
                 game.getTotalQuizCount()
         );
         QuizAnswerInfo quizAnswerInfo = new QuizAnswerInfo(answerNumber, quiz.explanation());
-        List<QuizEndPlayerInfo> quizAnswerInfoList = new ArrayList<>(); // TODO
         QuizEndPayload quizEndPayload = new QuizEndPayload(
                 quizProgressInfo,
                 quizAnswerInfo,
@@ -116,8 +118,19 @@ public class GameEventBuilder {
         );
     }
 
-//    private QuizEndPlayerInfo toQuizEndPlayerInfo(Player player, boolean isCorrect) {
+    //    private QuizEndPlayerInfo toQuizEndPlayerInfo(Player player, boolean isCorrect) {
 //        new QuizEndPlayerInfo(player.getUserId(), player.getNickname(), )
 //        return new QuizEndPlayerInfo(player.getUserId(), player.getNickname(), isCorrect);
 //    }
+    public QuizEndPlayerInfo toQuizEndPlayerInfo(
+            GamePlayer gamePlayer,
+            QuizResult quizResult) {
+        return new QuizEndPlayerInfo(
+                gamePlayer.getUserId(),
+                gamePlayer.getNickname(),
+                gamePlayer.isAlive() ? GamePlayerStatus.ALIVE : GamePlayerStatus.DEAD,
+                quizResult,
+                gamePlayer.getScore()
+        );
+    }
 }

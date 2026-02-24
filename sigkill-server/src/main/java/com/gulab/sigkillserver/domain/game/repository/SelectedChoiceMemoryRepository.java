@@ -29,5 +29,10 @@ public class SelectedChoiceMemoryRepository implements SelectedChoiceRepository 
         return List.copyOf(byUser.values());
     }
 
+    @Override
+    public void deleteByGameIdAndQuizId(long gameId, long quizId) {
+        store.remove(new GameQuizKey(gameId, quizId));
+    }
+
     private record GameQuizKey(long gameId, long quizId) {}
 }

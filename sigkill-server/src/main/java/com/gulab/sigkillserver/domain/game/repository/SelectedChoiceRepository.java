@@ -7,4 +7,6 @@ public interface SelectedChoiceRepository {
     SelectedChoice save(SelectedChoice selectedChoice);
 
     List<SelectedChoice> findByGameIdAndQuizId(long gameId, long quizId);
+
+    void deleteByGameIdAndQuizId(long gameId, long quizId);
 }
