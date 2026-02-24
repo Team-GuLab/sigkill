@@ -13,6 +13,7 @@ export type PlayerSlot = {
 /**
  * 대기방의 플레이어 목록
  * @param players 플레이어 목록
+ * @param players 플레이어 목록
  * @param capacity 방 정원
  * @returns
  */
