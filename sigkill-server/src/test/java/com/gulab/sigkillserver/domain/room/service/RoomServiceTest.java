@@ -14,6 +14,9 @@ import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMem
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
+import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
+import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
@@ -55,7 +58,9 @@ class RoomServiceTest {
     private QuizRepository quizRepository;
     private PlayerRepository playerRepository;
     private RoomRepository roomRepository;
+    private SelectedChoiceRepository selectedChoiceRepository;
     private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
+    private GameEventBuilder gameEventBuilder;
 
     private RoomService roomService;
     private GameService gameService;
@@ -68,7 +73,9 @@ class RoomServiceTest {
                 new ClassPathResource("quiz/quiz.json"));
         playerRepository = new PlayerMemoryRepository();
         roomRepository = new RoomMemoryRepository();
+        selectedChoiceRepository = new SelectedChoiceMemoryRepository();
         quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
+        gameEventBuilder = new GameEventBuilder();
 
         gameService = new GameService(
                 userRepository,
@@ -76,7 +83,9 @@ class RoomServiceTest {
                 quizRepository,
                 playerRepository,
                 roomRepository,
-                quizChoiceNumberMappingRepository
+                selectedChoiceRepository,
+                quizChoiceNumberMappingRepository,
+                gameEventBuilder
         );
         roomService = new RoomService(roomRepository, userRepository, playerRepository, gameService);
     }
