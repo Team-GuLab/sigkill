@@ -286,16 +286,27 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
     "players": [
       {
         "userId": 1,
-        "nickname": "호스트유저"
+        "nickname": "호스트유저",
+        "status": "ALIVE",
+        "quizResult": "NONE",
+        "score": 0
       },
       {
         "userId": 2,
-        "nickname": "게스트유저"
+        "nickname": "게스트유저",
+        "status": "ALIVE",
+        "quizResult": "NONE",
+        "score": 0
       }
     ]
   }
 }
 ```
+
+초기값 규칙:
+
+- `GAME_START.payload.players[*]`는 `QuizEndPlayerInfo` 스키마를 사용한다.
+- 게임 시작 시점에는 모든 플레이어가 `status=ALIVE`, `quizResult=NONE`, `score=0`으로 내려간다.
 
 ### 6.2 퀴즈 시작
 
