@@ -30,6 +30,7 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
   const setGameInfo = useSetGameInfo();
   const setGamePlayers = useSetGamePlayers();
   const [isPending, setIsPending] = useState(false);
+  const [isGameStarting, setIsGameStarting] = useState(false);
   const resetRoom = useResetRoom();
 
   const roomUnsubscribe = useRef<(() => void) | undefined>(undefined);
@@ -61,8 +62,10 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
             isGameStarted.current = true;
             setGameInfo(message.roomId, message.gameId);
             setGamePlayers(message.payload.players);
-            toast.success("곧 게임이 시작됩니다!");
-            navigate(`/game/${message.gameId}`, { replace: true });
+            setIsGameStarting(true);
+            setTimeout(() => {
+              navigate(`/game/${message.gameId}`, { replace: true });
+            }, 3000);
             return;
           }
 
@@ -103,5 +106,5 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
     };
   }, [roomId, myUserId, navigate, resetRoom]);
 
-  return { isPending };
+  return { isPending, isGameStarting };
 };
