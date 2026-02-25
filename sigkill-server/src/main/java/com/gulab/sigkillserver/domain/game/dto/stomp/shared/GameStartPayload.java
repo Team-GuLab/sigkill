@@ -4,6 +4,6 @@ import java.util.List;
 
 public record GameStartPayload(
         GameStartQuizInfo quiz,
-        List<ActorInfo> players
+        List<QuizEndPlayerInfo> players
 ) {
 }
