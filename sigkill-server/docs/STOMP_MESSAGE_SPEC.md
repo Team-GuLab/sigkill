@@ -344,7 +344,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 동작 규칙:
 
 - `GAME_START` 이후 서버는 3초 대기 후 `QUIZ_START`를 자동 브로드캐스트한다.
-- `QUIZ_START` 이후 서버는 5초 대기 후 `QUIZ_END`를 자동 브로드캐스트한다.
+- `QUIZ_START` 이후 서버는 10초 대기 후 `QUIZ_END`를 자동 브로드캐스트한다.
 - `QUIZ_END` 이후 게임 종료 조건이면 같은 채널에 `GAME_END`를 브로드캐스트하고 종료한다.
 - 게임 미종료면 `QUIZ_END` 이후 3초 대기 후 다음 `QUIZ_START`를 자동 브로드캐스트한다.
 
