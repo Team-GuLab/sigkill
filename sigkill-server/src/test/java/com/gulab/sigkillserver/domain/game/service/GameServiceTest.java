@@ -360,7 +360,6 @@ class GameServiceTest {
             for (var choiceInfo : startEvent.payload().quiz().choices()) {
                 ChoiceSubmitEvent submitEvent = gameService.submitChoice(
                         user.getUserId(),
-                        room.getRoomId(),
                         game.getGameId(),
                         startedQuizId,
                         choiceInfo.number()
@@ -393,7 +392,6 @@ class GameServiceTest {
             // when
             ChoiceSubmitEvent result = gameService.submitChoice(
                     user.getUserId(),
-                    room.getRoomId(),
                     game.getGameId(),
                     quiz.quizId(),
                     1
@@ -433,14 +431,12 @@ class GameServiceTest {
             // when
             ChoiceSubmitEvent firstSubmit = gameService.submitChoice(
                     user.getUserId(),
-                    room.getRoomId(),
                     game.getGameId(),
                     quiz.quizId(),
                     1
             );
             ChoiceSubmitEvent secondSubmit = gameService.submitChoice(
                     user.getUserId(),
-                    room.getRoomId(),
                     game.getGameId(),
                     quiz.quizId(),
                     2
@@ -480,7 +476,6 @@ class GameServiceTest {
             // when
             Runnable call = () -> gameService.submitChoice(
                     user.getUserId(),
-                    room.getRoomId(),
                     game.getGameId(),
                     quiz.quizId(),
                     1
@@ -502,7 +497,6 @@ class GameServiceTest {
             // when
             Runnable call = () -> gameService.submitChoice(
                     user.getUserId(),
-                    room.getRoomId(),
                     game.getGameId(),
                     currentQuizId,
                     1
@@ -537,7 +531,6 @@ class GameServiceTest {
             // when
             Runnable call = () -> gameService.submitChoice(
                     user.getUserId(),
-                    room.getRoomId(),
                     game.getGameId(),
                     nonCurrentQuizId,
                     1
@@ -560,7 +553,6 @@ class GameServiceTest {
             // when
             Runnable call = () -> gameService.submitChoice(
                     user.getUserId(),
-                    room.getRoomId(),
                     game.getGameId(),
                     currentQuizId,
                     1
@@ -591,7 +583,6 @@ class GameServiceTest {
             // when
             Runnable call = () -> gameService.submitChoice(
                     user.getUserId(),
-                    room.getRoomId(),
                     game.getGameId(),
                     quiz.quizId(),
                     999
@@ -610,14 +601,12 @@ class GameServiceTest {
             EndQuizFixture fixture = prepareEndQuizFixture("2034");
             gameService.submitChoice(
                     fixture.host().getUserId(),
-                    fixture.room().getRoomId(),
                     fixture.game().getGameId(),
                     fixture.quiz().quizId(),
                     fixture.correctNumber()
             );
             gameService.submitChoice(
                     fixture.secondPlayer().getUserId(),
-                    fixture.room().getRoomId(),
                     fixture.game().getGameId(),
                     fixture.quiz().quizId(),
                     fixture.wrongNumber()
@@ -663,14 +652,12 @@ class GameServiceTest {
             EndQuizFixture fixture = prepareEndQuizFixture("2134");
             gameService.submitChoice(
                     fixture.host().getUserId(),
-                    fixture.room().getRoomId(),
                     fixture.game().getGameId(),
                     fixture.quiz().quizId(),
                     fixture.wrongNumber()
             );
             gameService.submitChoice(
                     fixture.host().getUserId(),
-                    fixture.room().getRoomId(),
                     fixture.game().getGameId(),
                     fixture.quiz().quizId(),
                     fixture.correctNumber()
@@ -781,9 +768,9 @@ class GameServiceTest {
             int correctNumber = findChoiceNumber(numberToChoiceId, lastQuiz.correctChoiceId());
 
             GameService spyGameService = spy(gameService);
-            spyGameService.submitChoice(host.getUserId(), room.getRoomId(), game.getGameId(), lastQuiz.quizId(), correctNumber);
-            spyGameService.submitChoice(second.getUserId(), room.getRoomId(), game.getGameId(), lastQuiz.quizId(), correctNumber);
-            spyGameService.submitChoice(third.getUserId(), room.getRoomId(), game.getGameId(), lastQuiz.quizId(), correctNumber);
+            spyGameService.submitChoice(host.getUserId(), game.getGameId(), lastQuiz.quizId(), correctNumber);
+            spyGameService.submitChoice(second.getUserId(), game.getGameId(), lastQuiz.quizId(), correctNumber);
+            spyGameService.submitChoice(third.getUserId(), game.getGameId(), lastQuiz.quizId(), correctNumber);
 
             // when
             EndQuizOrGameEvent result = spyGameService.endQuiz(

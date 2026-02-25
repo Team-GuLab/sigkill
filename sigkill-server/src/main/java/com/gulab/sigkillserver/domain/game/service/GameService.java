@@ -1,7 +1,7 @@
 package com.gulab.sigkillserver.domain.game.service;
 
-import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_IN_PROGRESS;
+import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.SUBMIT_CHOICE_IS_AFTER_DEADLINE;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.SUBMIT_CHOICE_NOT_CURRENT_QUIZ;
 import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_CHOICE_NUMBER_MAPPING_ERROR;
@@ -112,7 +112,7 @@ public class GameService {
         // 검증
         getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
-        Game game = getGameInRoomOrThrow(gameId, room);
+        Game game = getGameOrThrow(gameId);
         validateGameInProgress(room, game);
 
         if (game.isQuizIndexOutOfBounds()) {
@@ -148,14 +148,15 @@ public class GameService {
     /**
      * 퀴즈에 대한 선택지 제출. 클라이언트에서 호출
      */
-    public ChoiceSubmitEvent submitChoice(Long userId, String roomId, Long gameId, Long quizId, Integer choiceNumber) {
+    public ChoiceSubmitEvent submitChoice(Long userId, Long gameId, Long quizId, Integer choiceNumber) {
         // 시간 측정
         long submitTime = Instant.now().toEpochMilli();
 
         // 검증
+        Game game = getGameOrThrow(gameId);
+        String roomId = game.getRoomId();
         Player player = getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
-        Game game = getGameInRoomOrThrow(gameId, room);
         validateGameInProgress(room, game);
         validateSubmitChoiceIsForCurrentQuiz(game, quizId);
         validateDeadline(game, submitTime);
@@ -220,7 +221,7 @@ public class GameService {
         // 검증
         Player player = getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
-        Game game = getGameInRoomOrThrow(gameId, room);
+        Game game = getGameOrThrow(gameId);
         validateGameInProgress(room, game);
         validateSubmitChoiceIsForCurrentQuiz(game, quizId);
         Quiz quiz = getQuizOrThrow(quizId);
@@ -291,7 +292,7 @@ public class GameService {
         // 검증
         getPlayerInRoomOrThrow(userId, roomId);
         Room room = getRoomOrThrow(roomId);
-        Game game = getGameInRoomOrThrow(gameId, room);
+        Game game = getGameOrThrow(gameId);
         validateGameInProgress(room, game);
 
         // 게임 결과 확인
@@ -347,15 +348,9 @@ public class GameService {
                 .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
     }
 
-    private Game getGameInRoomOrThrow(Long gameId, Room room) {
-        Game game = gameRepository.findById(gameId)
+    private Game getGameOrThrow(Long gameId) {
+        return gameRepository.findById(gameId)
                 .orElseThrow(() -> new CustomException(GAME_NOT_FOUND));
-
-        if (!game.getRoomId().equals(room.getRoomId())) {
-            throw new CustomException(GAME_NOT_FOUND);
-        }
-
-        return game;
     }
 
     private Quiz getQuizOrThrow(Long quizId) {
