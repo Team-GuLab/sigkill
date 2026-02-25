@@ -182,7 +182,6 @@ class GameServiceTest {
 
             playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
-            game.startNextQuiz(Instant.now().toEpochMilli());
 
             // when
             QuizStartEvent result = gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId());
@@ -192,7 +191,7 @@ class GameServiceTest {
             assertThat(result.roomId()).isEqualTo(room.getRoomId());
             assertThat(result.gameId()).isEqualTo(game.getGameId());
 
-            assertThat(result.payload().quiz().currentQuizIndex()).isEqualTo(2);
+            assertThat(result.payload().quiz().currentQuizIndex()).isEqualTo(1);
             assertThat(result.payload().quiz().totalQuizCount()).isEqualTo(game.getTotalQuizCount());
             assertThat(result.payload().quiz().endTime() - result.payload().quiz().startTime())
                     .isEqualTo(GameConstants.QUIZ_COUNTDOWN_MILLIS);
@@ -271,6 +270,9 @@ class GameServiceTest {
             room.startGame();
             playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+            game.startNextQuiz(Instant.now().toEpochMilli());
+            game.startNextQuiz(Instant.now().toEpochMilli());
+            game.startNextQuiz(Instant.now().toEpochMilli());
 
             // when
             Throwable thrown = catchThrowable(

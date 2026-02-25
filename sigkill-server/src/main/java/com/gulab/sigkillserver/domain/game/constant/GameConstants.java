@@ -9,7 +9,7 @@ public class GameConstants {
     /**
      * 퀴즈 정답 제출 제한 시간 (밀리초)
      */
-    public static final long QUIZ_COUNTDOWN_MILLIS = 5_000L;
+    public static final long QUIZ_COUNTDOWN_MILLIS = 10_000L;
 
     /**
      * 퀴즈 정답 제출 허용 시간 (밀리초)

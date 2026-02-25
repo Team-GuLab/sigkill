@@ -115,7 +115,7 @@ public class GameService {
         Game game = getGameOrThrow(gameId);
         validateGameInProgress(room, game);
 
-        if (game.isQuizIndexOutOfBounds()) {
+        if (game.getCurrentQuizIndex() >= game.getTotalQuizCount() - 1) {
             throw new CustomException(QUIZ_INDEX_OUT_OF_BOUNDS);
         }
 
@@ -308,6 +308,9 @@ public class GameService {
         quizChoiceNumberMappingRepository.deleteByGameId(gameId);
         gamePlayerRepository.deleteByGameId(gameId);
         gameRepository.deleteById(gameId);
+
+        // player 모두 준비 해제
+        playerRepository.findAllByRoomId(roomId).forEach(Player::unready);
 
         return gameEndEvent;
     }
