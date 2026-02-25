@@ -796,6 +796,9 @@ class GameServiceTest {
             // then
             verify(spyGameService).endGame(host.getUserId(), room.getRoomId(), game.getGameId());
             assertThat(result.quizEndEvent()).isNotNull();
+            assertThat(result.hasGameEnd()).isTrue();
+            assertThat(result.gameEndEvent().occurredAt())
+                    .isGreaterThanOrEqualTo(result.quizEndEvent().occurredAt());
         }
 
         private EndQuizFixture prepareEndQuizFixture(String roomId) {
