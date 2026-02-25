@@ -308,7 +308,66 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 - `GAME_START.payload.players[*]`는 `QuizEndPlayerInfo` 스키마를 사용한다.
 - 게임 시작 시점에는 모든 플레이어가 `status=ALIVE`, `quizResult=NONE`, `score=0`으로 내려간다.
 
-### 6.2 퀴즈 시작
+### 6.2 게임 로딩 완료 동기화
+
+- SEND: `/app/game/load`
+- SUBSCRIBE: `/topic/game/{gameId}`
+- Response type: `GAME_LOADED`
+
+요청 예시:
+
+```json
+{
+  "gameId": 77
+}
+```
+
+응답 예시:
+
+```json
+{
+  "type": "GAME_LOADED",
+  "roomId": "1234",
+  "gameId": 77,
+  "occurredAt": 1771417642829,
+  "payload": {
+    "players": [
+      {
+        "userId": 1,
+        "nickname": "원일",
+        "isLoaded": true
+      },
+      {
+        "userId": 15432,
+        "nickname": "선호",
+        "isLoaded": false
+      },
+      {
+        "userId": 53,
+        "nickname": "성재",
+        "isLoaded": true
+      },
+      {
+        "userId": 12,
+        "nickname": "상현",
+        "isLoaded": false
+      }
+    ],
+    "allLoaded": false
+  }
+}
+```
+
+동작 규칙:
+
+- 클라이언트는 `GAME_START` 수신 후 게임 화면 진입/초기화가 완료되면 `/app/game/load`를 전송한다.
+- 서버는 `GAME_LOADED`를 `/topic/game/{gameId}`로 브로드캐스트한다.
+- `players[*].isLoaded`는 각 사용자별 로딩 완료 여부를 의미한다.
+- `payload.allLoaded=true`는 게임 참가자 전원의 `isLoaded=true`일 때만 성립한다.
+- `allReady`(방 준비 상태)와 `allLoaded`(게임 로딩 상태)는 다른 값이다.
+- `payload.allLoaded=true`가 되는 시점에 서버는 최초 1회만 3초 뒤 첫 `QUIZ_START`를 자동 브로드캐스트한다.
+
+### 6.3 퀴즈 시작
 
 - SUBSCRIBE: `/topic/game/{gameId}`
 - Response type: `QUIZ_START`
@@ -354,12 +413,12 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 
 동작 규칙:
 
-- `GAME_START` 이후 서버는 3초 대기 후 `QUIZ_START`를 자동 브로드캐스트한다.
+- `GAME_LOADED` 응답에서 `payload.allLoaded=true`가 된 이후 서버는 3초 대기 후 `QUIZ_START`를 자동 브로드캐스트한다.
 - `QUIZ_START` 이후 서버는 10초 대기 후 `QUIZ_END`를 자동 브로드캐스트한다.
 - `QUIZ_END` 이후 게임 종료 조건이면 같은 채널에 `GAME_END`를 브로드캐스트하고 종료한다.
 - 게임 미종료면 `QUIZ_END` 이후 3초 대기 후 다음 `QUIZ_START`를 자동 브로드캐스트한다.
 
-### 6.3 답 제출
+### 6.4 답 제출
 
 - SEND: `/app/game/submit`
 - SUBSCRIBE: `/topic/game/{gameId}`
@@ -398,7 +457,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 }
 ```
 
-### 6.4 퀴즈 종료
+### 6.5 퀴즈 종료
 
 - SUBSCRIBE: `/topic/game/{gameId}`
 - Response type: `QUIZ_END`
@@ -455,7 +514,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 }
 ```
 
-### 6.5 게임 종료
+### 6.6 게임 종료
 
 - SUBSCRIBE: `/topic/game/{gameId}`
 - Response type: `GAME_END`
@@ -500,7 +559,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 }
 ```
 
-### 6.6 Game Enum
+### 6.7 Game Enum
 
 `PlayerStatus`
 
