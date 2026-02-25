@@ -51,10 +51,10 @@ class GameFlowOrchestratorTest {
     }
 
     @Nested
-    class OnGameStartedTests {
+    class OnAllPlayersLoadedTests {
 
         @Test
-        void 게임_시작시_3초뒤_퀴즈시작을_예약한다() {
+        void 모든_플레이어_로드완료시_3초뒤_퀴즈시작을_예약한다() {
             // given
             ScheduledFuture<Object> firstFuture = mockScheduledFuture();
             when(gameTaskScheduler.schedule(any(Runnable.class), any(Instant.class)))
@@ -62,13 +62,28 @@ class GameFlowOrchestratorTest {
             Instant before = Instant.now();
 
             // when
-            gameFlowOrchestrator.onGameStarted("1001", 77L);
+            gameFlowOrchestrator.onAllPlayersLoaded("1001", 77L);
 
             // then
             ArgumentCaptor<Instant> instantCaptor = ArgumentCaptor.forClass(Instant.class);
             verify(gameTaskScheduler).schedule(any(Runnable.class), instantCaptor.capture());
             long delayMillis = Duration.between(before, instantCaptor.getValue()).toMillis();
             assertThat(delayMillis).isBetween(2_500L, 3_500L);
+        }
+
+        @Test
+        void 모든_플레이어_로드완료_이벤트가_중복되어도_첫_퀴즈시작은_한번만_예약한다() {
+            // given
+            ScheduledFuture<Object> firstFuture = mockScheduledFuture();
+            when(gameTaskScheduler.schedule(any(Runnable.class), any(Instant.class)))
+                    .thenAnswer(invocation -> firstFuture);
+
+            // when
+            gameFlowOrchestrator.onAllPlayersLoaded("1001", 77L);
+            gameFlowOrchestrator.onAllPlayersLoaded("1001", 77L);
+
+            // then
+            verify(gameTaskScheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
         }
 
         @Test
@@ -114,7 +129,7 @@ class GameFlowOrchestratorTest {
                     .thenReturn(new EndQuizOrGameEvent(quizEndEvent, null));
 
             // when
-            gameFlowOrchestrator.onGameStarted(roomId, gameId);
+            gameFlowOrchestrator.onAllPlayersLoaded(roomId, gameId);
 
             ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
             ArgumentCaptor<Instant> instantCaptor = ArgumentCaptor.forClass(Instant.class);
@@ -182,7 +197,7 @@ class GameFlowOrchestratorTest {
                     .thenReturn(new EndQuizOrGameEvent(quizEndEvent, gameEndEvent));
 
             // when
-            gameFlowOrchestrator.onGameStarted(roomId, gameId);
+            gameFlowOrchestrator.onAllPlayersLoaded(roomId, gameId);
 
             ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
             verify(gameTaskScheduler).schedule(runnableCaptor.capture(), any(Instant.class));

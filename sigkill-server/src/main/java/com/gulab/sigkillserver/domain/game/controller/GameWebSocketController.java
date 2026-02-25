@@ -4,6 +4,7 @@ import com.gulab.sigkillserver.domain.game.dto.stomp.command.ChoiceSubmitCommand
 import com.gulab.sigkillserver.domain.game.dto.stomp.command.GameIdCommand;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
+import com.gulab.sigkillserver.domain.game.service.GameFlowOrchestrator;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -20,13 +21,18 @@ import org.springframework.stereotype.Controller;
 public class GameWebSocketController {
 
     private final GameService gameService;
+    private final GameFlowOrchestrator gameFlowOrchestrator;
     private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/game/load")
     public void loadGame(@Payload GameIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
         GameLoadEvent gameLoadEvent = gameService.loadGame(userId, request.gameId());
-        messagingTemplate.convertAndSend("/topic/game/", gameLoadEvent);
+        messagingTemplate.convertAndSend("/topic/game/" + request.gameId(), gameLoadEvent);
+
+        if (gameLoadEvent.payload().allLoaded()) {
+            gameFlowOrchestrator.onAllPlayersLoaded(gameLoadEvent.roomId(), gameLoadEvent.gameId());
+        }
 
         log.debug("game.load success - gameId={}, userId={}", request.gameId(), userId);
     }
