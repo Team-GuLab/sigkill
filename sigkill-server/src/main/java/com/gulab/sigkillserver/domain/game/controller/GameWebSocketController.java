@@ -1,4 +1,4 @@
-package com.gulab.sigkillserver.domain.game.dto;
+package com.gulab.sigkillserver.domain.game.controller;
 
 import com.gulab.sigkillserver.domain.game.dto.stomp.command.ChoiceSubmitCommand;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;

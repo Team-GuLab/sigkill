@@ -37,7 +37,12 @@ public class Game extends BaseEntity {
     }
 
     public long startNextQuiz(long quizStartTime) {
-        this.currentQuizIndex++;
+        int nextQuizIndex = this.currentQuizIndex + 1;
+        if (nextQuizIndex >= quizIds.size()) {
+            throw new CustomException(QUIZ_INDEX_OUT_OF_BOUNDS);
+        }
+
+        this.currentQuizIndex = nextQuizIndex;
         this.quizStartTime = quizStartTime;
         return quizIds.get(currentQuizIndex);
     }

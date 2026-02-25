@@ -263,6 +263,26 @@ class GameServiceTest {
         }
 
         @Test
+        void 방과_게임의_roomId가_불일치하면_퀴즈를_시작하지_못한다() {
+            // given
+            User user = saveUser("session-4-1", "tester4-1");
+            Room userRoom = saveRoom("4235");
+            userRoom.startGame();
+            playerRepository.create(Player.create(user.getUserId(), userRoom.getRoomId(), user.getNickname()));
+
+            Room gameRoom = saveRoom("4236");
+            gameRoom.startGame();
+            Game game = saveGameWithQuizIds(gameRoom.getRoomId(), 3);
+
+            // when
+            Throwable thrown = catchThrowable(
+                    () -> gameService.startQuiz(user.getUserId(), userRoom.getRoomId(), game.getGameId()));
+
+            // then
+            assertCustomErrorCode(thrown, GameErrorCode.GAME_NOT_FOUND.name());
+        }
+
+        @Test
         void 퀴즈_인덱스가_범위를_벗어나면_예외가_발생한다() {
             // given
             User user = saveUser("session-5", "tester5");
@@ -277,6 +297,19 @@ class GameServiceTest {
             // when
             Throwable thrown = catchThrowable(
                     () -> gameService.startQuiz(user.getUserId(), room.getRoomId(), game.getGameId()));
+
+            // then
+            assertCustomErrorCode(thrown, QuizErrorCode.QUIZ_INDEX_OUT_OF_BOUNDS.name());
+        }
+
+        @Test
+        void startNextQuiz는_마지막_문제_이후_호출시_도메인_예외를_발생한다() {
+            // given
+            Game game = saveGameWithQuizIds("5235", 1);
+            game.startNextQuiz(Instant.now().toEpochMilli());
+
+            // when
+            Throwable thrown = catchThrowable(() -> game.startNextQuiz(Instant.now().toEpochMilli()));
 
             // then
             assertCustomErrorCode(thrown, QuizErrorCode.QUIZ_INDEX_OUT_OF_BOUNDS.name());
