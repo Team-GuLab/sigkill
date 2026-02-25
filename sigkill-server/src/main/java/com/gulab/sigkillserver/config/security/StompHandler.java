@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.config.security;
 
+import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -38,6 +39,7 @@ public class StompHandler implements ChannelInterceptor {
     );
 
     private final PlayerRepository playerRepository;
+    private final GameRepository gameRepository;
     private final MeterRegistry meterRegistry;
 
     @Override
@@ -121,6 +123,11 @@ public class StompHandler implements ChannelInterceptor {
             return;
         }
 
+        if (destination.startsWith(GAME_TOPIC_PREFIX)) {
+            authorizeGameTopicSubscription(user, destination);
+            return;
+        }
+
         if (!ALLOWED_USER_QUEUE_DESTINATIONS.contains(destination)) {
             throw new AccessDeniedException("구독 권한이 없습니다.");
         }
@@ -143,6 +150,28 @@ public class StompHandler implements ChannelInterceptor {
         log.debug("[SUBSCRIBE] join 구독 - userId={}, roomId={}", userId, roomId);
     }
 
+    private void authorizeGameTopicSubscription(Principal user, String destination) {
+        String gameIdText = destination.substring(GAME_TOPIC_PREFIX.length());
+        if (gameIdText.isBlank()) {
+            throw new AccessDeniedException("구독 대상이 올바르지 않습니다.");
+        }
+
+        Long userId = parseUserId(user.getName());
+        Long gameId = parseGameId(gameIdText);
+
+        Player player = playerRepository.findById(userId)
+                .orElseThrow(() -> new AccessDeniedException("게임 구독 권한이 없습니다."));
+        String gameRoomId = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AccessDeniedException("게임 구독 권한이 없습니다."))
+                .getRoomId();
+
+        if (!player.getRoomId().equals(gameRoomId)) {
+            log.warn("[SUBSCRIBE] 실패: 게임 방 불일치 - userId={}, playerRoomId={}, gameRoomId={}, destination={}",
+                    userId, player.getRoomId(), gameRoomId, destination);
+            throw new AccessDeniedException("게임 구독 권한이 없습니다.");
+        }
+    }
+
     private void validateCurrentRoomSubscription(Player player, String roomId, String destination, Long userId) {
         if (player.getRoomId().equals(roomId)) {
             return;
@@ -158,6 +187,14 @@ public class StompHandler implements ChannelInterceptor {
             return Long.parseLong(principalName);
         } catch (NumberFormatException e) {
             throw new AccessDeniedException("유효하지 않은 사용자 정보입니다.");
+        }
+    }
+
+    private Long parseGameId(String gameIdText) {
+        try {
+            return Long.parseLong(gameIdText);
+        } catch (NumberFormatException e) {
+            throw new AccessDeniedException("유효하지 않은 게임 정보입니다.");
         }
     }
 
