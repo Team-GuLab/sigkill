@@ -1,7 +1,9 @@
 package com.gulab.sigkillserver.domain.game.controller;
 
 import com.gulab.sigkillserver.domain.game.dto.stomp.command.ChoiceSubmitCommand;
+import com.gulab.sigkillserver.domain.game.dto.stomp.command.GameIdCommand;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -19,6 +21,15 @@ public class GameWebSocketController {
 
     private final GameService gameService;
     private final SimpMessagingTemplate messagingTemplate;
+
+    @MessageMapping("/game/load")
+    public void loadGame(@Payload GameIdCommand request, Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+        GameLoadEvent gameLoadEvent = gameService.loadGame(userId, request.gameId());
+        messagingTemplate.convertAndSend("/topic/game/", gameLoadEvent);
+
+        log.debug("game.load success - gameId={}, userId={}", request.gameId(), userId);
+    }
 
     @MessageMapping("/game/submit")
     public void choiceSubmit(@Payload @Valid ChoiceSubmitCommand request, Principal principal) {
