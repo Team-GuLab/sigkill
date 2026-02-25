@@ -1,8 +1,14 @@
 package com.gulab.sigkillserver.domain.game.dto;
 
+import com.gulab.sigkillserver.domain.game.dto.stomp.command.ChoiceSubmitCommand;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
 import com.gulab.sigkillserver.domain.game.service.GameService;
+import jakarta.validation.Valid;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
@@ -14,5 +20,18 @@ public class GameWebSocketController {
     private final GameService gameService;
     private final SimpMessagingTemplate messagingTemplate;
 
-//    @MessageMapping("/game/join")
+    @MessageMapping("/game/submit")
+    public void choiceSubmit(@Payload @Valid ChoiceSubmitCommand request, Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+        ChoiceSubmitEvent choiceSubmitEvent = gameService.submitChoice(
+                userId,
+                request.gameId(),
+                request.quizId(),
+                request.choiceNumber()
+        );
+        messagingTemplate.convertAndSend("/topic/game/" + request.gameId(), choiceSubmitEvent);
+
+        log.debug("game.submit success - gameId={}, quizId={}, userId={}",
+                request.gameId(), request.quizId(), userId);
+    }
 }
