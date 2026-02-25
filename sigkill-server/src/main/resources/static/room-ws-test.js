@@ -11,7 +11,7 @@
     const readyBtn = document.getElementById("readyBtn");
     const unreadyBtn = document.getElementById("unreadyBtn");
     const startBtn = document.getElementById("startBtn");
-    const quizStartBtn = document.getElementById("quizStartBtn");
+    const submitChoiceBtn = document.getElementById("submitChoiceBtn");
     const leaveDisconnectBtn = document.getElementById("leaveDisconnectBtn");
     const pingBtn = document.getElementById("pingBtn");
     const clearLogBtn = document.getElementById("clearLogBtn");
@@ -27,6 +27,9 @@
     const startRoomIdInput = document.getElementById("startRoomId");
     const startQuizRoomIdInput = document.getElementById("startQuizRoomId");
     const startQuizGameIdInput = document.getElementById("startQuizGameId");
+    const submitGameIdInput = document.getElementById("submitGameId");
+    const submitQuizIdInput = document.getElementById("submitQuizId");
+    const submitChoiceNumberInput = document.getElementById("submitChoiceNumber");
     const leaveRoomIdInput = document.getElementById("leaveRoomId");
 
     const roomTopicPreviewInput = document.getElementById("roomTopicPreview");
@@ -36,6 +39,7 @@
     const startPayloadPreviewInput = document.getElementById("startPayloadPreview");
     const quizStartDestinationInput = document.getElementById("quizStartDestination");
     const quizStartPayloadPreviewInput = document.getElementById("quizStartPayloadPreview");
+    const submitPayloadPreviewInput = document.getElementById("submitPayloadPreview");
     const leavePayloadPreviewInput = document.getElementById("leavePayloadPreview");
 
     const loginResponseEl = document.getElementById("loginResponse");
@@ -49,6 +53,7 @@
     const readyResponseEl = document.getElementById("readyResponse");
     const startResponseEl = document.getElementById("startResponse");
     const quizStartResponseEl = document.getElementById("quizStartResponse");
+    const submitResponseEl = document.getElementById("submitResponse");
     const leaveResponseEl = document.getElementById("leaveResponse");
 
     const roomEventPanelEl = document.getElementById("roomEventPanel");
@@ -71,6 +76,10 @@
         const origin = window.location.origin || "http://localhost:8080";
         serverBaseInput.value = origin;
         errorTopicPreviewInput.value = "/user/queue/errors";
+        setPanel(quizStartResponseEl, {
+            mode: "AUTO_ON_GAME_START",
+            status: "WAITING_FOR_GAME_START"
+        });
         refreshComputedFields();
         logEl.textContent = "";
     }
@@ -82,6 +91,18 @@
     function log(message) {
         logEl.textContent += "[" + now() + "] " + message + "\n";
         logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function resolveMessageType(parsed, fallbackType) {
+        if (parsed && typeof parsed === "object" && parsed.type !== null && parsed.type !== undefined) {
+            return String(parsed.type);
+        }
+        return fallbackType;
+    }
+
+    function logInbound(endpoint, parsed, fallbackType) {
+        const type = resolveMessageType(parsed, fallbackType);
+        log("수신 응답: type=" + type + ", endpoint=" + endpoint);
     }
 
     function parseJsonSafe(raw) {
@@ -184,9 +205,20 @@
         const startQuizGameId = startQuizGameIdInput.value.trim();
         gameTopicPreviewInput.value = startQuizGameId ? "/topic/game/" + startQuizGameId : "/topic/game/{gameId}";
         quizStartDestinationInput.value = "AUTO (server orchestrator)";
-        quizStartPayloadPreviewInput.value = startQuizRoomId && startQuizGameId
-            ? "no client SEND (server-managed)"
-            : "gameId가 정해지면 서버가 자동 진행";
+        quizStartPayloadPreviewInput.value = startQuizRoomId
+            ? "GAME_START 수신 시 자동 구독"
+            : "방 참가 후 GAME_START 수신 대기";
+
+        const submitGameId = submitGameIdInput.value.trim();
+        const submitQuizId = submitQuizIdInput.value.trim();
+        const submitChoiceNumber = submitChoiceNumberInput.value.trim();
+        submitPayloadPreviewInput.value = submitGameId && submitQuizId && submitChoiceNumber
+            ? JSON.stringify({
+                gameId: Number(submitGameId),
+                quizId: Number(submitQuizId),
+                choiceNumber: Number(submitChoiceNumber)
+            })
+            : "{\"gameId\":{gameId},\"quizId\":{quizId},\"choiceNumber\":{choiceNumber}}";
 
         const leaveRoomId = leaveRoomIdInput.value.trim();
         leavePayloadPreviewInput.value = leaveRoomId ? JSON.stringify({roomId: leaveRoomId}) : "{\"roomId\":\"{roomId}\"}";
@@ -357,10 +389,11 @@
             return {subscribed: true, newlySubscribed: false};
         }
 
-        state.errorSubscription = state.stompClient.subscribe("/user/queue/errors", (frame) => {
+        const endpoint = "/user/queue/errors";
+        state.errorSubscription = state.stompClient.subscribe(endpoint, (frame) => {
             const parsed = parseJsonSafe(frame.body);
             setPanel(errorEventPanelEl, parsed || frame.body);
-            log("에러 이벤트 수신");
+            logInbound(endpoint, parsed, "ERROR");
         });
 
         return {subscribed: true, newlySubscribed: true};
@@ -371,10 +404,11 @@
             return {subscribed: true, newlySubscribed: false};
         }
 
-        state.pongSubscription = state.stompClient.subscribe("/user/queue/pong", (frame) => {
+        const endpoint = "/user/queue/pong";
+        state.pongSubscription = state.stompClient.subscribe(endpoint, (frame) => {
             const parsed = parseJsonSafe(frame.body);
             setPanel(pongEventPanelEl, parsed || frame.body);
-            log("PONG 이벤트 수신");
+            logInbound(endpoint, parsed, "PONG");
         });
 
         return {subscribed: true, newlySubscribed: true};
@@ -386,13 +420,16 @@
             state.roomSubscription = null;
         }
 
-        state.roomSubscription = state.stompClient.subscribe("/topic/room/" + roomId, (frame) => {
+        const endpoint = "/topic/room/" + roomId;
+        state.roomSubscription = state.stompClient.subscribe(endpoint, (frame) => {
             const parsed = parseJsonSafe(frame.body);
             setPanel(roomEventPanelEl, parsed || frame.body);
-            log("Room 이벤트 수신");
+            logInbound(endpoint, parsed, "UNKNOWN");
 
             if (parsed && parsed.type === "GAME_START" && parsed.gameId !== null && parsed.gameId !== undefined) {
-                startQuizGameIdInput.value = String(parsed.gameId);
+                const gameId = String(parsed.gameId);
+                startQuizGameIdInput.value = gameId;
+                submitGameIdInput.value = gameId;
                 if (parsed.roomId) {
                     startQuizRoomIdInput.value = String(parsed.roomId);
                     normalizeRoomIdAcrossSections(startQuizRoomIdInput);
@@ -400,8 +437,15 @@
                     refreshComputedFields();
                 }
 
-                const gameSubscribeResult = subscribeGameTopic(String(parsed.gameId));
-                log("GAME_START 감지: gameId 자동 반영 및 Game 토픽 구독 (" + gameSubscribeResult.topic + ")");
+                const gameSubscribeResult = subscribeGameTopic(gameId);
+                setPanel(quizStartResponseEl, {
+                    trigger: "GAME_START",
+                    roomId: parsed.roomId ? String(parsed.roomId) : state.subscribedRoomId,
+                    gameId: gameId,
+                    topic: gameSubscribeResult.topic,
+                    newlySubscribed: gameSubscribeResult.newlySubscribed
+                });
+                log("GAME_START 감지: gameId 자동 반영 및 Game 토픽 자동 구독 (" + gameSubscribeResult.topic + ")");
             }
         });
 
@@ -410,19 +454,33 @@
     }
 
     function subscribeGameTopic(gameId) {
+        const normalizedGameId = String(gameId);
+        if (state.gameSubscription && state.subscribedGameId === normalizedGameId) {
+            return {subscribed: true, newlySubscribed: false, topic: "/topic/game/" + normalizedGameId};
+        }
+
         if (state.gameSubscription) {
             state.gameSubscription.unsubscribe();
             state.gameSubscription = null;
         }
 
-        state.gameSubscription = state.stompClient.subscribe("/topic/game/" + gameId, (frame) => {
+        const endpoint = "/topic/game/" + normalizedGameId;
+        state.gameSubscription = state.stompClient.subscribe(endpoint, (frame) => {
             const parsed = parseJsonSafe(frame.body);
             setPanel(gameEventPanelEl, parsed || frame.body);
-            log("Game 이벤트 수신");
+            logInbound(endpoint, parsed, "UNKNOWN");
+
+            const quizId = parsed && parsed.payload && parsed.payload.quiz ? parsed.payload.quiz.quizId : null;
+            if (parsed && parsed.type === "QUIZ_START" && quizId !== null && quizId !== undefined) {
+                submitGameIdInput.value = normalizedGameId;
+                submitQuizIdInput.value = String(quizId);
+                refreshComputedFields();
+                log("QUIZ_START 감지: 제출 폼 자동 반영 (quizId=" + String(quizId) + ")");
+            }
         });
 
-        state.subscribedGameId = String(gameId);
-        return {subscribed: true, topic: "/topic/game/" + gameId};
+        state.subscribedGameId = normalizedGameId;
+        return {subscribed: true, newlySubscribed: true, topic: "/topic/game/" + normalizedGameId};
     }
 
     function sendRoomCommand(command, roomId) {
@@ -440,13 +498,18 @@
         };
     }
 
-    function sendGameCommand(destination, payload) {
+    function sendSubmitChoiceCommand(gameId, quizId, choiceNumber) {
         if (!state.stompClient || !state.stompClient.connected) {
             throw new Error("WebSocket 연결이 필요합니다.");
         }
 
-        const payloadJson = JSON.stringify(payload);
-        state.stompClient.send(destination, {"content-type": "application/json"}, payloadJson);
+        const destination = "/app/game/submit";
+        const payload = {
+            gameId: gameId,
+            quizId: quizId,
+            choiceNumber: choiceNumber
+        };
+        state.stompClient.send(destination, {"content-type": "application/json"}, JSON.stringify(payload));
 
         return {
             destination: destination,
@@ -517,24 +580,32 @@
         log("6) START 전송 완료");
     }
 
-    async function executeStartQuiz() {
-        const gameIdRaw = getValueOrThrow(startQuizGameIdInput, "gameId");
-        const gameId = Number(gameIdRaw);
-        if (!Number.isFinite(gameId)) {
-            throw new Error("gameId는 숫자여야 합니다.");
+    async function executeSubmitChoice() {
+        const gameId = Number(getValueOrThrow(submitGameIdInput, "gameId"));
+        const quizId = Number(getValueOrThrow(submitQuizIdInput, "quizId"));
+        const choiceNumber = Number(getValueOrThrow(submitChoiceNumberInput, "choiceNumber"));
+
+        if (!Number.isInteger(gameId) || gameId <= 0) {
+            throw new Error("gameId는 1 이상의 정수여야 합니다.");
+        }
+        if (!Number.isInteger(quizId) || quizId <= 0) {
+            throw new Error("quizId는 1 이상의 정수여야 합니다.");
+        }
+        if (!Number.isInteger(choiceNumber) || choiceNumber <= 0) {
+            throw new Error("choiceNumber는 1 이상의 정수여야 합니다.");
         }
 
-        normalizeRoomIdAcrossSections(startQuizRoomIdInput);
         await connectStompIfNeeded();
         subscribeErrorQueueOnce();
         subscribePongQueueOnce();
         const gameSubscribeResult = subscribeGameTopic(String(gameId));
-        setPanel(quizStartResponseEl, {
-            action: "SUBSCRIBE_ONLY",
-            topic: gameSubscribeResult.topic,
-            note: "퀴즈는 GAME_START 이후 서버가 자동 진행합니다."
+        const sendResult = sendSubmitChoiceCommand(gameId, quizId, choiceNumber);
+
+        setPanel(submitResponseEl, {
+            ...sendResult,
+            gameSubscription: gameSubscribeResult
         });
-        log("7) GAME 토픽 구독 완료 (퀴즈 자동 진행)");
+        log("8) 정답 제출 전송 완료");
     }
 
     function disconnectStomp() {
@@ -574,9 +645,9 @@
             setPanel(leaveResponseEl, sendResult);
             await new Promise((resolve) => setTimeout(resolve, 150));
             disconnectStomp();
-            log("8) LEAVE 전송 + WS 연결 해제 완료");
+            log("9) LEAVE 전송 + WS 연결 해제 완료");
         } else {
-            log("8) WS 미연결 상태로 연결해제 단계만 스킵");
+            log("9) WS 미연결 상태로 연결해제 단계만 스킵");
         }
     }
 
@@ -596,6 +667,9 @@
     startRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startRoomIdInput));
     startQuizRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startQuizRoomIdInput));
     startQuizGameIdInput.addEventListener("input", refreshComputedFields);
+    submitGameIdInput.addEventListener("input", refreshComputedFields);
+    submitQuizIdInput.addEventListener("input", refreshComputedFields);
+    submitChoiceNumberInput.addEventListener("input", refreshComputedFields);
     leaveRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(leaveRoomIdInput));
 
     bindAsync(loginBtn, executeGuestLogin);
@@ -605,7 +679,7 @@
     bindAsync(readyBtn, async () => executeReadyLike("ready"));
     bindAsync(unreadyBtn, async () => executeReadyLike("unready"));
     bindAsync(startBtn, async () => executeStartGame());
-    bindAsync(quizStartBtn, executeStartQuiz);
+    bindAsync(submitChoiceBtn, executeSubmitChoice);
     bindAsync(leaveDisconnectBtn, executeLeaveAndDisconnect);
     bindAsync(pingBtn, executePing);
     bindAsync(seedRoomsTopBtn, executeSeedRoomsTop);
