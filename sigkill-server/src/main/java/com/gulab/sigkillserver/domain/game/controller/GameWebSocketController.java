@@ -25,7 +25,7 @@ public class GameWebSocketController {
     private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/game/load")
-    public void loadGame(@Payload GameIdCommand request, Principal principal) {
+    public void loadGame(@Payload @Valid GameIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
         GameLoadEvent gameLoadEvent = gameService.loadGame(userId, request.gameId());
         messagingTemplate.convertAndSend("/topic/game/" + request.gameId(), gameLoadEvent);

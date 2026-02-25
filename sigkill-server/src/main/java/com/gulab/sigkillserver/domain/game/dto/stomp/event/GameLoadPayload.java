@@ -6,4 +6,7 @@ public record GameLoadPayload(
         List<PlayerLoadInfo> players,
         boolean allLoaded
 ) {
+    public GameLoadPayload {
+        players = List.copyOf(players);
+    }
 }
