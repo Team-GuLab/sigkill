@@ -259,6 +259,16 @@ public class GameService {
 
         // 각 플레이어 상태 업데이트
 
+        long quizEndedAt = Instant.now().toEpochMilli();
+        var quizEndEvent = gameEventBuilder.toQuizEndEvent(
+                room,
+                game,
+                quiz,
+                quizAnswerInfoList,
+                correctChoiceNumber,
+                quizEndedAt
+        );
+
         // 게임 종료 판별
         int livePlayerCount = (int) gamePlayers.stream()
                 .filter(GamePlayer::isAlive)
@@ -274,15 +284,7 @@ public class GameService {
         quizChoiceNumberMappingRepository.deleteByGameIdAndQuizId(gameId, quizId);
 
         // 결과 반환
-        return new EndQuizOrGameEvent(
-                gameEventBuilder.toQuizEndEvent(
-                        room, game, quiz,
-                        quizAnswerInfoList,
-                        correctChoiceNumber,
-                        Instant.now().toEpochMilli()
-                ),
-                gameEndEvent
-        );
+        return new EndQuizOrGameEvent(quizEndEvent, gameEndEvent);
     }
 
     /**
