@@ -11,6 +11,7 @@ import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameEndEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameResponseType;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizEndEvent;
@@ -168,6 +169,108 @@ class GameServiceTest {
                     .isInstanceOf(CustomException.class)
                     .satisfies(throwable -> assertThat(((CustomException) throwable).getErrorCode().getCode())
                             .isEqualTo(RoomErrorCode.ROOM_ALREADY_STARTED.name()));
+        }
+    }
+
+    @Nested
+    class LoadGameTests {
+        @Test
+        void 게임_로드시_요청한_플레이어의_isLoaded가_true가되고_allLoaded는_미완료상태면_false다() {
+            // given
+            LoadGameFixture fixture = prepareLoadGameFixture("1434");
+
+            // when
+            GameLoadEvent result = gameService.loadGame(fixture.host().getUserId(), fixture.game().getGameId());
+
+            // then
+            assertThat(result.type()).isEqualTo(GameResponseType.GAME_LOADED);
+            assertThat(result.roomId()).isEqualTo(fixture.room().getRoomId());
+            assertThat(result.gameId()).isEqualTo(fixture.game().getGameId());
+            assertThat(result.payload().allLoaded()).isFalse();
+            assertThat(result.payload().players())
+                    .filteredOn(player -> player.userId() == fixture.host().getUserId())
+                    .singleElement()
+                    .satisfies(player -> assertThat(player.isLoaded()).isTrue());
+            assertThat(result.payload().players())
+                    .filteredOn(player -> player.userId() == fixture.guest().getUserId())
+                    .singleElement()
+                    .satisfies(player -> assertThat(player.isLoaded()).isFalse());
+        }
+
+        @Test
+        void 모든_플레이어가_로드를_완료하면_allLoaded가_true다() {
+            // given
+            LoadGameFixture fixture = prepareLoadGameFixture("1534");
+            gameService.loadGame(fixture.host().getUserId(), fixture.game().getGameId());
+
+            // when
+            GameLoadEvent result = gameService.loadGame(fixture.guest().getUserId(), fixture.game().getGameId());
+
+            // then
+            assertThat(result.payload().allLoaded()).isTrue();
+            assertThat(result.payload().players())
+                    .extracting(player -> player.isLoaded())
+                    .containsOnly(true);
+        }
+
+        @Test
+        void 존재하지_않는_게임을_로드하면_GAME_NOT_FOUND_예외가_발생한다() {
+            // when
+            Runnable call = () -> gameService.loadGame(1L, 9999L);
+
+            // then
+            assertThrowsCustomExceptionWithCode(call, GameErrorCode.GAME_NOT_FOUND.name());
+        }
+
+        @Test
+        void 플레이어가_어떤_방에도_없으면_게임을_로드하지_못한다() {
+            // given
+            LoadGameFixture fixture = prepareLoadGameFixture("1634");
+            User outsider = saveUser("load-game-outsider-session", "load-game-outsider");
+
+            // when
+            Runnable call = () -> gameService.loadGame(outsider.getUserId(), fixture.game().getGameId());
+
+            // then
+            assertThrowsCustomExceptionWithCode(call, PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
+        }
+
+        @Test
+        void 게임이_진행중이_아니면_게임을_로드하지_못한다() {
+            // given
+            User host = saveUser("load-game-not-started-host-session", "load-game-not-started-host");
+            Room room = Room.create("1734", "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+
+            // when
+            Runnable call = () -> gameService.loadGame(host.getUserId(), game.getGameId());
+
+            // then
+            assertThrowsCustomExceptionWithCode(call, RoomErrorCode.ROOM_NOT_STARTED.name());
+        }
+
+        private LoadGameFixture prepareLoadGameFixture(String roomId) {
+            User host = saveUser(roomId + "-host-session", roomId + "-host");
+            User guest = saveUser(roomId + "-guest-session", roomId + "-guest");
+            Room room = Room.create(roomId, "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(Player.create(guest.getUserId(), room.getRoomId(), guest.getNickname()));
+
+            gameService.startGame(room);
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+
+            return new LoadGameFixture(host, guest, room, game);
+        }
+
+        private record LoadGameFixture(
+                User host,
+                User guest,
+                Room room,
+                Game game
+        ) {
         }
     }
 

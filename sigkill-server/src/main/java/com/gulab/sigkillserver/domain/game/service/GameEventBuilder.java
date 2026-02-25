@@ -3,7 +3,10 @@ package com.gulab.sigkillserver.domain.game.service;
 import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameEndEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadPayload;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.PlayerLoadInfo;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.ActorInfo;
@@ -52,6 +55,28 @@ public class GameEventBuilder {
                         new GameStartQuizInfo(0, game.getTotalQuizCount()),
                         playerInfos
                 )
+        );
+    }
+
+    public GameLoadEvent toGameLoadEvent(Room room, Game game, List<GamePlayer> gamePlayers) {
+        List<PlayerLoadInfo> playerLoadInfos = new ArrayList<>();
+        boolean isAllLoaded = true;
+        for (GamePlayer gamePlayer : gamePlayers) {
+            if (!gamePlayer.isLoaded()) {
+                isAllLoaded = false;
+            }
+            PlayerLoadInfo playerLoadInfo = new PlayerLoadInfo(
+                    gamePlayer.getUserId(),
+                    gamePlayer.getNickname(),
+                    gamePlayer.isLoaded()
+            );
+            playerLoadInfos.add(playerLoadInfo);
+        }
+        GameLoadPayload gameLoadPayload = new GameLoadPayload(playerLoadInfos, isAllLoaded);
+        return GameLoadEvent.of(
+                room.getRoomId(),
+                game.getGameId(),
+                gameLoadPayload
         );
     }
 

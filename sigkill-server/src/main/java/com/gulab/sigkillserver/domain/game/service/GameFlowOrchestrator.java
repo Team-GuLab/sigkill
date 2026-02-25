@@ -6,6 +6,7 @@ import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class GameFlowOrchestrator {
     private final TaskScheduler gameTaskScheduler;
 
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
+    private final Set<Long> initialQuizStartTriggeredGames = ConcurrentHashMap.newKeySet();
 
     public GameFlowOrchestrator(
             GameService gameService,
@@ -39,7 +41,11 @@ public class GameFlowOrchestrator {
         this.gameTaskScheduler = gameTaskScheduler;
     }
 
-    public void onGameStarted(String roomId, Long gameId) {
+    public void onAllPlayersLoaded(String roomId, Long gameId) {
+        if (!initialQuizStartTriggeredGames.add(gameId)) {
+            log.debug("game.flow initial quiz-start already scheduled - roomId={}, gameId={}", roomId, gameId);
+            return;
+        }
         scheduleQuizStart(roomId, gameId, QUIZ_START_DELAY_MILLIS);
     }
 
@@ -49,6 +55,7 @@ public class GameFlowOrchestrator {
             scheduledFuture.cancel(false);
             log.debug("game.flow canceled - gameId={}", gameId);
         }
+        initialQuizStartTriggeredGames.remove(gameId);
     }
 
     private void scheduleQuizStart(String roomId, Long gameId, long delayMillis) {
@@ -67,6 +74,7 @@ public class GameFlowOrchestrator {
             Long hostId = resolveHostId(roomId);
             if (hostId == null) {
                 log.warn("game.flow quiz-start skipped - room not found, roomId={}, gameId={}", roomId, gameId);
+                initialQuizStartTriggeredGames.remove(gameId);
                 return;
             }
 
@@ -79,8 +87,10 @@ public class GameFlowOrchestrator {
         } catch (CustomException e) {
             log.warn("game.flow quiz-start failed - gameId={}, code={}, message={}",
                     gameId, e.getErrorCode().getCode(), e.getErrorCode().getMessage());
+            initialQuizStartTriggeredGames.remove(gameId);
         } catch (RuntimeException e) {
             log.error("game.flow quiz-start unexpected failure - gameId={}", gameId, e);
+            initialQuizStartTriggeredGames.remove(gameId);
         }
     }
 
@@ -108,6 +118,7 @@ public class GameFlowOrchestrator {
             messagingTemplate.convertAndSend("/topic/game/" + gameId, endQuizOrGameEvent.quizEndEvent());
             if (endQuizOrGameEvent.hasGameEnd()) {
                 messagingTemplate.convertAndSend("/topic/game/" + gameId, endQuizOrGameEvent.gameEndEvent());
+                initialQuizStartTriggeredGames.remove(gameId);
                 log.info("game.flow game-end reached - roomId={}, gameId={}, quizId={}", roomId, gameId, quizId);
                 return;
             }

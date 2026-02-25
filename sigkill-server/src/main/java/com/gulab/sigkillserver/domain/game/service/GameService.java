@@ -2,6 +2,7 @@ package com.gulab.sigkillserver.domain.game.service;
 
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_IN_PROGRESS;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_NOT_FOUND;
+import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_PLAYER_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.SUBMIT_CHOICE_IS_AFTER_DEADLINE;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.SUBMIT_CHOICE_NOT_CURRENT_QUIZ;
 import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_CHOICE_NUMBER_MAPPING_ERROR;
@@ -20,6 +21,7 @@ import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameEndEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameEndReason;
@@ -103,6 +105,27 @@ public class GameService {
         room.startGame();
 
         return gameEventBuilder.toGameStartEvent(room, game, players);
+    }
+
+    /**
+     * 게임 로드. 클라이언트에서 호출
+     */
+    public GameLoadEvent loadGame(Long userId, Long gameId) {
+        // 검증
+        Game game = getGameOrThrow(gameId);
+        String roomId = game.getRoomId();
+        getPlayerInRoomOrThrow(userId, roomId);
+        Room room = getRoomOrThrow(roomId);
+        validateGameInProgress(room, game);
+
+        List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
+        gamePlayers.stream().filter(gp -> userId.equals(gp.getUserId()))
+                .findFirst()
+                .orElseThrow(() -> new CustomException(GAME_PLAYER_NOT_FOUND))
+                .markAsLoaded();
+
+        // 게임 정보 반환
+        return gameEventBuilder.toGameLoadEvent(room, game, gamePlayers);
     }
 
     /**

@@ -2,6 +2,7 @@ package com.gulab.sigkillserver.domain.game.dto.stomp.event;
 
 public enum GameResponseType {
     GAME_START,
+    GAME_LOADED,
     QUIZ_START,
     CHOICE_SUBMIT,
     QUIZ_END,
