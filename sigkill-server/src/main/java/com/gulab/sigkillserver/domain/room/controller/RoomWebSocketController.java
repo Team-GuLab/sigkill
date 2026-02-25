@@ -1,6 +1,7 @@
 package com.gulab.sigkillserver.domain.room.controller;
 
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.service.GameFlowOrchestrator;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Controller;
 public class RoomWebSocketController {
 
     private final RoomService roomService;
+    private final GameFlowOrchestrator gameFlowOrchestrator;
     private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/room/join")
@@ -78,6 +80,7 @@ public class RoomWebSocketController {
         GameStartEvent gameStartEvent = roomService.startGame(request.roomId(), userId);
 
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), gameStartEvent);
+        gameFlowOrchestrator.onGameStarted(gameStartEvent.roomId(), gameStartEvent.gameId());
 
         log.debug("게임 시작 브로드캐스트 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
