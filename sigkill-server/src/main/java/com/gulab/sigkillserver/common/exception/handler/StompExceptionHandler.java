@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 public class StompExceptionHandler {
 
     private static final String ERROR_TYPE = "ERROR";
+    private static final String INTERNAL_SERVER_ERROR_CODE = "INTERNAL_SERVER_ERROR";
+    private static final String INTERNAL_SERVER_ERROR_MESSAGE = "서버 내부 오류가 발생했습니다.";
 
     /**
      * CustomException 처리
@@ -24,11 +26,21 @@ public class StompExceptionHandler {
     @MessageExceptionHandler(CustomException.class)
     @SendToUser("/queue/errors")
     public ErrorMessage handleCustomException(CustomException e) {
+        var errorCode = e.getErrorCode();
+        if (errorCode.getHttpStatus().is5xxServerError()) {
+            log.error("WebSocket CustomException 발생(5xx): code={}, message={}",
+                    errorCode.getCode(), errorCode.getMessage(), e);
+            return ErrorMessage.of(
+                    INTERNAL_SERVER_ERROR_CODE,
+                    INTERNAL_SERVER_ERROR_MESSAGE
+            );
+        }
+
         log.warn("WebSocket CustomException 발생: code={}, message={}",
-                e.getErrorCode().getCode(), e.getErrorCode().getMessage());
+                errorCode.getCode(), errorCode.getMessage());
         return ErrorMessage.of(
-                e.getErrorCode().getCode(),
-                e.getErrorCode().getMessage()
+                errorCode.getCode(),
+                errorCode.getMessage()
         );
     }
 
@@ -119,8 +131,8 @@ public class StompExceptionHandler {
     public ErrorMessage handleException(Exception e) {
         log.error("WebSocket 예상치 못한 예외 발생", e);
         return ErrorMessage.of(
-                "INTERNAL_SERVER_ERROR",
-                "서버 내부 오류가 발생했습니다."
+                INTERNAL_SERVER_ERROR_CODE,
+                INTERNAL_SERVER_ERROR_MESSAGE
         );
     }
 

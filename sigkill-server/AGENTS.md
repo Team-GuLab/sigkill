@@ -145,17 +145,16 @@
 - Fields:
   - `gameId` (BIGINT)
   - `roomId` (STRING)
-  - `gameStatus` (INGAME / ENDED)
   - `quizIds` (List<BIGINT>)
   - `currentQuizIndex` (INT)
   - `roundStartedAtMillis` (LONG, epoch ms)
 - TTL: 게임 종료 후 명시적 삭제(필요 시 결과 조회 유예)
 
 ### SelectedChoice
-- Key: `selected:{gameId}:{userId}`
+- Key: `selected:{gameId}:{quizId}:{userId}`
 - Fields:
-  - `quizId` (BIGINT)
   - `choiceId` (BIGINT)
+  - `timestamp` (LONG, epoch ms)
 - TTL: 게임 종료 후 명시적 삭제
 
 ### Static Quiz Data

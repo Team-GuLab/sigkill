@@ -3,15 +3,22 @@ package com.gulab.sigkillserver.domain.room.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.common.exception.CustomException;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameResponseType;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
-import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartPayload;
-import com.gulab.sigkillserver.domain.game.dto.stomp.shared.GameStartQuizInfo;
+import com.gulab.sigkillserver.domain.game.repository.GamePlayerMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.GamePlayerRepository;
+import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.GameRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
+import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryRepository;
+import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
+import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
@@ -32,13 +39,14 @@ import com.gulab.sigkillserver.domain.user.exception.UserErrorCode;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
+import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.util.HashSet;
 import java.util.Set;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.springframework.core.io.ClassPathResource;
 
 class RoomServiceTest {
 
@@ -47,18 +55,43 @@ class RoomServiceTest {
     private static final String TEST_ROOM_TITLE = "테스트 방";
     private static final Integer TEST_CAPACITY = 10;
     private static final Long NON_EXISTENT_USER_ID = -1L;
-    private RoomService roomService;
-    private RoomRepository roomRepository;
-    private UserMemoryRepository userRepository;
+    private UserRepository userRepository;
+    private GameRepository gameRepository;
+    private QuizRepository quizRepository;
     private PlayerRepository playerRepository;
+    private RoomRepository roomRepository;
+    private SelectedChoiceRepository selectedChoiceRepository;
+    private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
+    private GamePlayerRepository gamePlayerRepository;
+    private GameEventBuilder gameEventBuilder;
+
+    private RoomService roomService;
     private GameService gameService;
 
     @BeforeEach
     void setup() {
-        roomRepository = new RoomMemoryRepository();
         userRepository = new UserMemoryRepository();
+        gameRepository = new GameMemoryRepository();
+        quizRepository = new QuizMemoryRepository(new ObjectMapper(),
+                new ClassPathResource("quiz/quiz.json"));
         playerRepository = new PlayerMemoryRepository();
-        gameService = Mockito.mock(GameService.class);
+        roomRepository = new RoomMemoryRepository();
+        selectedChoiceRepository = new SelectedChoiceMemoryRepository();
+        quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
+        gamePlayerRepository = new GamePlayerMemoryRepository();
+        gameEventBuilder = new GameEventBuilder();
+
+        gameService = new GameService(
+                userRepository,
+                gameRepository,
+                quizRepository,
+                playerRepository,
+                roomRepository,
+                selectedChoiceRepository,
+                quizChoiceNumberMappingRepository,
+                gamePlayerRepository,
+                gameEventBuilder
+        );
         roomService = new RoomService(roomRepository, userRepository, playerRepository, gameService);
     }
 
@@ -98,19 +131,28 @@ class RoomServiceTest {
             playerRepository.create(Player.create(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
             roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId());
 
-            GameStartEvent expected = GameStartEvent.of(
-                    TEST_ROOM_ID,
-                    1L,
-                    new GameStartPayload(new GameStartQuizInfo(0, 1))
-            );
-            when(gameService.startGame(room)).thenReturn(expected);
-
             // when
             GameStartEvent result = roomService.startGame(TEST_ROOM_ID, host.getUserId());
 
             // then
-            assertThat(result).isEqualTo(expected);
-            verify(gameService).startGame(room);
+            assertThat(result.type()).isEqualTo(GameResponseType.GAME_START);
+            assertThat(result.roomId()).isEqualTo(TEST_ROOM_ID);
+            assertThat(result.gameId()).isNotNull();
+            assertThat(result.payload().quiz().currentQuizIndex()).isZero();
+            assertThat(result.payload().quiz().totalQuizCount()).isPositive();
+            assertThat(result.payload().players()).hasSize(2);
+            assertThat(result.payload().players())
+                    .extracting(actor -> actor.userId())
+                    .containsExactlyInAnyOrder(host.getUserId(), guest.getUserId());
+            assertThat(result.payload().players())
+                    .extracting(actor -> actor.nickname())
+                    .containsExactlyInAnyOrder(host.getNickname(), guest.getNickname());
+            assertThat(room.isInGame()).isTrue();
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID))
+                    .isPresent()
+                    .get()
+                    .extracting(game -> game.getGameId())
+                    .isEqualTo(result.gameId());
         }
 
         @Test
@@ -125,7 +167,7 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.startGame(TEST_ROOM_ID, guest.getUserId()),
                     RoomErrorCode.ONLY_HOST_CAN_START_GAME.name());
-            verify(gameService, never()).startGame(org.mockito.ArgumentMatchers.any(Room.class));
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
 
         @Test
@@ -138,7 +180,7 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.startGame(TEST_ROOM_ID, host.getUserId()),
                     RoomErrorCode.NOT_ENOUGH_PLAYERS_TO_START.name());
-            verifyNoInteractions(gameService);
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
 
         @Test
@@ -156,7 +198,7 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.startGame(TEST_ROOM_ID, host.getUserId()),
                     RoomErrorCode.PLAYERS_NOT_READY.name());
-            verifyNoInteractions(gameService);
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
 
         @Test
@@ -170,7 +212,7 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.startGame(TEST_ROOM_ID, host.getUserId()),
                     RoomErrorCode.ROOM_IN_GAME.name());
-            verifyNoInteractions(gameService);
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
     }
 

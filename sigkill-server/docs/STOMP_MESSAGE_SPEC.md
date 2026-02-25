@@ -28,6 +28,9 @@
         - 현재 해당 방 멤버인 사용자
         - 현재 어떤 방에도 속하지 않은 사용자
         - 현재 다른 방에 속한 사용자는 구독 불가
+    - `/topic/game/{gameId}`는 다음 조건에서 구독 가능
+        - 해당 `gameId`가 속한 방의 현재 멤버인 사용자
+        - 위 조건을 만족하지 않으면 구독 불가
     - 사용자 큐 구독 허용 대상: `/user/queue/errors`, `/user/queue/pong`
 
 ## 4. 공통 DTO
@@ -279,7 +282,17 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
     "quiz": {
       "currentQuizIndex": 0,
       "totalQuizCount": 10
-    }
+    },
+    "players": [
+      {
+        "userId": 1,
+        "nickname": "호스트유저"
+      },
+      {
+        "userId": 2,
+        "nickname": "게스트유저"
+      }
+    ]
   }
 }
 ```
@@ -327,6 +340,13 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
   }
 }
 ```
+
+동작 규칙:
+
+- `GAME_START` 이후 서버는 3초 대기 후 `QUIZ_START`를 자동 브로드캐스트한다.
+- `QUIZ_START` 이후 서버는 5초 대기 후 `QUIZ_END`를 자동 브로드캐스트한다.
+- `QUIZ_END` 이후 게임 종료 조건이면 같은 채널에 `GAME_END`를 브로드캐스트하고 종료한다.
+- 게임 미종료면 `QUIZ_END` 이후 3초 대기 후 다음 `QUIZ_START`를 자동 브로드캐스트한다.
 
 ### 6.3 답 제출
 
@@ -509,7 +529,9 @@ Response type: `ERROR`
   `NOT_ENOUGH_PLAYERS_TO_START`,
   `PLAYERS_NOT_READY`,
   `USER_ALREADY_IN_ROOM`,
-  `ROOM_NUMBER_ERROR`
+  `ROOM_NUMBER_ERROR`,
+  `SUBMIT_CHOICE_NOT_CURRENT_QUIZ`,
+  `SUBMIT_CHOICE_IS_AFTER_DEADLINE`
 - 인증/보안: `ACCESS_DENIED`
 - 요청 검증: `INVALID_REQUEST` (`@Valid @Payload` 검증 실패 포함)
 - 상태/기타: `INVALID_STATE`, `INTERNAL_SERVER_ERROR`

@@ -131,6 +131,15 @@
   - `/user/queue/errors`
   - `/user/queue/pong`
 
+### 5) 게임 타이머 전용 TaskScheduler
+
+- 게임 라운드 타이머 용도로 별도 스케줄러 빈 사용
+- 빈 이름: `gameTaskScheduler`
+- 구현 클래스: `ThreadPoolTaskScheduler`
+- 설정값:
+  - `poolSize = 4`
+  - `threadNamePrefix = game-task-`
+
 ## WebSocket 테스트 페이지 사용 흐름
 
 1. 게스트 로그인 실행

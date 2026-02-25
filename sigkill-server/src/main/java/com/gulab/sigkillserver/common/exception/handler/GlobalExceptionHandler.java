@@ -17,10 +17,25 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String INTERNAL_SERVER_ERROR_CODE = "INTERNAL_SERVER_ERROR";
+    private static final String INTERNAL_SERVER_ERROR_MESSAGE = "서버 내부 오류가 발생했습니다.";
+
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<BaseResponse<String>> handleCustomException(CustomException e) {
-        log.warn("CustomException 발생: code={}, message={}", e.getErrorCode().getCode(), e.getErrorCode().getMessage());
-        return createResponseEntity(e.getErrorCode());
+        CustomErrorCode errorCode = e.getErrorCode();
+        if (errorCode.getHttpStatus().is5xxServerError()) {
+            log.error("CustomException 발생(5xx): code={}, message={}", errorCode.getCode(), errorCode.getMessage(), e);
+            return ResponseEntity
+                    .status(errorCode.getHttpStatus().value())
+                    .body(BaseResponse.onFailure(
+                            INTERNAL_SERVER_ERROR_CODE,
+                            INTERNAL_SERVER_ERROR_MESSAGE,
+                            null
+                    ));
+        }
+
+        log.warn("CustomException 발생: code={}, message={}", errorCode.getCode(), errorCode.getMessage());
+        return createResponseEntity(errorCode);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -55,8 +70,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(500)
                 .body(BaseResponse.onFailure(
-                        "INTERNAL_SERVER_ERROR",
-                        "서버 내부 오류가 발생했습니다.",
+                        INTERNAL_SERVER_ERROR_CODE,
+                        INTERNAL_SERVER_ERROR_MESSAGE,
                         null
                 ));
     }
