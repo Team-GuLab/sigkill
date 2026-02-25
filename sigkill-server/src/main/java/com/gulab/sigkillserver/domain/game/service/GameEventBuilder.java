@@ -36,8 +36,14 @@ import org.springframework.stereotype.Component;
 public class GameEventBuilder {
 
     public GameStartEvent toGameStartEvent(Room room, Game game, List<Player> players) {
-        List<ActorInfo> playerInfos = players.stream()
-                .map(player -> new ActorInfo(player.getUserId(), player.getNickname()))
+        List<QuizEndPlayerInfo> playerInfos = players.stream()
+                .map(player -> new QuizEndPlayerInfo(
+                        player.getUserId(),
+                        player.getNickname(),
+                        GamePlayerStatus.ALIVE,
+                        QuizResult.NONE,
+                        0
+                ))
                 .toList();
         return GameStartEvent.of(
                 room.getRoomId(),
