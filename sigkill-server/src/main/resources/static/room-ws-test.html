@@ -331,11 +331,11 @@
         <div class="card">
             <div class="card-head">
                 <h2>7. 퀴즈 시작 (Game 토픽)</h2>
-                <span class="endpoint">SUBSCRIBE /topic/game/{gameId} + SEND /app/game/quiz/start</span>
+                <span class="endpoint">SUBSCRIBE /topic/game/{gameId}</span>
             </div>
             <div class="hint">
                 <code>GAME_START</code> 이벤트를 수신하면 <code>gameId</code>가 자동 반영되고 Game 토픽을 자동 구독합니다.<br/>
-                참고: 서버의 게임 MessageMapping이 미구현이면 SEND는 에러 응답 또는 무응답일 수 있습니다.
+                <code>GAME_START</code> 이후 퀴즈는 서버 오케스트레이터가 자동으로 시작/종료를 진행합니다.
             </div>
             <div class="grid-2">
                 <div>
@@ -353,8 +353,8 @@
                     <input id="gameTopicPreview" readonly type="text"/>
                 </div>
                 <div>
-                    <label for="quizStartDestination">destination</label>
-                    <input id="quizStartDestination" type="text" value="/app/game/quiz/start"/>
+                    <label for="quizStartDestination">flow mode</label>
+                    <input id="quizStartDestination" readonly type="text" value="AUTO (server orchestrator)"/>
                 </div>
             </div>
             <div class="grid-2">
@@ -364,9 +364,9 @@
                 </div>
             </div>
             <div class="actions">
-                <button id="quizStartBtn">QUIZ START 전송</button>
+                <button id="quizStartBtn">GAME 토픽 구독</button>
             </div>
-            <div class="hint">표시: SEND JSON</div>
+            <div class="hint">표시: 구독 결과</div>
             <pre class="panel" id="quizStartResponse">-</pre>
         </div>
 

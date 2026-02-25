@@ -183,11 +183,10 @@
         const startQuizRoomId = startQuizRoomIdInput.value.trim();
         const startQuizGameId = startQuizGameIdInput.value.trim();
         gameTopicPreviewInput.value = startQuizGameId ? "/topic/game/" + startQuizGameId : "/topic/game/{gameId}";
-        if (startQuizRoomId && startQuizGameId) {
-            quizStartPayloadPreviewInput.value = JSON.stringify({roomId: startQuizRoomId, gameId: Number(startQuizGameId)});
-        } else {
-            quizStartPayloadPreviewInput.value = "{\"roomId\":\"{roomId}\",\"gameId\":{gameId}}";
-        }
+        quizStartDestinationInput.value = "AUTO (server orchestrator)";
+        quizStartPayloadPreviewInput.value = startQuizRoomId && startQuizGameId
+            ? "no client SEND (server-managed)"
+            : "gameId가 정해지면 서버가 자동 진행";
 
         const leaveRoomId = leaveRoomIdInput.value.trim();
         leavePayloadPreviewInput.value = leaveRoomId ? JSON.stringify({roomId: leaveRoomId}) : "{\"roomId\":\"{roomId}\"}";
@@ -519,9 +518,7 @@
     }
 
     async function executeStartQuiz() {
-        const roomId = getValueOrThrow(startQuizRoomIdInput, "roomId");
         const gameIdRaw = getValueOrThrow(startQuizGameIdInput, "gameId");
-        const destination = getValueOrThrow(quizStartDestinationInput, "destination");
         const gameId = Number(gameIdRaw);
         if (!Number.isFinite(gameId)) {
             throw new Error("gameId는 숫자여야 합니다.");
@@ -531,11 +528,13 @@
         await connectStompIfNeeded();
         subscribeErrorQueueOnce();
         subscribePongQueueOnce();
-        subscribeGameTopic(String(gameId));
-
-        const sendResult = sendGameCommand(destination, {roomId: roomId, gameId: gameId});
-        setPanel(quizStartResponseEl, sendResult);
-        log("7) QUIZ START 전송 완료 (" + destination + ")");
+        const gameSubscribeResult = subscribeGameTopic(String(gameId));
+        setPanel(quizStartResponseEl, {
+            action: "SUBSCRIBE_ONLY",
+            topic: gameSubscribeResult.topic,
+            note: "퀴즈는 GAME_START 이후 서버가 자동 진행합니다."
+        });
+        log("7) GAME 토픽 구독 완료 (퀴즈 자동 진행)");
     }
 
     function disconnectStomp() {
@@ -597,7 +596,6 @@
     startRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startRoomIdInput));
     startQuizRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startQuizRoomIdInput));
     startQuizGameIdInput.addEventListener("input", refreshComputedFields);
-    quizStartDestinationInput.addEventListener("input", refreshComputedFields);
     leaveRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(leaveRoomIdInput));
 
     bindAsync(loginBtn, executeGuestLogin);
