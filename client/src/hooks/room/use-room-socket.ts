@@ -12,6 +12,7 @@ import { handleRoomMessage } from "@/api/room/handle-room-message";
 import { subscribeError } from "@/api/error/subscribe-error";
 import { handleErrorMessage } from "@/api/error/handle-error-message";
 import { ROUTE_PATHS } from "@/routes/paths";
+import { useSetGameInfo, useSetGamePlayers } from "@/store/game-store";
 import { useResetRoom } from "@/store/room-store";
 
 /**
@@ -26,11 +27,16 @@ interface UseRoomSocketProps {
 
 export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
   const navigate = useNavigate();
+  const setGameInfo = useSetGameInfo();
+  const setGamePlayers = useSetGamePlayers();
   const [isPending, setIsPending] = useState(false);
+  const [isGameStarting, setIsGameStarting] = useState(false);
   const resetRoom = useResetRoom();
 
   const roomUnsubscribe = useRef<(() => void) | undefined>(undefined);
   const errorUnsubscribe = useRef<(() => void) | undefined>(undefined);
+
+  const isGameStarted = useRef(false);
 
   useEffect(() => {
     if (!roomId) return;
@@ -52,6 +58,17 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
 
         // 웹소켓 메시지 핸들러
         roomUnsubscribe.current = subscribeRoom(roomId, message => {
+          if (message.type === "GAME_START") {
+            isGameStarted.current = true;
+            setGameInfo(message.roomId, message.gameId);
+            setGamePlayers(message.payload.players);
+            setIsGameStarting(true);
+            setTimeout(() => {
+              navigate(`/game/${message.gameId}`, { replace: true });
+            }, 3000);
+            return;
+          }
+
           handleRoomMessage(message, myUserId);
         });
 
@@ -73,6 +90,12 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
     setupConnection();
 
     return () => {
+      // TODO: 더 나은 방법으로 개선 필요
+      if (isGameStarted.current) {
+        return;
+      }
+
+      // 게임이 시작되지 않은 경우 정상적으로 cleanup
       const client = getClient();
       if (client && client.active) {
         if (roomUnsubscribe.current) roomUnsubscribe.current();
@@ -83,5 +106,5 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
     };
   }, [roomId, myUserId, navigate, resetRoom]);
 
-  return { isPending };
+  return { isPending, isGameStarting };
 };

@@ -1,3 +1,5 @@
+import type { GamePlayer } from "../game/types";
+
 export interface RoomListDto {
   rooms: RoomItem[];
   page: number;
@@ -64,12 +66,27 @@ export interface HostChangedMessage {
   reason: "HOST_LEFT";
 }
 
+export interface GameStartMessage {
+  type: "GAME_START";
+  roomId: string;
+  gameId: number;
+  occurredAt: number;
+  payload: {
+    quiz: {
+      currentQuizIndex: number;
+      totalQuizCount: number;
+    };
+    players: GamePlayer[];
+  };
+}
+
 // 모든 웹소켓 메시지 타입
 export type RoomWebSocketMessage =
   | PlayerJoinMessage
   | PlayerLeaveMessage
   | PlayerReadyMessage
   | PlayerUnreadyMessage
-  | HostChangedMessage;
+  | HostChangedMessage
+  | GameStartMessage;
 
 export type PlayerJoinResponse = PlayerJoinMessage;
