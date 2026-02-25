@@ -1,3 +1,5 @@
+import type { GamePlayer } from "../game/types";
+
 export interface RoomListDto {
   rooms: RoomItem[];
   page: number;
@@ -74,6 +76,7 @@ export interface GameStartMessage {
       currentQuizIndex: number;
       totalQuizCount: number;
     };
+    players: GamePlayer[];
   };
 }
 

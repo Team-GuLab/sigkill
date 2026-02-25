@@ -5,63 +5,15 @@ import { useGameId, useGameQuiz, useGamePlayers } from "@/store/game-store";
 import { useGameSocket } from "@/hooks/game/use-game-socket";
 import type { QuizDetail } from "@/api/game/types";
 
-const currentQuiz = {
-  quizId: 1001,
-  currentQuizIndex: 1,
-  totalQuizCount: 10,
-  startTime: 1771417642829,
-  endTime: 1771417647829,
-  question:
-    "리액트의 핵심 개념이 아닌것은?리액트의 핵심 개념이 아닌것은?리액트의 핵심 개념이 아닌것은?리액트의 핵심 개념이 아닌것은?리액트의 핵심 개념이 아닌것은?리액트의 핵심 개념이 아닌것은?리액트의 핵심 개념이 아닌것은?리액트의 핵심 개념이 아닌것은?리액트의 핵심 개념이 아닌것은?",
-  choices: [
-    { number: 1, text: "Component" },
-    { number: 2, text: "Virtual DOM" },
-    { number: 3, text: "JSX" },
-    { number: 4, text: "SQL Query" },
-  ],
-};
-
-const players = [
-  {
-    userId: 1,
-    name: "John Doe",
-    status: "ALIVE",
-  },
-  {
-    userId: 2,
-    name: "Jane Doe",
-    status: "ALIVE",
-  },
-  {
-    userId: 3,
-    name: "John Doe",
-    status: "ALIVE",
-  },
-  {
-    userId: 4,
-    name: "Jane Doe",
-    status: "ALIVE",
-  },
-  {
-    userId: 5,
-    name: "John Doe",
-    status: "ALIVE",
-  },
-  {
-    userId: 6,
-    name: "Jane Doe",
-    status: "ALIVE",
-  },
-];
 export default function GameRoom() {
   const gameId = useGameId();
   const quiz = useGameQuiz();
-  // const players = useGamePlayers();
+  const players = useGamePlayers();
 
   // question 필드 존재 여부로 QuizDetail narrowing
-  // const currentQuiz = quiz && "question" in quiz ? (quiz as QuizDetail) : null;
+  const currentQuiz = quiz && "question" in quiz ? (quiz as QuizDetail) : null;
 
-  // useGameSocket({ gameId: gameId ?? 0 });
+  useGameSocket({ gameId: gameId ?? 0 });
 
   if (!gameId) {
     return (
@@ -99,10 +51,7 @@ export default function GameRoom() {
         <div className="grid grid-cols-3 gap-12">
           {players.length > 0 &&
             players.map(player => (
-              <div
-                key={player.userId}
-                // className="flex items-center justify-center rounded-full bg-gray-200"
-              >
+              <div key={player.userId}>
                 {player.status === "DEAD" ? (
                   <Ghost className="h-12 w-12" />
                 ) : (

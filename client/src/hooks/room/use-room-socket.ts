@@ -12,7 +12,7 @@ import { handleRoomMessage } from "@/api/room/handle-room-message";
 import { subscribeError } from "@/api/error/subscribe-error";
 import { handleErrorMessage } from "@/api/error/handle-error-message";
 import { ROUTE_PATHS } from "@/routes/paths";
-import { useSetGameInfo } from "@/store/game-store";
+import { useSetGameInfo, useSetGamePlayers } from "@/store/game-store";
 import { useResetRoom } from "@/store/room-store";
 
 /**
@@ -28,6 +28,7 @@ interface UseRoomSocketProps {
 export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
   const navigate = useNavigate();
   const setGameInfo = useSetGameInfo();
+  const setGamePlayers = useSetGamePlayers();
   const [isPending, setIsPending] = useState(false);
   const resetRoom = useResetRoom();
 
@@ -59,7 +60,8 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
           if (message.type === "GAME_START") {
             isGameStarted.current = true;
             setGameInfo(message.roomId, message.gameId);
-            toast.success("게임이 시작됩니다!");
+            setGamePlayers(message.payload.players);
+            toast.success("곧 게임이 시작됩니다!");
             navigate(`/game/${message.gameId}`, { replace: true });
             return;
           }
