@@ -9,6 +9,7 @@ public class GamePlayer extends BaseEntity {
     private final long gameId;
     private final String nickname;
     private int score;
+    private boolean isLoaded;
     private GamePlayerStatus status;
 
     private GamePlayer(long userId, long gameId, String nickname, int score, GamePlayerStatus status) {
@@ -16,6 +17,7 @@ public class GamePlayer extends BaseEntity {
         this.gameId = gameId;
         this.nickname = nickname;
         this.score = score;
+        this.isLoaded = false;
         this.status = status;
     }
 
@@ -33,5 +35,9 @@ public class GamePlayer extends BaseEntity {
 
     public void addScore(int scoreToAdd) {
         this.score += scoreToAdd;
+    }
+
+    public void markAsLoaded() {
+        this.isLoaded = true;
     }
 }
