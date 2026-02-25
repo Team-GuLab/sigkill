@@ -364,6 +364,10 @@ public class GameService {
         if (!room.isInGame()) {
             throw new CustomException(ROOM_NOT_STARTED);
         }
+
+        if (!game.getRoomId().equals(room.getRoomId())) {
+            throw new CustomException(GAME_NOT_FOUND);
+        }
     }
 
     private void validateGameNotInProgress(Room room) {
