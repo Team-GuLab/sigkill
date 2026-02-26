@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameEndEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizEndEvent;
@@ -68,7 +69,11 @@ class GameFlowOrchestratorTest {
             ArgumentCaptor<Instant> instantCaptor = ArgumentCaptor.forClass(Instant.class);
             verify(gameTaskScheduler).schedule(any(Runnable.class), instantCaptor.capture());
             long delayMillis = Duration.between(before, instantCaptor.getValue()).toMillis();
-            assertThat(delayMillis).isBetween(2_500L, 3_500L);
+            assertThat(delayMillis)
+                    .isBetween(
+                            GameConstants.INITIAL_QUIZ_START_DELAY_MILLIS - 500L,
+                            GameConstants.INITIAL_QUIZ_START_DELAY_MILLIS + 500L
+                    );
         }
 
         @Test
@@ -87,7 +92,7 @@ class GameFlowOrchestratorTest {
         }
 
         @Test
-        void 퀴즈_종료후_게임이_계속되면_3초뒤_다음_퀴즈를_예약한다() {
+        void 퀴즈_종료후_게임이_계속되면_10초뒤_다음_퀴즈를_예약한다() {
             // given
             String roomId = "1001";
             Long gameId = 77L;
@@ -147,7 +152,11 @@ class GameFlowOrchestratorTest {
 
             List<Instant> thirdCaptureInstants = instantCaptor.getAllValues();
             long nextDelayMillis = Duration.between(Instant.now(), thirdCaptureInstants.get(thirdCaptureInstants.size() - 1)).toMillis();
-            assertThat(nextDelayMillis).isBetween(2_500L, 3_500L);
+            assertThat(nextDelayMillis)
+                    .isBetween(
+                            GameConstants.NEXT_QUIZ_START_DELAY_MILLIS - 500L,
+                            GameConstants.NEXT_QUIZ_START_DELAY_MILLIS + 500L
+                    );
         }
 
         @Test

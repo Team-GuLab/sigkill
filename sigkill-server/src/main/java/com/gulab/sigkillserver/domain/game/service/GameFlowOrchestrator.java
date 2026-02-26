@@ -1,8 +1,10 @@
 package com.gulab.sigkillserver.domain.game.service;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
+import com.gulab.sigkillserver.domain.game.constant.GameConstants;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
+import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import java.time.Instant;
 import java.util.Map;
@@ -18,8 +20,6 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class GameFlowOrchestrator {
-
-    private static final long QUIZ_START_DELAY_MILLIS = 3_000L;
 
     private final GameService gameService;
     private final RoomRepository roomRepository;
@@ -46,7 +46,7 @@ public class GameFlowOrchestrator {
             log.debug("game.flow initial quiz-start already scheduled - roomId={}, gameId={}", roomId, gameId);
             return;
         }
-        scheduleQuizStart(roomId, gameId, QUIZ_START_DELAY_MILLIS);
+        scheduleQuizStart(roomId, gameId, GameConstants.INITIAL_QUIZ_START_DELAY_MILLIS);
     }
 
     public void cancelFlow(Long gameId) {
@@ -80,7 +80,8 @@ public class GameFlowOrchestrator {
 
             QuizStartEvent quizStartEvent = gameService.startQuiz(hostId, roomId, gameId);
             messagingTemplate.convertAndSend("/topic/game/" + gameId, quizStartEvent);
-            scheduleQuizEnd(roomId, gameId, quizStartEvent.payload().quiz().quizId(), quizStartEvent.payload().quiz().endTime());
+            scheduleQuizEnd(roomId, gameId, quizStartEvent.payload().quiz().quizId(),
+                    quizStartEvent.payload().quiz().endTime());
 
             log.info("game.flow quiz-start executed - roomId={}, gameId={}, quizId={}",
                     roomId, gameId, quizStartEvent.payload().quiz().quizId());
@@ -123,7 +124,7 @@ public class GameFlowOrchestrator {
                 return;
             }
 
-            scheduleQuizStart(roomId, gameId, QUIZ_START_DELAY_MILLIS);
+            scheduleQuizStart(roomId, gameId, GameConstants.NEXT_QUIZ_START_DELAY_MILLIS);
             log.info("game.flow next-quiz scheduled - roomId={}, gameId={}, quizId={}", roomId, gameId, quizId);
         } catch (CustomException e) {
             log.warn("game.flow quiz-end failed - gameId={}, quizId={}, code={}, message={}",
@@ -146,7 +147,7 @@ public class GameFlowOrchestrator {
 
     private Long resolveHostId(String roomId) {
         return roomRepository.findById(roomId)
-                .map(room -> room.getHostId())
+                .map(Room::getHostId)
                 .orElse(null);
     }
 }
