@@ -1,3 +1,12 @@
+// 공통 STOMP 브로드캐스트 메시지 기본 타입
+interface GameBroadcastMessage<T extends string, P> {
+  type: T;
+  roomId: string;
+  gameId: number;
+  occurredAt: number;
+  payload: P;
+}
+
 // 게임 초기 정보
 export interface QuizInfo {
   currentQuizIndex: number;
@@ -51,58 +60,6 @@ export interface QuizDetail {
   choices: QuizChoice[];
 }
 
-// STOMP 응답 메시지
-export interface QuizStartMessage {
-  type: "QUIZ_START";
-  roomId: string;
-  gameId: number;
-  occurredAt: number;
-  payload: {
-    quiz: QuizDetail;
-  };
-}
-
-export interface ChoiceSubmitMessage {
-  type: "CHOICE_SUBMIT";
-  roomId: string;
-  gameId: number;
-  occurredAt: number;
-  payload: {
-    quiz: QuizInfo & { quizId: number };
-    actor: {
-      userId: number;
-      nickname: string;
-    };
-    choiceNumber: number;
-  };
-}
-
-export interface QuizEndMessage {
-  type: "QUIZ_END";
-  roomId: string;
-  gameId: number;
-  occurredAt: number;
-  payload: {
-    quiz: QuizInfo & { quizId: number };
-    answer: {
-      correctChoiceNumber: number;
-      explanation: string;
-    };
-    players: GamePlayer[];
-  };
-}
-
-export interface GameEndMessage {
-  type: "GAME_END";
-  roomId: string;
-  gameId: number;
-  occurredAt: number;
-  payload: {
-    reason: GameEndReason;
-    rankings: GameRanking[];
-  };
-}
-
 // 플레이어별 게임 초기화 완료 상태
 export interface GameLoadedPlayer {
   userId: number;
@@ -110,17 +67,51 @@ export interface GameLoadedPlayer {
   isLoaded: boolean;
 }
 
-// BROADCAST: 모든 플레이어에 대한 게임 초기화 완료 상태
-export interface GameLoadedMessage {
-  type: "GAME_LOADED";
-  roomId: string;
-  gameId: number;
-  occurredAt: number;
-  payload: {
+// STOMP 응답 메시지
+export type QuizStartMessage = GameBroadcastMessage<
+  "QUIZ_START",
+  { quiz: QuizDetail }
+>;
+
+export type ChoiceSubmitMessage = GameBroadcastMessage<
+  "CHOICE_SUBMIT",
+  {
+    quiz: QuizInfo & { quizId: number };
+    actor: {
+      userId: number;
+      nickname: string;
+    };
+    choiceNumber: number;
+  }
+>;
+
+export type QuizEndMessage = GameBroadcastMessage<
+  "QUIZ_END",
+  {
+    quiz: QuizInfo & { quizId: number };
+    answer: {
+      correctChoiceNumber: number;
+      explanation: string;
+    };
+    players: GamePlayer[];
+  }
+>;
+
+export type GameEndMessage = GameBroadcastMessage<
+  "GAME_END",
+  {
+    reason: GameEndReason;
+    rankings: GameRanking[];
+  }
+>;
+
+export type GameLoadedMessage = GameBroadcastMessage<
+  "GAME_LOADED",
+  {
     players: GameLoadedPlayer[];
     allLoaded: boolean;
-  };
-}
+  }
+>;
 
 export type GameWebSocketMessage =
   | QuizStartMessage
