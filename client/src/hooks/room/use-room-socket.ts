@@ -63,9 +63,7 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
             setGameInfo(message.roomId, message.gameId);
             setGamePlayers(message.payload.players);
             setIsGameStarting(true);
-            setTimeout(() => {
-              navigate(`/game/${message.gameId}`, { replace: true });
-            }, 3000);
+            navigate(`/game/${message.gameId}`, { replace: true });
             return;
           }
 

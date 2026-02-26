@@ -7,6 +7,7 @@ const initialState = {
   gameId: null as number | null,
   quiz: null as QuizDetail | null,
   players: [] as GamePlayer[],
+  allLoaded: false,
 };
 
 export const useGameStore = create(
@@ -17,6 +18,7 @@ export const useGameStore = create(
           set({ roomId, gameId }),
         setQuiz: (quiz: QuizDetail) => set({ quiz }),
         setPlayers: (players: GamePlayer[]) => set({ players }),
+        setAllLoaded: (allLoaded: boolean) => set({ allLoaded }),
         reset: () => set(initialState),
       })),
     ),
@@ -30,6 +32,7 @@ export const useGameRoomId = () => useGameStore(state => state.roomId);
 export const useGameId = () => useGameStore(state => state.gameId);
 export const useGameQuiz = () => useGameStore(state => state.quiz);
 export const useGamePlayers = () => useGameStore(state => state.players);
+export const useGameAllLoaded = () => useGameStore(state => state.allLoaded);
 export const useSetGameInfo = () => useGameStore(state => state.setGameInfo);
 export const useSetGameQuiz = () => useGameStore(state => state.setQuiz);
 export const useSetGamePlayers = () => useGameStore(state => state.setPlayers);
