@@ -1,7 +1,11 @@
 import { useEffect, useRef } from "react";
 import { subscribeGame } from "@/api/game/subscribe-game";
 import { handleGameMessage } from "@/api/game/handle-game-message";
-import { disconnectWebSocket, getClient } from "@/app/config/web-socket-client";
+import {
+  disconnectWebSocket,
+  getClient,
+  publishMessage,
+} from "@/app/config/web-socket-client";
 
 interface UseGameSocketParams {
   gameId: number;
@@ -27,6 +31,9 @@ export const useGameSocket = ({ gameId }: UseGameSocketParams) => {
     unsubscribe.current = subscribeGame(gameId, message => {
       handleGameMessage(message);
     });
+
+    // 각 플레이어는 게임 로딩 완료를 서버에 알림
+    publishMessage("/app/game/load", { gameId });
 
     return () => {
       if (unsubscribe.current) {

@@ -103,8 +103,28 @@ export interface GameEndMessage {
   };
 }
 
+// 플레이어별 게임 초기화 완료 상태
+export interface GameLoadedPlayer {
+  userId: number;
+  nickname: string;
+  isLoaded: boolean;
+}
+
+// BROADCAST: 모든 플레이어에 대한 게임 초기화 완료 상태
+export interface GameLoadedMessage {
+  type: "GAME_LOADED";
+  roomId: string;
+  gameId: number;
+  occurredAt: number;
+  payload: {
+    players: GameLoadedPlayer[];
+    allLoaded: boolean;
+  };
+}
+
 export type GameWebSocketMessage =
   | QuizStartMessage
   | ChoiceSubmitMessage
   | QuizEndMessage
-  | GameEndMessage;
+  | GameEndMessage
+  | GameLoadedMessage;

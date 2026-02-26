@@ -1,4 +1,4 @@
-import { useSetGameQuiz, useSetGamePlayers } from "@/store/game-store";
+import { useGameStore } from "@/store/game-store";
 import type { GameWebSocketMessage } from "./types";
 
 /**
@@ -6,20 +6,27 @@ import type { GameWebSocketMessage } from "./types";
  * @param message - 게임 stomp 메시지
  */
 export const handleGameMessage = (message: GameWebSocketMessage) => {
-  const setQuiz = useSetGameQuiz();
-  const setPlayers = useSetGamePlayers();
-
   switch (message.type) {
-    case "QUIZ_START":
+    case "GAME_LOADED": {
+      const { setAllLoaded } = useGameStore.getState();
+      setAllLoaded(message.payload.allLoaded);
+      break;
+    }
+
+    case "QUIZ_START": {
+      const { setQuiz } = useGameStore.getState();
       setQuiz(message.payload.quiz);
       break;
+    }
 
     case "CHOICE_SUBMIT":
       break;
 
-    case "QUIZ_END":
+    case "QUIZ_END": {
+      const { setPlayers } = useGameStore.getState();
       setPlayers(message.payload.players);
       break;
+    }
 
     case "GAME_END":
       break;
