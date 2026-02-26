@@ -22,7 +22,7 @@ export default function QuizTimer() {
     update();
     const id = setInterval(update, 100);
     return () => clearInterval(id);
-  }, [quiz?.startTime]);
+  }, [quiz?.quizId]);
 
   if (!quiz) return null;
 

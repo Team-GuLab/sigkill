@@ -14,13 +14,18 @@ export const handleGameMessage = (message: GameWebSocketMessage) => {
     }
 
     case "QUIZ_START": {
-      const { setQuiz } = useGameStore.getState();
+      const { setQuiz, resetChoiceSubmits } = useGameStore.getState();
+      // 새 라운드 시작 시 이전 라운드의 제출 기록 초기화
+      resetChoiceSubmits();
       setQuiz(message.payload.quiz);
       break;
     }
 
-    case "CHOICE_SUBMIT":
+    case "CHOICE_SUBMIT": {
+      const { setChoiceSubmit } = useGameStore.getState();
+      setChoiceSubmit(message.payload.actor.userId, message.payload.choiceNumber);
       break;
+    }
 
     case "QUIZ_END": {
       const { setPlayers } = useGameStore.getState();
