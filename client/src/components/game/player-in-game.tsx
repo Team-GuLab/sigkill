@@ -6,7 +6,10 @@ interface PlayerInGameProps {
   quizResult?: QuizResult;
 }
 
-export default function PlayerInGame({ player, quizResult }: PlayerInGameProps) {
+export default function PlayerInGame({
+  player,
+  quizResult,
+}: PlayerInGameProps) {
   const animationClass =
     quizResult === "CORRECT"
       ? "animate-bounce"
