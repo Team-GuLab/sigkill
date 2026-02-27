@@ -5,20 +5,25 @@ interface PlayerInGameProps {
   player: GamePlayer;
   quizResult?: QuizResult;
 }
-
+/**
+ * 인게임 플레이어
+ * @param player - 플레이어 상태
+ * @param quizResult - 퀴즈 단건 결과
+ * @returns
+ */
 export default function PlayerInGame({
   player,
   quizResult,
 }: PlayerInGameProps) {
-  const animationClass =
+  const quizResultAnimation =
     quizResult === "CORRECT"
       ? "animate-bounce"
-      : quizResult === "WRONG"
+      : quizResult === "WRONG" || quizResult === "NO_SUBMISSION"
         ? "animate-blink"
         : "";
 
   return (
-    <div className={animationClass}>
+    <div className={quizResultAnimation}>
       {player.status === "DEAD" ? (
         <Ghost className="h-12 w-12 text-gray-500/50" />
       ) : (

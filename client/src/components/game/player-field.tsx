@@ -24,7 +24,7 @@ export default function PlayerField() {
   }
 
   return (
-    <div className="grid grid-cols-3 gap-12">
+    <div className="grid grid-cols-3 gap-6 md:grid-cols-4 lg:grid-cols-6">
       {players.map(player => {
         const choiceNumber = choiceSubmits[player.userId];
 
@@ -36,13 +36,13 @@ export default function PlayerField() {
         return (
           <div key={player.userId} className="flex flex-col items-center">
             <div
-              className={`mb-2 ${choiceNumber === undefined && "invisible"}`}
+              className={`mb-3 ${choiceNumber === undefined && "invisible"}`}
             >
               <SpeechBubble choiceNumber={choiceNumber ?? 0} />
             </div>
             <PlayerInGame player={player} quizResult={quizResult} />
             <p
-              className={`mt-2 text-xs font-medium ${player.userId === user?.userId && "font-semibold underline underline-offset-4"}`}
+              className={`mt-2 max-w-14 text-xs font-medium ${player.userId === user?.userId && "font-semibold underline underline-offset-3"}`}
             >
               {player.nickname}
             </p>
