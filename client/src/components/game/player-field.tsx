@@ -1,10 +1,17 @@
-import { useGameChoiceSubmits, useGamePlayers } from "@/store/game-store";
+import {
+  useGameChoiceSubmits,
+  useGamePlayers,
+  useGameQuizEndAnswer,
+  useGameQuizEndPlayerResults,
+} from "@/store/game-store";
 import PlayerInGame from "./player-in-game";
 import SpeechBubble from "./speech-bubble";
 
 export default function PlayerField() {
   const players = useGamePlayers();
   const choiceSubmits = useGameChoiceSubmits();
+  const quizEndAnswer = useGameQuizEndAnswer();
+  const quizEndPlayerResults = useGameQuizEndPlayerResults();
 
   if (players.length === 0) {
     return (
@@ -19,6 +26,10 @@ export default function PlayerField() {
       {players.map(player => {
         const choiceNumber = choiceSubmits[player.userId];
 
+        const quizResult = quizEndAnswer
+            ? quizEndPlayerResults.find(p => p.userId === player.userId)?.quizResult
+            : undefined;
+
         return (
           <div key={player.userId} className="flex flex-col items-center">
             <div
@@ -26,7 +37,7 @@ export default function PlayerField() {
             >
               <SpeechBubble choiceNumber={choiceNumber ?? 0} />
             </div>
-            <PlayerInGame player={player} />
+            <PlayerInGame player={player} quizResult={quizResult} />
             <p className="mt-2 text-xs font-medium">{player.nickname}</p>
           </div>
         );
