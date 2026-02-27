@@ -1,8 +1,11 @@
-import { Dog, Ghost } from "lucide-react";
-import { useGamePlayers } from "@/store/game-store";
+import { useGameChoiceSubmits, useGamePlayers } from "@/store/game-store";
+import PlayerInGame from "./player-in-game";
+import SpeechBubble from "./speech-bubble";
 
 export default function PlayerField() {
   const players = useGamePlayers();
+  const choiceSubmits = useGameChoiceSubmits();
+
   if (players.length === 0) {
     return (
       <div className="flex items-center justify-center">
@@ -10,18 +13,24 @@ export default function PlayerField() {
       </div>
     );
   }
+
   return (
     <div className="grid grid-cols-3 gap-12">
-      {players.length > 0 &&
-        players.map(player => (
-          <div key={player.userId}>
-            {player.status === "DEAD" ? (
-              <Ghost className="h-12 w-12" />
-            ) : (
-              <Dog className="h-12 w-12 text-stone-800" />
-            )}
+      {players.map(player => {
+        const choiceNumber = choiceSubmits[player.userId];
+
+        return (
+          <div key={player.userId} className="flex flex-col items-center">
+            <div
+              className={`mb-2 ${choiceNumber === undefined && "invisible"}`}
+            >
+              <SpeechBubble choiceNumber={choiceNumber ?? 0} />
+            </div>
+            <PlayerInGame player={player} />
+            <p className="mt-2 text-xs font-medium">{player.nickname}</p>
           </div>
-        ))}
+        );
+      })}
     </div>
   );
 }
