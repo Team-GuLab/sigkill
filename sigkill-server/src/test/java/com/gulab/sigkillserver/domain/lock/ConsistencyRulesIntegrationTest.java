@@ -389,12 +389,28 @@ public class ConsistencyRulesIntegrationTest {
     @Nested
     class RoomLeaveHostTransitionConcurrencyTests {
         @Test
-        void 나가는_사용자와_들어오는_사용자가_겹쳐도_방_참가자_목록이_깨지지_않는다() {
+        void 나가는_사용자와_들어오는_사용자가_겹쳐도_방_참가자_목록이_깨지지_않는다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long leavingGuestUserId = loginGuest("leavingGuestSession").userId();
+            long joiningGuestUserId = loginGuest("joiningGuestSession").userId();
+            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            String roomId = createdRoom.roomId();
+            roomService.joinRoom(roomId, leavingGuestUserId);
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> roomService.leaveRoom(roomId, leavingGuestUserId),
+                    () -> roomService.joinRoom(roomId, joiningGuestUserId)
+            );
 
             // then
+            assertThat(errors).isEmpty();
+            List<Player> players = playerRepository.findAllByRoomId(roomId);
+            assertThat(players).hasSize(2);
+            assertThat(players).extracting(Player::getUserId).
+                    containsExactlyInAnyOrder(hostUserId, joiningGuestUserId)
+                    .doesNotContain(leavingGuestUserId);
         }
 
         @Test
