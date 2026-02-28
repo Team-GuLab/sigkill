@@ -456,12 +456,47 @@ public class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 방장이_나가는_순간_게임_시작_요청이_겹쳐도_새_방장이_정상적으로_결정된다() {
+        void 방장이_나가는_순간_게임_시작_요청이_겹쳐도_새_방장이_정상적으로_결정된다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long guest1UserId = loginGuest("guest1Session").userId();
+            long guest2UserId = loginGuest("guest2Session").userId();
+
+            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            String roomId = createdRoom.roomId();
+            roomService.joinRoom(roomId, guest1UserId);
+            roomService.joinRoom(roomId, guest2UserId);
+            roomService.readyPlayer(roomId, guest1UserId);
+            roomService.readyPlayer(roomId, guest2UserId);
+
+            AtomicReference<GameStartEvent> gameStartEventRef = new AtomicReference<>();
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> {
+                        Thread.sleep(100);
+                        roomService.leaveRoom(roomId, hostUserId);
+                    },
+                    () -> gameStartEventRef.set(roomService.startGame(roomId, hostUserId))
+            );
 
             // then
+            assertThat(errors).isEmpty();
+
+            Room room = roomRepository.findById(roomId).orElseThrow();
+            List<Player> players = playerRepository.findAllByRoomId(roomId);
+            List<Long> remainingUserIds = players.stream()
+                    .map(Player::getUserId)
+                    .toList();
+            GameStartEvent gameStartEvent = gameStartEventRef.get();
+
+            assertThat(remainingUserIds).hasSize(2);
+            assertThat(remainingUserIds).doesNotContain(hostUserId);
+            assertThat(remainingUserIds).contains(room.getHostId());
+            assertThat(room.getHostId()).isNotEqualTo(hostUserId);
+            assertThat(gamePlayerRepository.getByGameId(gameStartEvent.gameId()))
+                    .extracting(GamePlayer::getUserId)
+                    .containsExactlyInAnyOrderElementsOf(remainingUserIds);
         }
 
         @Test
