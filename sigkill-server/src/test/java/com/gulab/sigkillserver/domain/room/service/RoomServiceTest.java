@@ -3,6 +3,9 @@ package com.gulab.sigkillserver.domain.room.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.common.exception.CustomException;
@@ -42,6 +45,7 @@ import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -540,6 +544,35 @@ class RoomServiceTest {
             // then
             assertThat(roomRepository.findAll()).isEmpty();
             assertThat(playerRepository.findAll()).isEmpty();
+        }
+
+        @Test
+        void 방번호_중복_예외가_발생하면_재시도하여_방_생성에_성공한다() {
+            // given
+            User host = createAndSaveUser("test-session-retry-on-duplicate", "호스트");
+            RoomRepository retryingRoomRepository = mock(RoomRepository.class);
+            AtomicBoolean firstCall = new AtomicBoolean(true);
+            when(retryingRoomRepository.save(any(Room.class))).thenAnswer(invocation -> {
+                Room room = invocation.getArgument(0);
+                if (firstCall.getAndSet(false)) {
+                    throw new CustomException(RoomErrorCode.ROOM_ID_ALREADY_EXISTS);
+                }
+                return roomRepository.save(room);
+            });
+            RoomService retryingRoomService = new RoomService(
+                    retryingRoomRepository,
+                    userRepository,
+                    playerRepository,
+                    gameService
+            );
+
+            // when
+            var response = retryingRoomService.createRoom("재시도 방", TEST_CAPACITY, host.getUserId());
+
+            // then
+            assertThat(response.room().roomId()).matches("\\d{4}");
+            assertThat(response.room().roomTitle()).isEqualTo("재시도 방");
+            assertThat(playerRepository.existsByRoomIdAndUserId(response.room().roomId(), host.getUserId())).isTrue();
         }
     }
 

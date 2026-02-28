@@ -15,6 +15,7 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_C
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_IN_GAME;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_ID_ALREADY_EXISTS;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID;
@@ -162,8 +163,12 @@ public class RoomService {
 
                 log.info("room.create success - roomId={}, hostId={}, capacity={}", roomId, userId, resolvedCapacity);
                 return RoomCreateResponse.of(room, hostPlayer);
-            } catch (IllegalStateException e) {
-                log.debug("Room ID 중복 발생, 재시도 중 (attempt: {}): {}", i + 1, e.getMessage());
+            } catch (CustomException e) {
+                if (ROOM_ID_ALREADY_EXISTS.name().equals(e.getErrorCode().getCode())) {
+                    log.debug("Room ID 중복 발생, 재시도 중 (attempt: {}): {}", i + 1, e.getMessage());
+                    continue;
+                }
+                throw e;
             }
         }
 
