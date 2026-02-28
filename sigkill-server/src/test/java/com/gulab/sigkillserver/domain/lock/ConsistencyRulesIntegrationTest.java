@@ -100,34 +100,22 @@ public class ConsistencyRulesIntegrationTest {
         return userService.loginAsGuest(session);
     }
 
-    @Nested
-    class RoomCreateJoinConcurrencyTests {
-        // @RepeatedTest(10000)
-        @Test
-        void 동시에_여러_사용자가_방을_만들어도_서로_다른_방_번호가_발급된다() throws InterruptedException {
-            // given
-            int userCount = 6;
-            List<Long> userIds = IntStream.range(0, userCount)
-                    .mapToObj(i -> loginGuest("session" + i).userId())
-                    .toList();
+    private <T> List<Throwable> runConcurrently(List<T> inputs, ThrowingConsumer<T> action)
+            throws InterruptedException {
+        int threadCount = inputs.size();
+        ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threadCount);
+        List<Throwable> errors = Collections.synchronizedList(new ArrayList<>());
 
-            // when
-            ExecutorService pool = Executors.newFixedThreadPool(userCount);
-            CountDownLatch ready = new CountDownLatch(userCount);
-            CountDownLatch start = new CountDownLatch(1);
-            CountDownLatch done = new CountDownLatch(userCount);
-
-            Set<String> roomIds = ConcurrentHashMap.newKeySet();
-            List<Throwable> errors = Collections.synchronizedList(new ArrayList<>());
-
-            for (int i = 0; i < userCount; i++) {
-                long userId = userIds.get(i);
+        try {
+            for (T input : inputs) {
                 pool.submit(() -> {
                     ready.countDown();
                     try {
                         start.await();
-                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, userId);
-                        roomIds.add(res.roomId());
+                        action.accept(input);
                     } catch (Throwable t) {
                         errors.add(t);
                     } finally {
@@ -139,8 +127,36 @@ public class ConsistencyRulesIntegrationTest {
             ready.await();
             start.countDown();
             done.await();
+            return errors;
+        } finally {
             pool.shutdown();
+        }
+    }
 
+    @FunctionalInterface
+    private interface ThrowingConsumer<T> {
+        void accept(T input) throws Exception;
+    }
+
+    @Nested
+    class RoomCreateJoinConcurrencyTests {
+        //        @RepeatedTest(10000)
+        @Test
+        void 동시에_여러_사용자가_방을_만들어도_서로_다른_방_번호가_발급된다() throws InterruptedException {
+            // given
+            int userCount = 6;
+            List<Long> userIds = IntStream.range(0, userCount)
+                    .mapToObj(i -> loginGuest("session" + i).userId())
+                    .toList();
+            Set<String> roomIds = ConcurrentHashMap.newKeySet();
+
+            // when
+            List<Throwable> errors = runConcurrently(userIds, userId -> {
+                RoomCreateResponse res = roomService.createRoom("테스트 방", 6, userId);
+                roomIds.add(res.roomId());
+            });
+
+            // then
             assertThat(errors).isEmpty();
             assertThat(roomIds).hasSize(userCount);
             assertThat(roomIds).doesNotContainNull();
