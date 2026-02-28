@@ -5,6 +5,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPlayerInfo;
+import com.gulab.sigkillserver.domain.game.model.GamePlayer;
 import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GamePlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GamePlayerRepository;
@@ -33,11 +36,14 @@ import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -134,9 +140,76 @@ public class ConsistencyRulesIntegrationTest {
         }
     }
 
+    private List<Throwable> runConcurrently(ThrowingRunnable... actions) throws InterruptedException {
+        return runConcurrently(List.of(actions), ThrowingRunnable::run);
+    }
+
     @FunctionalInterface
     private interface ThrowingConsumer<T> {
         void accept(T input) throws Exception;
+    }
+
+    @FunctionalInterface
+    private interface ThrowingRunnable {
+        void run() throws Exception;
+    }
+
+    private static class SnapshotRacePlayerRepository extends PlayerMemoryRepository {
+        private final Long lateJoinerUserId;
+        private final CountDownLatch lateJoinCreateAttempted = new CountDownLatch(1);
+        private final CountDownLatch gameStartSnapshotTaken = new CountDownLatch(1);
+        private volatile String roomIdForCoordination;
+
+        private SnapshotRacePlayerRepository(Long lateJoinerUserId) {
+            this.lateJoinerUserId = lateJoinerUserId;
+        }
+
+        private void coordinateForRoom(String roomId) {
+            this.roomIdForCoordination = roomId;
+        }
+
+        private boolean awaitLateJoinCreateAttempted() throws InterruptedException {
+            return lateJoinCreateAttempted.await(3, TimeUnit.SECONDS);
+        }
+
+        @Override
+        public Player create(Player player) {
+            if (Objects.equals(player.getUserId(), lateJoinerUserId)
+                    && Objects.equals(player.getRoomId(), roomIdForCoordination)) {
+                lateJoinCreateAttempted.countDown();
+                try {
+                    boolean released = gameStartSnapshotTaken.await(3, TimeUnit.SECONDS);
+                    if (!released) {
+                        throw new IllegalStateException("게임 시작 스냅샷 대기 타임아웃");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("late join create 대기 중 인터럽트", e);
+                }
+            }
+            return super.create(player);
+        }
+
+        @Override
+        public List<Player> findAllByRoomId(String roomId) {
+            List<Player> players = super.findAllByRoomId(roomId);
+            if (Objects.equals(roomId, roomIdForCoordination)
+                    && lateJoinCreateAttempted.getCount() == 0
+                    && isGameServiceStartGameInCallStack()) {
+                gameStartSnapshotTaken.countDown();
+            }
+            return players;
+        }
+
+        private boolean isGameServiceStartGameInCallStack() {
+            for (StackTraceElement frame : Thread.currentThread().getStackTrace()) {
+                if (GameService.class.getName().equals(frame.getClassName())
+                        && "startGame".equals(frame.getMethodName())) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     @Nested
@@ -211,12 +284,64 @@ public class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 게임_시작_요청과_입장_요청이_동시에_도착해도_시작_시점의_참가자_스냅샷과_실제_방_인원이_일치한다() {
+        void 게임_시작_요청과_입장_요청이_동시에_도착해도_시작_시점의_참가자_스냅샷과_실제_방_인원이_일치한다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long readyGuestUserId = loginGuest("readyGuestSession").userId();
+            long lateJoinerUserId = loginGuest("lateJoinerSession").userId();
+
+            SnapshotRacePlayerRepository snapshotRacePlayerRepository = new SnapshotRacePlayerRepository(
+                    lateJoinerUserId);
+            playerRepository = snapshotRacePlayerRepository;
+            gameService = new GameService(
+                    userRepository,
+                    gameRepository,
+                    quizRepository,
+                    playerRepository,
+                    roomRepository,
+                    selectedChoiceRepository,
+                    quizChoiceNumberMappingRepository,
+                    gamePlayerRepository,
+                    gameEventBuilder
+            );
+            roomService = new RoomService(roomRepository, userRepository, playerRepository, gameService);
+
+            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            String roomId = createdRoom.roomId();
+            roomService.joinRoom(roomId, readyGuestUserId);
+            roomService.readyPlayer(roomId, readyGuestUserId);
+            snapshotRacePlayerRepository.coordinateForRoom(roomId);
+
+            AtomicReference<GameStartEvent> gameStartEventRef = new AtomicReference<>();
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> {
+                        if (!snapshotRacePlayerRepository.awaitLateJoinCreateAttempted()) {
+                            throw new IllegalStateException("late join create 시도 대기 타임아웃");
+                        }
+                        gameStartEventRef.set(roomService.startGame(roomId, hostUserId));
+                    },
+                    () -> roomService.joinRoom(roomId, lateJoinerUserId)
+            );
 
             // then
+            assertThat(errors).isEmpty();
+
+            GameStartEvent gameStartEvent = gameStartEventRef.get();
+            assertThat(gameStartEvent).isNotNull();
+
+            List<Long> snapshotUserIds = gameStartEvent.payload().players().stream()
+                    .map(QuizEndPlayerInfo::userId)
+                    .toList();
+            List<Long> roomUserIds = playerRepository.findAllByRoomId(roomId).stream()
+                    .map(Player::getUserId)
+                    .toList();
+
+            assertThat(snapshotUserIds).containsExactlyInAnyOrderElementsOf(roomUserIds);
+            assertThat(gamePlayerRepository.getByGameId(gameStartEvent.gameId()))
+                    .extracting(GamePlayer::getUserId)
+                    .containsExactlyInAnyOrderElementsOf(roomUserIds);
         }
     }
 
