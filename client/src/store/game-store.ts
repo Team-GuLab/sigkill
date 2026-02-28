@@ -1,6 +1,17 @@
 import { create } from "zustand";
 import { combine, devtools, subscribeWithSelector } from "zustand/middleware";
-import type { QuizDetail, GamePlayer, QuizAnswer } from "@/api/game/types";
+import type {
+  QuizDetail,
+  GamePlayer,
+  QuizAnswer,
+  GameEndReason,
+  GameRanking,
+} from "@/api/game/types";
+
+interface GameEnd {
+  reason: GameEndReason;
+  rankings: GameRanking[];
+}
 
 const initialState = {
   roomId: null as string | null,
@@ -15,6 +26,8 @@ const initialState = {
   quizEndAnswer: null as QuizAnswer | null,
   // 플레이어 결과
   quizEndPlayerResults: [] as GamePlayer[],
+  // 게임 종료 정보
+  gameEnd: null as GameEnd | null,
 };
 
 export const useGameStore = create(
@@ -35,6 +48,7 @@ export const useGameStore = create(
           set({ quizEndAnswer }),
         setQuizEndPlayerResults: (quizEndPlayerResults: GamePlayer[]) =>
           set({ quizEndPlayerResults }),
+        setGameEnd: (gameEnd: GameEnd | null) => set({ gameEnd }),
         reset: () => set(initialState),
       })),
     ),
@@ -58,4 +72,5 @@ export const useGameQuizEndAnswer = () =>
   useGameStore(state => state.quizEndAnswer);
 export const useGameQuizEndPlayerResults = () =>
   useGameStore(state => state.quizEndPlayerResults);
+export const useGameEnd = () => useGameStore(state => state.gameEnd);
 export const useResetGame = () => useGameStore(state => state.reset);

@@ -50,8 +50,11 @@ export const handleGameMessage = (message: GameWebSocketMessage) => {
       break;
     }
 
-    case "GAME_END":
+    case "GAME_END": {
+      const { setGameEnd } = useGameStore.getState();
+      setGameEnd(message.payload);
       break;
+    }
 
     default:
       // @ts-ignore
