@@ -167,12 +167,20 @@ public class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 같은_사용자가_동시에_여러_번_방_만들기를_눌러도_방은_하나만_만들어진다() {
+        void 같은_사용자가_동시에_여러_번_방_만들기를_눌러도_방은_하나만_만들어진다() throws InterruptedException {
             // given
+            LoginResponse rs = loginGuest("session1");
 
             // when
+            List<Throwable> errors = runConcurrently(List.of(rs.userId(), rs.userId()), userId -> {
+                roomService.createRoom("테스트 방", 6, rs.userId());
+            });
 
             // then
+            assertThat(errors).hasSize(1);
+            assertThat(roomRepository.findAll()).hasSize(1);
+            assertThat(playerRepository.findAll()).hasSize(1);
+            assertThat(playerRepository.findAll().getFirst().getUserId()).isEqualTo(rs.userId());
         }
 
         @Test
