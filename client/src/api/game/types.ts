@@ -31,7 +31,7 @@ export interface GamePlayer {
 }
 
 // 게임 종료 이유
-export type GameEndReason = "ONE_SURVIVOR" | "ALL_DEAD" | "QUIZ_END";
+export type GameEndReason = "ONE_SURVIVOR" | "ALL_DEAD" | "QUIZ_EXHAUSTED";
 
 // 게임 랭킹
 export interface GameRanking {

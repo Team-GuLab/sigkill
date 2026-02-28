@@ -1,4 +1,5 @@
 import {
+  useGameEnd,
   useGameQuizEndAnswer,
   useGameQuizEndPlayerResults,
 } from "@/store/game-store";
@@ -38,9 +39,10 @@ const QUIZ_RESULT_ALERT_MAP = {
 export default function QuizResultAlert() {
   const quizEndAnswer = useGameQuizEndAnswer();
   const quizEndPlayerResults = useGameQuizEndPlayerResults();
+  const gameEnd = useGameEnd();
   const user = useUser();
 
-  if (!quizEndAnswer || !user) return null;
+  if (!quizEndAnswer || !user || gameEnd) return null;
 
   const myResult = quizEndPlayerResults.find(
     p => p.userId === user.userId,
