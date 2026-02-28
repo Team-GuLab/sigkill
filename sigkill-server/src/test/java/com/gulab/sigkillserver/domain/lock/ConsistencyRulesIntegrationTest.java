@@ -44,7 +44,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -107,9 +106,8 @@ public class ConsistencyRulesIntegrationTest {
         return userService.loginAsGuest(session);
     }
 
-    private <T> List<Throwable> runConcurrently(List<T> inputs, ThrowingConsumer<T> action)
-            throws InterruptedException {
-        int threadCount = inputs.size();
+    private List<Throwable> runConcurrently(ThrowingRunnable... actions) throws InterruptedException {
+        int threadCount = actions.length;
         ExecutorService pool = Executors.newFixedThreadPool(threadCount);
         CountDownLatch ready = new CountDownLatch(threadCount);
         CountDownLatch start = new CountDownLatch(1);
@@ -117,12 +115,12 @@ public class ConsistencyRulesIntegrationTest {
         List<Throwable> errors = Collections.synchronizedList(new ArrayList<>());
 
         try {
-            for (T input : inputs) {
+            for (ThrowingRunnable action : actions) {
                 pool.submit(() -> {
                     ready.countDown();
                     try {
                         start.await();
-                        action.accept(input);
+                        action.run();
                     } catch (Throwable t) {
                         errors.add(t);
                     } finally {
@@ -138,15 +136,6 @@ public class ConsistencyRulesIntegrationTest {
         } finally {
             pool.shutdown();
         }
-    }
-
-    private List<Throwable> runConcurrently(ThrowingRunnable... actions) throws InterruptedException {
-        return runConcurrently(List.of(actions), ThrowingRunnable::run);
-    }
-
-    @FunctionalInterface
-    private interface ThrowingConsumer<T> {
-        void accept(T input) throws Exception;
     }
 
     @FunctionalInterface
@@ -218,24 +207,56 @@ public class ConsistencyRulesIntegrationTest {
         @Test
         void 동시에_여러_사용자가_방을_만들어도_서로_다른_방_번호가_발급된다() throws InterruptedException {
             // given
-            int userCount = 6;
-            List<Long> userIds = IntStream.range(0, userCount)
-                    .mapToObj(i -> loginGuest("session" + i).userId())
-                    .toList();
+            LoginResponse user1 = loginGuest("session1");
+            LoginResponse user2 = loginGuest("session2");
+            LoginResponse user3 = loginGuest("session3");
+            LoginResponse user4 = loginGuest("session4");
+            LoginResponse user5 = loginGuest("session5");
+            LoginResponse user6 = loginGuest("session6");
+            List<Long> userIds = List.of(
+                    user1.userId(),
+                    user2.userId(),
+                    user3.userId(),
+                    user4.userId(),
+                    user5.userId(),
+                    user6.userId()
+            );
             Set<String> roomIds = ConcurrentHashMap.newKeySet();
 
             // when
-            List<Throwable> errors = runConcurrently(userIds, userId -> {
-                RoomCreateResponse res = roomService.createRoom("테스트 방", 6, userId);
-                roomIds.add(res.roomId());
-            });
+            List<Throwable> errors = runConcurrently(
+                    () -> {
+                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user1.userId());
+                        roomIds.add(res.roomId());
+                    },
+                    () -> {
+                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user2.userId());
+                        roomIds.add(res.roomId());
+                    },
+                    () -> {
+                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user3.userId());
+                        roomIds.add(res.roomId());
+                    },
+                    () -> {
+                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user4.userId());
+                        roomIds.add(res.roomId());
+                    },
+                    () -> {
+                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user5.userId());
+                        roomIds.add(res.roomId());
+                    },
+                    () -> {
+                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user6.userId());
+                        roomIds.add(res.roomId());
+                    }
+            );
 
             // then
             assertThat(errors).isEmpty();
-            assertThat(roomIds).hasSize(userCount);
+            assertThat(roomIds).hasSize(userIds.size());
             assertThat(roomIds).doesNotContainNull();
             var createdRooms = roomRepository.findAll();
-            assertThat((long) createdRooms.size()).isEqualTo(userCount);
+            assertThat((long) createdRooms.size()).isEqualTo(userIds.size());
             assertThat(createdRooms).extracting(Room::getHostId)
                     .containsExactlyInAnyOrderElementsOf(userIds);
         }
@@ -246,9 +267,10 @@ public class ConsistencyRulesIntegrationTest {
             LoginResponse rs = loginGuest("session1");
 
             // when
-            List<Throwable> errors = runConcurrently(List.of(rs.userId(), rs.userId()), userId -> {
-                roomService.createRoom("테스트 방", 6, rs.userId());
-            });
+            List<Throwable> errors = runConcurrently(
+                    () -> roomService.createRoom("테스트 방", 6, rs.userId()),
+                    () -> roomService.createRoom("테스트 방", 6, rs.userId())
+            );
 
             // then
             assertThat(errors).hasSize(1);
@@ -262,20 +284,39 @@ public class ConsistencyRulesIntegrationTest {
             // given
             long hostUserId = loginGuest("hostSession").userId();
 
-            int userCount = 5;
-            List<Long> userIds = IntStream.range(0, userCount)
-                    .mapToObj(i -> loginGuest("session" + i).userId())
-                    .toList();
+            LoginResponse user1 = loginGuest("session1");
+            LoginResponse user2 = loginGuest("session2");
+            LoginResponse user3 = loginGuest("session3");
+            LoginResponse user4 = loginGuest("session4");
+            LoginResponse user5 = loginGuest("session5");
 
             RoomCreateResponse rcr = roomService.createRoom("테스트 방", 2, hostUserId);
             String roomId = rcr.roomId();
             Set<Long> joinedUserIds = ConcurrentHashMap.newKeySet();
 
             // when
-            runConcurrently(userIds, userId -> {
-                roomService.joinRoom(roomId, userId);
-                joinedUserIds.add(userId);
-            });
+            runConcurrently(
+                    () -> {
+                        roomService.joinRoom(roomId, user1.userId());
+                        joinedUserIds.add(user1.userId());
+                    },
+                    () -> {
+                        roomService.joinRoom(roomId, user2.userId());
+                        joinedUserIds.add(user2.userId());
+                    },
+                    () -> {
+                        roomService.joinRoom(roomId, user3.userId());
+                        joinedUserIds.add(user3.userId());
+                    },
+                    () -> {
+                        roomService.joinRoom(roomId, user4.userId());
+                        joinedUserIds.add(user4.userId());
+                    },
+                    () -> {
+                        roomService.joinRoom(roomId, user5.userId());
+                        joinedUserIds.add(user5.userId());
+                    }
+            );
 
             // then
             List<Player> players = playerRepository.findAllByRoomId(roomId);
