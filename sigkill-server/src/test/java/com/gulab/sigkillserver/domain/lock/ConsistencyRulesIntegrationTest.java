@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.domain.lock;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,8 @@ import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryReposi
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
 import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
+import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
@@ -26,6 +29,15 @@ import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import com.gulab.sigkillserver.domain.user.service.UserService;
 import jakarta.servlet.http.HttpSession;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -90,13 +102,52 @@ public class ConsistencyRulesIntegrationTest {
 
     @Nested
     class RoomCreateJoinConcurrencyTests {
+        // @RepeatedTest(10000)
         @Test
-        void 동시에_여러_사용자가_방을_만들어도_서로_다른_방_번호가_발급된다() {
+        void 동시에_여러_사용자가_방을_만들어도_서로_다른_방_번호가_발급된다() throws InterruptedException {
             // given
+            int userCount = 6;
+            List<Long> userIds = IntStream.range(0, userCount)
+                    .mapToObj(i -> loginGuest("session" + i).userId())
+                    .toList();
 
             // when
+            ExecutorService pool = Executors.newFixedThreadPool(userCount);
+            CountDownLatch ready = new CountDownLatch(userCount);
+            CountDownLatch start = new CountDownLatch(1);
+            CountDownLatch done = new CountDownLatch(userCount);
 
-            // then
+            Set<String> roomIds = ConcurrentHashMap.newKeySet();
+            List<Throwable> errors = Collections.synchronizedList(new ArrayList<>());
+
+            for (int i = 0; i < userCount; i++) {
+                long userId = userIds.get(i);
+                pool.submit(() -> {
+                    ready.countDown();
+                    try {
+                        start.await();
+                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, userId);
+                        roomIds.add(res.roomId());
+                    } catch (Throwable t) {
+                        errors.add(t);
+                    } finally {
+                        done.countDown();
+                    }
+                });
+            }
+
+            ready.await();
+            start.countDown();
+            done.await();
+            pool.shutdown();
+
+            assertThat(errors).isEmpty();
+            assertThat(roomIds).hasSize(userCount);
+            assertThat(roomIds).doesNotContainNull();
+            var createdRooms = roomRepository.findAll();
+            assertThat((long) createdRooms.size()).isEqualTo(userCount);
+            assertThat(createdRooms).extracting(Room::getHostId)
+                    .containsExactlyInAnyOrderElementsOf(userIds);
         }
 
         @Test
