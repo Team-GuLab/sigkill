@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -413,13 +414,45 @@ public class ConsistencyRulesIntegrationTest {
                     .doesNotContain(leavingGuestUserId);
         }
 
-        @Test
-        void 방_나가기_요청과_게임_시작_요청이_동시에_도착해도_게임_참가자와_방_인원_정보가_일치한다() {
+        @RepeatedTest(100)
+        void 방_나가기_요청과_게임_시작_요청이_동시에_도착해도_게임_참가자와_방_인원_정보가_일치한다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long leavingGuestUserId = loginGuest("leavingGuestSession").userId();
+            long stayingGuestUserId = loginGuest("stayingGuestSession").userId();
+
+            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            String roomId = createdRoom.roomId();
+            roomService.joinRoom(roomId, leavingGuestUserId);
+            roomService.joinRoom(roomId, stayingGuestUserId);
+            roomService.readyPlayer(roomId, leavingGuestUserId);
+            roomService.readyPlayer(roomId, stayingGuestUserId);
+
+            AtomicReference<GameStartEvent> gameStartEventRef = new AtomicReference<>();
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> gameStartEventRef.set(roomService.startGame(roomId, hostUserId)),
+                    () -> roomService.leaveRoom(roomId, leavingGuestUserId)
+            );
 
             // then
+            assertThat(errors).isEmpty();
+
+            GameStartEvent gameStartEvent = gameStartEventRef.get();
+            assertThat(gameStartEvent).isNotNull();
+
+            List<Long> gamePlayerUserIds = gamePlayerRepository.getByGameId(gameStartEvent.gameId()).stream()
+                    .map(GamePlayer::getUserId)
+                    .toList();
+            List<Long> roomUserIds = playerRepository.findAllByRoomId(roomId).stream()
+                    .map(Player::getUserId)
+                    .toList();
+
+            assertThat(gamePlayerUserIds).containsExactlyInAnyOrderElementsOf(roomUserIds);
+            assertThat(gameStartEvent.payload().players())
+                    .extracting(QuizEndPlayerInfo::userId)
+                    .containsExactlyInAnyOrderElementsOf(roomUserIds);
         }
 
         @Test
