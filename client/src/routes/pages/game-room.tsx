@@ -5,6 +5,7 @@ import QuizBanner from "@/components/game/quiz-banner";
 import QuizTimer from "@/components/game/quiz-timer";
 import PlayerField from "@/components/game/player-field";
 import Choices from "@/components/game/choices";
+import QuizResultAlert from "@/components/game/quiz-result-alert";
 import { useEffect } from "react";
 
 export default function GameRoom() {
@@ -46,6 +47,7 @@ export default function GameRoom() {
 
       {/* 선지 */}
       <section className="my-2 flex shrink-0 flex-col space-y-2">
+        <QuizResultAlert />
         <Choices />
       </section>
     </div>

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { combine, devtools, subscribeWithSelector } from "zustand/middleware";
-import type { QuizDetail, GamePlayer } from "@/api/game/types";
+import type { QuizDetail, GamePlayer, QuizAnswer } from "@/api/game/types";
 
 const initialState = {
   roomId: null as string | null,
@@ -10,6 +10,11 @@ const initialState = {
   allLoaded: false,
   // 현재 라운드에서 각 플레이어가 제출한 선지 번호
   choiceSubmits: {} as Partial<Record<number, number>>,
+  // 퀴즈 종료 시
+  // 정답 정보
+  quizEndAnswer: null as QuizAnswer | null,
+  // 플레이어 결과
+  quizEndPlayerResults: [] as GamePlayer[],
 };
 
 export const useGameStore = create(
@@ -26,6 +31,10 @@ export const useGameStore = create(
             choiceSubmits: { ...state.choiceSubmits, [userId]: choiceNumber },
           })),
         resetChoiceSubmits: () => set({ choiceSubmits: {} }),
+        setQuizEndAnswer: (quizEndAnswer: QuizAnswer | null) =>
+          set({ quizEndAnswer }),
+        setQuizEndPlayerResults: (quizEndPlayerResults: GamePlayer[]) =>
+          set({ quizEndPlayerResults }),
         reset: () => set(initialState),
       })),
     ),
@@ -45,4 +54,8 @@ export const useGameChoiceSubmits = () =>
 export const useSetGameInfo = () => useGameStore(state => state.setGameInfo);
 export const useSetGameQuiz = () => useGameStore(state => state.setQuiz);
 export const useSetGamePlayers = () => useGameStore(state => state.setPlayers);
+export const useGameQuizEndAnswer = () =>
+  useGameStore(state => state.quizEndAnswer);
+export const useGameQuizEndPlayerResults = () =>
+  useGameStore(state => state.quizEndPlayerResults);
 export const useResetGame = () => useGameStore(state => state.reset);

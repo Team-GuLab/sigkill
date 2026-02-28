@@ -15,7 +15,12 @@ export interface QuizInfo {
 
 // 게임 플레이어 상태
 export type PlayerStatus = "ALIVE" | "DEAD";
-export type QuizResult = "CORRECT" | "WRONG" | "NO_SUBMISSION" | "SKIPPED_DEAD";
+export type QuizResult =
+  | "CORRECT"
+  | "WRONG"
+  | "NO_SUBMISSION"
+  | "SKIPPED_DEAD"
+  | "NONE";
 
 export interface GamePlayer {
   userId: number;
@@ -85,14 +90,16 @@ export type ChoiceSubmitMessage = GameBroadcastMessage<
   }
 >;
 
+export interface QuizAnswer {
+  correctChoiceNumber: number;
+  explanation: string;
+}
+
 export type QuizEndMessage = GameBroadcastMessage<
   "QUIZ_END",
   {
     quiz: QuizInfo & { quizId: number };
-    answer: {
-      correctChoiceNumber: number;
-      explanation: string;
-    };
+    answer: QuizAnswer;
     players: GamePlayer[];
   }
 >;
