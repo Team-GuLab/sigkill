@@ -18,6 +18,7 @@ import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
 import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
+import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
@@ -184,12 +185,29 @@ public class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 동시에_여러_사용자가_입장해도_방_정원을_넘겨_입장되지_않는다() {
+        void 동시에_여러_사용자가_입장해도_방_정원을_넘겨_입장되지_않는다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+
+            int userCount = 5;
+            List<Long> userIds = IntStream.range(0, userCount)
+                    .mapToObj(i -> loginGuest("session" + i).userId())
+                    .toList();
+
+            RoomCreateResponse rcr = roomService.createRoom("테스트 방", 2, hostUserId);
+            String roomId = rcr.roomId();
+            Set<Long> joinedUserIds = ConcurrentHashMap.newKeySet();
 
             // when
+            runConcurrently(userIds, userId -> {
+                roomService.joinRoom(roomId, userId);
+                joinedUserIds.add(userId);
+            });
 
             // then
+            List<Player> players = playerRepository.findAllByRoomId(roomId);
+            assertThat(players).hasSize(2);
+            assertThat(players).extracting(Player::getUserId).containsAll(joinedUserIds);
         }
 
         @Test
