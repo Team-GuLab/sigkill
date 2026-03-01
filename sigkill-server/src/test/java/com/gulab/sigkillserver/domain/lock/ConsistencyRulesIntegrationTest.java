@@ -10,6 +10,7 @@ import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPlayerInfo;
+import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizResult;
 import com.gulab.sigkillserver.domain.game.model.GamePlayer;
 import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GamePlayerMemoryRepository;
@@ -726,13 +727,49 @@ public class ConsistencyRulesIntegrationTest {
 
     @Nested
     class SubmitScoringEndBoundaryTests {
-        @Test
-        void 한_사용자가_답을_연속으로_제출하면_가장_마지막_제출만_최종_답으로_인정된다() {
+        @RepeatedTest(50)
+        void 한_사용자가_답을_연속으로_제출하면_가장_마지막_제출만_최종_답으로_인정된다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long guestUserId = loginGuest("guestSession").userId();
+
+            String roomId = roomService.createRoom("테스트 방", 2, hostUserId).roomId();
+            roomService.joinRoom(roomId, guestUserId);
+            roomService.readyPlayer(roomId, guestUserId);
+
+            Long gameId = roomService.startGame(roomId, hostUserId).gameId();
+            gameService.startQuiz(hostUserId, roomId, gameId);
+            long quizId = gameRepository.findById(gameId).orElseThrow().getCurrentQuizId();
+
+            var quiz = quizRepository.findById(quizId).orElseThrow();
+            var mapping = quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId).orElseThrow();
+            int correctChoiceNumber = mapping.getNumberToChoiceId().entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(quiz.correctChoiceId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .getKey();
+            int wrongChoiceNumber = mapping.getNumberToChoiceId().keySet().stream()
+                    .filter(number -> number != correctChoiceNumber)
+                    .findFirst()
+                    .orElseThrow();
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> gameService.submitChoice(hostUserId, gameId, quizId, wrongChoiceNumber),
+                    () -> {
+                        Thread.sleep(20);
+                        gameService.submitChoice(hostUserId, gameId, quizId, correctChoiceNumber);
+                    }
+            );
+            EndQuizOrGameEvent endQuizResult = gameService.endQuiz(hostUserId, roomId, gameId, quizId);
 
             // then
+            assertThat(errors).isEmpty();
+            QuizEndPlayerInfo hostResult = endQuizResult.quizEndEvent().payload().players().stream()
+                    .filter(info -> info.userId().equals(hostUserId))
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(hostResult.quizResult()).isEqualTo(QuizResult.CORRECT);
         }
 
         @Test
