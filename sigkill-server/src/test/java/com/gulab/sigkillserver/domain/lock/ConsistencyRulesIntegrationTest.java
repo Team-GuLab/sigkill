@@ -22,6 +22,7 @@ import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
@@ -531,10 +532,37 @@ public class ConsistencyRulesIntegrationTest {
         @Test
         void 준비_완료와_퇴장이_동시에_일어나도_시작_가능_여부는_최종_참가자_기준으로_계산된다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long readyGuestUserId = loginGuest("readyGuestSession").userId();
+            long leavingGuestUserId = loginGuest("leavingGuestSession").userId();
+
+            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            String roomId = createdRoom.roomId();
+            roomService.joinRoom(roomId, readyGuestUserId);
+            roomService.joinRoom(roomId, leavingGuestUserId);
+            AtomicReference<PlayerReadyEvent> readyEventRef = new AtomicReference<>();
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> readyEventRef.set(roomService.readyPlayer(roomId, readyGuestUserId)),
+                    () -> roomService.leaveRoom(roomId, leavingGuestUserId)
+            );
 
             // then
+            assertThat(errors).isEmpty();
+            PlayerReadyEvent readyEvent = readyEventRef.get();
+            assertThat(readyEvent).isNotNull();
+            assertThat(readyEvent.allReady()).isFalse();
+
+            List<Player> players = playerRepository.findAllByRoomId(roomId);
+            assertThat(players).extracting(Player::getUserId)
+                    .containsExactlyInAnyOrder(hostUserId, readyGuestUserId)
+                    .doesNotContain(leavingGuestUserId);
+
+            GameStartEvent gameStartEvent = roomService.startGame(roomId, hostUserId);
+            assertThat(gameStartEvent.payload().players())
+                    .extracting(QuizEndPlayerInfo::userId)
+                    .containsExactlyInAnyOrder(hostUserId, readyGuestUserId);
         }
 
         @Test
