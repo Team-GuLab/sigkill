@@ -58,7 +58,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-public class ConsistencyRulesIntegrationTest {
+class ConsistencyRulesIntegrationTest {
     private UserRepository userRepository;
     private GameRepository gameRepository;
     private QuizRepository quizRepository;
@@ -772,13 +772,57 @@ public class ConsistencyRulesIntegrationTest {
             assertThat(hostResult.quizResult()).isEqualTo(QuizResult.CORRECT);
         }
 
-        @Test
-        void 답_제출과_라운드_종료가_동시에_발생해도_채점_결과는_요청_순서에_따라_흔들리지_않는다() {
+        @RepeatedTest(100)
+        void 답_제출과_라운드_종료가_동시에_발생해도_채점_결과는_요청_순서에_따라_흔들리지_않는다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long guestUserId = loginGuest("guestSession").userId();
+
+            String roomId = roomService.createRoom("테스트 방", 2, hostUserId).roomId();
+            roomService.joinRoom(roomId, guestUserId);
+            roomService.readyPlayer(roomId, guestUserId);
+
+            Long gameId = roomService.startGame(roomId, hostUserId).gameId();
+            gameService.startQuiz(hostUserId, roomId, gameId);
+            long quizId = gameRepository.findById(gameId).orElseThrow().getCurrentQuizId();
+
+            var quiz = quizRepository.findById(quizId).orElseThrow();
+            var mapping = quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId).orElseThrow();
+            int correctChoiceNumber = mapping.getNumberToChoiceId().entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(quiz.correctChoiceId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .getKey();
+
+            AtomicReference<Throwable> submitErrorRef = new AtomicReference<>();
+            AtomicReference<EndQuizOrGameEvent> endQuizResultRef = new AtomicReference<>();
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> {
+                        try {
+                            gameService.submitChoice(hostUserId, gameId, quizId, correctChoiceNumber);
+                        } catch (Throwable t) {
+                            submitErrorRef.set(t);
+                            throw t;
+                        }
+                    },
+                    () -> endQuizResultRef.set(gameService.endQuiz(hostUserId, roomId, gameId, quizId))
+            );
 
             // then
+            assertThat(errors).hasSizeLessThanOrEqualTo(1);
+            EndQuizOrGameEvent endQuizResult = endQuizResultRef.get();
+            assertThat(endQuizResult).isNotNull();
+
+            QuizEndPlayerInfo hostResult = endQuizResult.quizEndEvent().payload().players().stream()
+                    .filter(info -> info.userId().equals(hostUserId))
+                    .findFirst()
+                    .orElseThrow();
+
+            if (submitErrorRef.get() == null) {
+                assertThat(hostResult.quizResult()).isEqualTo(QuizResult.CORRECT);
+            }
         }
 
         @Test
