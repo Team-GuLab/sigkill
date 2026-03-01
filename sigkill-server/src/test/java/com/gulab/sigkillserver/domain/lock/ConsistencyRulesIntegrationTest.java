@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPlayerInfo;
 import com.gulab.sigkillserver.domain.game.model.GamePlayer;
@@ -594,13 +595,35 @@ public class ConsistencyRulesIntegrationTest {
 
     @Nested
     class GameLoadEndBoundaryTests {
-        @Test
-        void 참가자들이_동시에_게임_화면_로딩을_완료해도_전체_로딩_완료는_한_번만_확정된다() {
+        @RepeatedTest(10)
+        void 참가자들이_동시에_게임_화면_로딩을_완료해도_전체_로딩_완료는_한_번만_확정된다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long guest1UserId = loginGuest("guest1Session").userId();
+            long guest2UserId = loginGuest("guest2Session").userId();
+
+            String roomId = roomService.createRoom("테스트 방", 3, hostUserId).roomId();
+            roomService.joinRoom(roomId, guest1UserId);
+            roomService.joinRoom(roomId, guest2UserId);
+            roomService.readyPlayer(roomId, guest1UserId);
+            roomService.readyPlayer(roomId, guest2UserId);
+            Long gameId = roomService.startGame(roomId, hostUserId).gameId();
+
+            List<GameLoadEvent> loadEvents = Collections.synchronizedList(new ArrayList<>());
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> loadEvents.add(gameService.loadGame(hostUserId, gameId)),
+                    () -> loadEvents.add(gameService.loadGame(guest1UserId, gameId)),
+                    () -> loadEvents.add(gameService.loadGame(guest2UserId, gameId))
+            );
 
             // then
+            assertThat(errors).isEmpty();
+            long allLoadedTrueCount = loadEvents.stream()
+                    .filter(event -> event.payload().allLoaded())
+                    .count();
+            assertThat(allLoadedTrueCount).isEqualTo(1);
         }
 
         @Test
