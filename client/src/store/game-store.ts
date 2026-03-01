@@ -4,14 +4,8 @@ import type {
   QuizDetail,
   GamePlayer,
   QuizAnswer,
-  GameEndReason,
-  GameRanking,
+  GameEnd,
 } from "@/api/game/types";
-
-interface GameEnd {
-  reason: GameEndReason;
-  rankings: GameRanking[];
-}
 
 const initialState = {
   roomId: null as string | null,

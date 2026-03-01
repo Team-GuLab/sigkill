@@ -38,7 +38,7 @@ function Confetti() {
       {pieces.map(p => (
         <div
           key={p.id}
-          className="absolute top-0 animate-confetti-fall"
+          className="animate-confetti-fall absolute top-0"
           style={{
             left: p.left,
             animationDelay: p.delay,
@@ -77,16 +77,16 @@ export default function GameResultOverlay() {
 
   const sorted = [...gameEnd.rankings].sort((a, b) => a.rank - b.rank);
 
-  const handleConfirm = () => {
+  const handleClickConfirm = () => {
     navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId ?? ""));
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/80">
+    <main className="fixed inset-0 z-50 flex flex-col bg-black/80 pb-6">
       <Confetti />
 
       {/* 순위표 */}
-      <div className="relative z-10 flex flex-1 flex-col overflow-auto p-6">
+      <section className="relative z-10 flex flex-1 flex-col overflow-auto p-6">
         <h2 className="mb-4 text-2xl font-bold text-white">경기 결과</h2>
 
         {/* 헤더 */}
@@ -142,7 +142,7 @@ export default function GameResultOverlay() {
                         : "bg-red-500/30 text-red-400",
                     )}
                   >
-                    {isAlive ? "승" : "패"}
+                    {isAlive ? "생존" : "탈락"}
                   </span>
                 </div>
 
@@ -154,18 +154,18 @@ export default function GameResultOverlay() {
             );
           })}
         </div>
-      </div>
+      </section>
 
       {/* 확인 버튼 */}
-      <div className="relative z-10 flex justify-end p-4">
+      <div className="relative z-10 flex w-full justify-end p-4">
         <Button
           size="lg"
-          className="bg-green-500 text-white hover:bg-green-600"
-          onClick={handleConfirm}
+          className="text-md w-full tracking-widest"
+          onClick={handleClickConfirm}
         >
           확인
         </Button>
       </div>
-    </div>
+    </main>
   );
 }
