@@ -565,13 +565,30 @@ public class ConsistencyRulesIntegrationTest {
                     .containsExactlyInAnyOrder(hostUserId, readyGuestUserId);
         }
 
-        @Test
-        void 준비_취소와_게임_시작_요청이_동시에_일어나면_준비_취소가_반영된_경우_게임_시작이_거부된다() {
+        @RepeatedTest(1000)
+        void 준비_취소와_게임_시작_요청이_동시에_일어나면_준비_취소가_반영된_경우_게임_시작이_거부된다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long readyGuest1UserId = loginGuest("readyGuest1Session").userId();
+            long readyGuest2UserId = loginGuest("readyGuest2Session").userId();
+
+            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            String roomId = createdRoom.roomId();
+            roomService.joinRoom(roomId, readyGuest1UserId);
+            roomService.joinRoom(roomId, readyGuest2UserId);
+            roomService.readyPlayer(roomId, readyGuest1UserId);
+            roomService.readyPlayer(roomId, readyGuest2UserId);
+
+            AtomicReference<GameStartEvent> gameStartEventRef = new AtomicReference<>();
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> roomService.unreadyPlayer(roomId, readyGuest1UserId),
+                    () -> gameStartEventRef.set(roomService.startGame(roomId, hostUserId))
+            );
 
             // then
+            assertThat(roomRepository.findById(roomId).orElseThrow().isInGame()).isFalse();
         }
     }
 
