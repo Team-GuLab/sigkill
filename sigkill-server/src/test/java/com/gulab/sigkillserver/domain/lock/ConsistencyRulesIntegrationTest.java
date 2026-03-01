@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
@@ -679,12 +680,47 @@ public class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 같은_라운드의_종료_처리_요청이_중복되어도_결과_집계는_한_번만_수행된다() {
+        void 같은_라운드의_종료_처리_요청이_중복되어도_결과_집계는_한_번만_수행된다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long guest1UserId = loginGuest("guest1Session").userId();
+            long guest2UserId = loginGuest("guest2Session").userId();
+
+            String roomId = roomService.createRoom("테스트 방", 3, hostUserId).roomId();
+            roomService.joinRoom(roomId, guest1UserId);
+            roomService.joinRoom(roomId, guest2UserId);
+            roomService.readyPlayer(roomId, guest1UserId);
+            roomService.readyPlayer(roomId, guest2UserId);
+
+            Long gameId = roomService.startGame(roomId, hostUserId).gameId();
+            gameService.startQuiz(hostUserId, roomId, gameId);
+            long quizId = gameRepository.findById(gameId).orElseThrow().getCurrentQuizId();
+
+            var quiz = quizRepository.findById(quizId).orElseThrow();
+            var mapping = quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId).orElseThrow();
+            int correctChoiceNumber = mapping.getNumberToChoiceId().entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(quiz.correctChoiceId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .getKey();
+
+            gameService.submitChoice(hostUserId, gameId, quizId, correctChoiceNumber);
+            gameService.submitChoice(guest1UserId, gameId, quizId, correctChoiceNumber);
+            gameService.submitChoice(guest2UserId, gameId, quizId, correctChoiceNumber);
+            List<EndQuizOrGameEvent> successEvents = Collections.synchronizedList(new ArrayList<>());
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> successEvents.add(gameService.endQuiz(hostUserId, roomId, gameId, quizId)),
+                    () -> successEvents.add(gameService.endQuiz(hostUserId, roomId, gameId, quizId))
+            );
 
             // then
+            assertThat(successEvents).hasSize(1);
+            assertThat(errors).hasSize(1);
+            assertThat(gamePlayerRepository.getByGameId(gameId))
+                    .extracting(GamePlayer::getScore)
+                    .containsOnly(1);
         }
     }
 
