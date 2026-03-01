@@ -1,14 +1,12 @@
 import { Outlet } from "react-router";
-import Header from "@/widgets/header";
 import { Toaster } from "@/ui/sonner";
 
 export default function DefaultLayout() {
   return (
     <>
-      <Header />
       <Toaster position="top-center" />
-      <div className="bg-background min-h-screen px-4 py-8">
-        <div className="mx-auto max-w-md">
+      <div className="bg-background flex h-screen flex-col px-4 pt-8 pb-20">
+        <div className="mx-auto flex w-full max-w-xl flex-1 flex-col overflow-hidden">
           <Outlet />
         </div>
       </div>

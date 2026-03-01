@@ -4,5 +4,6 @@ public enum QuizResult {
     CORRECT,
     WRONG,
     NO_SUBMISSION,
-    SKIPPED_DEAD
+    SKIPPED_DEAD,
+    NONE
 }

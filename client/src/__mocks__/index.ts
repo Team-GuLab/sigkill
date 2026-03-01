@@ -1,5 +1,5 @@
 export async function enableMocking() {
-  if (import.meta.env.MOCKING !== true) {
+  if (import.meta.env.VITE_MOCKING !== "true") {
     return;
   }
 

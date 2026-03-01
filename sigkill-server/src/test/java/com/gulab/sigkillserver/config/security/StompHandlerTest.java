@@ -6,6 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.gulab.sigkillserver.domain.game.model.Game;
+import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -25,13 +27,15 @@ import org.springframework.security.access.AccessDeniedException;
 class StompHandlerTest {
 
     private PlayerRepository playerRepository;
+    private GameRepository gameRepository;
     private StompHandler stompHandler;
     private MessageChannel messageChannel;
 
     @BeforeEach
     void setup() {
         playerRepository = mock(PlayerRepository.class);
-        stompHandler = new StompHandler(playerRepository, new SimpleMeterRegistry());
+        gameRepository = mock(GameRepository.class);
+        stompHandler = new StompHandler(playerRepository, gameRepository, new SimpleMeterRegistry());
         messageChannel = mock(MessageChannel.class);
     }
 
@@ -111,6 +115,46 @@ class StompHandlerTest {
         assertThatThrownBy(() -> stompHandler.preSend(message, messageChannel))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("유효하지 않은 사용자");
+    }
+
+    @Test
+    void game_topic_같은_방_플레이어_구독은_허용한다() {
+        // given
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "1001", "user1")));
+        when(gameRepository.findById(7L)).thenReturn(Optional.of(Game.create("1001", java.util.List.of(101L)).withGameId(7L)));
+        Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/game/7");
+
+        // when
+        Message<?> result = stompHandler.preSend(message, messageChannel);
+
+        // then
+        assertThat(result).isSameAs(message);
+        verify(playerRepository).findById(1L);
+        verify(gameRepository).findById(7L);
+    }
+
+    @Test
+    void game_topic_다른_방_플레이어_구독은_거부한다() {
+        // given
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "1001", "user1")));
+        when(gameRepository.findById(7L)).thenReturn(Optional.of(Game.create("2002", java.util.List.of(101L)).withGameId(7L)));
+        Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/game/7");
+
+        // when // then
+        assertThatThrownBy(() -> stompHandler.preSend(message, messageChannel))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("게임 구독 권한");
+    }
+
+    @Test
+    void game_topic_유효하지_않은_게임ID는_거부한다() {
+        // given
+        Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/game/not-a-number");
+
+        // when // then
+        assertThatThrownBy(() -> stompHandler.preSend(message, messageChannel))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("유효하지 않은 게임 정보");
     }
 
     @Test
