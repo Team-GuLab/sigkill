@@ -825,13 +825,46 @@ class ConsistencyRulesIntegrationTest {
             }
         }
 
-        @Test
-        void 라운드_종료_시점과_제출_요청이_경계에서_겹쳐도_종료_이후_제출은_채점에_반영되지_않는다() {
+        @RepeatedTest(50)
+        void 라운드_종료_시점과_제출_요청이_경계에서_겹쳐도_종료_이후_제출은_채점에_반영되지_않는다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long guestUserId = loginGuest("guestSession").userId();
+
+            String roomId = roomService.createRoom("테스트 방", 2, hostUserId).roomId();
+            roomService.joinRoom(roomId, guestUserId);
+            roomService.readyPlayer(roomId, guestUserId);
+
+            Long gameId = roomService.startGame(roomId, hostUserId).gameId();
+            gameService.startQuiz(hostUserId, roomId, gameId);
+            long quizId = gameRepository.findById(gameId).orElseThrow().getCurrentQuizId();
+
+            var quiz = quizRepository.findById(quizId).orElseThrow();
+            var mapping = quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId).orElseThrow();
+            int correctChoiceNumber = mapping.getNumberToChoiceId().entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(quiz.correctChoiceId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .getKey();
+
+            gameService.submitChoice(guestUserId, gameId, quizId, correctChoiceNumber);
+            AtomicReference<EndQuizOrGameEvent> endQuizResultRef = new AtomicReference<>();
 
             // when
+            runConcurrently(
+                    () -> endQuizResultRef.set(gameService.endQuiz(hostUserId, roomId, gameId, quizId)),
+                    () -> {
+                        Thread.sleep(20);
+                        gameService.submitChoice(hostUserId, gameId, quizId, correctChoiceNumber);
+                    }
+            );
 
             // then
+            QuizEndPlayerInfo hostResult = endQuizResultRef.get().quizEndEvent().payload().players().stream()
+                    .filter(info -> info.userId().equals(hostUserId))
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(hostResult.quizResult()).isEqualTo(QuizResult.NO_SUBMISSION);
         }
 
         @Test
