@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.dto.stomp.event.QuizStartEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.shared.QuizEndPlayerInfo;
 import com.gulab.sigkillserver.domain.game.model.GamePlayer;
 import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
@@ -625,26 +626,56 @@ public class ConsistencyRulesIntegrationTest {
                     .count();
             assertThat(allLoadedTrueCount).isEqualTo(1);
         }
-
-        @Test
-        void 게임_종료와_로딩_완료가_겹쳐도_종료된_게임이_다시_로딩_완료로_보이지_않는다() {
-            // given
-
-            // when
-
-            // then
-        }
     }
 
     @Nested
     class RoundTransitionConcurrencyTests {
         @Test
-        void 라운드_종료와_다음_라운드_시작이_겹쳐도_문제_순서가_중복되거나_건너뛰지_않는다() {
+        void 라운드_종료와_다음_라운드_시작이_겹쳐도_문제_순서가_중복되거나_건너뛰지_않는다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long guest1UserId = loginGuest("guest1Session").userId();
+            long guest2UserId = loginGuest("guest2Session").userId();
+
+            String roomId = roomService.createRoom("테스트 방", 3, hostUserId).roomId();
+            roomService.joinRoom(roomId, guest1UserId);
+            roomService.joinRoom(roomId, guest2UserId);
+            roomService.readyPlayer(roomId, guest1UserId);
+            roomService.readyPlayer(roomId, guest2UserId);
+
+            Long gameId = roomService.startGame(roomId, hostUserId).gameId();
+            gameService.startQuiz(hostUserId, roomId, gameId);
+
+            long firstQuizId = gameRepository.findById(gameId).orElseThrow().getCurrentQuizId();
+            var firstQuiz = quizRepository.findById(firstQuizId).orElseThrow();
+            var choiceMapping = quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, firstQuizId)
+                    .orElseThrow();
+            int correctChoiceNumber = choiceMapping.getNumberToChoiceId().entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(firstQuiz.correctChoiceId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .getKey();
+
+            gameService.submitChoice(hostUserId, gameId, firstQuizId, correctChoiceNumber);
+            gameService.submitChoice(guest1UserId, gameId, firstQuizId, correctChoiceNumber);
+            gameService.submitChoice(guest2UserId, gameId, firstQuizId, correctChoiceNumber);
+
+            AtomicReference<QuizStartEvent> nextQuizStartEventRef = new AtomicReference<>();
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> gameService.endQuiz(hostUserId, roomId, gameId, firstQuizId),
+                    () -> nextQuizStartEventRef.set(gameService.startQuiz(hostUserId, roomId, gameId))
+            );
 
             // then
+            assertThat(errors.size()).isLessThanOrEqualTo(1);
+            assertThat(nextQuizStartEventRef.get()).isNotNull();
+
+            var gameAfter = gameRepository.findById(gameId).orElseThrow();
+            assertThat(gameAfter.getCurrentQuizIndex()).isEqualTo(1);
+            assertThat(gameAfter.getCurrentQuizId()).isNotEqualTo(firstQuizId);
+            assertThat(nextQuizStartEventRef.get().payload().quiz().quizId()).isEqualTo(gameAfter.getCurrentQuizId());
         }
 
         @Test
