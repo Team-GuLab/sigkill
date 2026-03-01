@@ -20,6 +20,7 @@ import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryReposi
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
 import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
@@ -500,19 +501,35 @@ public class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 방장_퇴장과_자동_퇴장이_동시에_발생해도_방장_변경_안내는_한_번만_전달된다() {
+        void 방장_퇴장과_자동_퇴장이_동시에_발생해도_방장_변경_안내는_한_번만_전달된다() throws InterruptedException {
             // given
+            long hostId = loginGuest("host").userId();
+            long guest1 = loginGuest("g1").userId();
+            long guest2 = loginGuest("g2").userId();
+
+            String roomId = roomService.createRoom("방", 4, hostId).roomId();
+            roomService.joinRoom(roomId, guest1);
+            roomService.joinRoom(roomId, guest2);
+
+            List<LeaveRoomResult> results = Collections.synchronizedList(new ArrayList<>());
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> results.add(roomService.leaveRoom(roomId, hostId)),
+                    () -> results.add(roomService.leaveRoom(roomId, hostId))
+            );
 
             // then
+            assertThat(errors).hasSize(1);
+            long hostChangedCount = results.stream().filter(LeaveRoomResult::hasHostChangedEvent).count();
+            assertThat(hostChangedCount).isEqualTo(1);
         }
     }
 
     @Nested
     class ReadyStartBoundaryTests {
         @Test
-        void 준비_완료와_퇴장이_동시에_일어나도_시작_가능_여부는_최종_참가자_기준으로_계산된다() {
+        void 준비_완료와_퇴장이_동시에_일어나도_시작_가능_여부는_최종_참가자_기준으로_계산된다() throws InterruptedException {
             // given
 
             // when
