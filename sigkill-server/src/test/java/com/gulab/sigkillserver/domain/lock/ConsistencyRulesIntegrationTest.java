@@ -39,6 +39,9 @@ import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import com.gulab.sigkillserver.domain.user.service.UserService;
 import jakarta.servlet.http.HttpSession;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,11 +54,19 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.InvocationInterceptor;
+import org.junit.jupiter.api.extension.InvocationInterceptor.Invocation;
+import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+@ExtendWith(ConsistencyRulesIntegrationTest.RepeatAsSingleTestExtension.class)
 class ConsistencyRulesIntegrationTest {
+    private static final int STRESS_ATTEMPTS = 100;
+
     private UserRepository userRepository;
     private GameRepository gameRepository;
     private QuizRepository quizRepository;
@@ -147,9 +158,82 @@ class ConsistencyRulesIntegrationTest {
         void run() throws Exception;
     }
 
+    static class RepeatAsSingleTestExtension implements InvocationInterceptor {
+        @Override
+        public void interceptTestMethod(
+                Invocation<Void> invocation,
+                ReflectiveInvocationContext<Method> invocationContext,
+                ExtensionContext extensionContext
+        ) throws Throwable {
+            Object currentTestInstance = extensionContext.getRequiredTestInstance();
+            ConsistencyRulesIntegrationTest root = resolveRootTestInstance(currentTestInstance);
+            Method testMethod = invocationContext.getExecutable();
+            testMethod.setAccessible(true);
+
+            try {
+                invocation.proceed();
+            } catch (Throwable t) {
+                throw new AssertionError(
+                        String.format("Failed at repetition 1/%d in %s", STRESS_ATTEMPTS, testMethod.getName()),
+                        t
+                );
+            }
+
+            for (int attempt = 2; attempt <= STRESS_ATTEMPTS; attempt++) {
+                root.initObjects();
+                root.clearSecurityContext();
+                try {
+                    testMethod.invoke(currentTestInstance);
+                } catch (InvocationTargetException e) {
+                    throw new AssertionError(
+                            String.format(
+                                    "Failed at repetition %d/%d in %s",
+                                    attempt,
+                                    STRESS_ATTEMPTS,
+                                    testMethod.getName()
+                            ),
+                            e.getTargetException()
+                    );
+                }
+            }
+        }
+
+        private ConsistencyRulesIntegrationTest resolveRootTestInstance(Object testInstance)
+                throws IllegalAccessException {
+            if (testInstance instanceof ConsistencyRulesIntegrationTest root) {
+                return root;
+            }
+
+            Object cursor = testInstance;
+            while (cursor != null) {
+                Field outerField = findOuterField(cursor.getClass());
+                if (outerField == null) {
+                    break;
+                }
+                outerField.setAccessible(true);
+                Object outer = outerField.get(cursor);
+                if (outer instanceof ConsistencyRulesIntegrationTest root) {
+                    return root;
+                }
+                cursor = outer;
+            }
+
+            throw new IllegalStateException("루트 테스트 인스턴스를 찾을 수 없습니다.");
+        }
+
+        private Field findOuterField(Class<?> clazz) {
+            for (Field field : clazz.getDeclaredFields()) {
+                if (field.getName().startsWith("this$")) {
+                    return field;
+                }
+            }
+            return null;
+        }
+    }
+
     @Nested
     class RoomCreateJoinConcurrencyTests {
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 동시에_여러_사용자가_방을_만들어도_서로_다른_방_번호가_발급된다() throws InterruptedException {
             // given
             LoginResponse user1 = loginGuest("session1");
@@ -206,7 +290,7 @@ class ConsistencyRulesIntegrationTest {
                     .containsExactlyInAnyOrderElementsOf(userIds);
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 같은_사용자가_동시에_여러_번_방_만들기를_눌러도_방은_하나만_만들어진다() throws InterruptedException {
             // given
             LoginResponse rs = loginGuest("session1");
@@ -224,7 +308,7 @@ class ConsistencyRulesIntegrationTest {
             assertThat(playerRepository.findAll().getFirst().getUserId()).isEqualTo(rs.userId());
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 동시에_여러_사용자가_입장해도_방_정원을_넘겨_입장되지_않는다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -269,7 +353,7 @@ class ConsistencyRulesIntegrationTest {
             assertThat(players).extracting(Player::getUserId).containsAll(joinedUserIds);
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 게임_시작_요청과_입장_요청이_동시에_도착해도_시작_시점의_참가자_스냅샷과_실제_방_인원이_일치한다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -314,7 +398,7 @@ class ConsistencyRulesIntegrationTest {
 
     @Nested
     class RoomLeaveHostTransitionConcurrencyTests {
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 나가는_사용자와_들어오는_사용자가_겹쳐도_방_참가자_목록이_깨지지_않는다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -339,7 +423,7 @@ class ConsistencyRulesIntegrationTest {
                     .doesNotContain(leavingGuestUserId);
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 방_나가기_요청과_게임_시작_요청이_동시에_도착해도_게임_참가자와_방_인원_정보가_일치한다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -380,7 +464,7 @@ class ConsistencyRulesIntegrationTest {
                     .containsExactlyInAnyOrderElementsOf(roomUserIds);
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 방장이_나가는_순간_게임_시작_요청이_겹쳐도_새_방장이_정상적으로_결정된다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -421,7 +505,7 @@ class ConsistencyRulesIntegrationTest {
                     .containsExactlyInAnyOrderElementsOf(remainingUserIds);
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 방장_퇴장과_자동_퇴장이_동시에_발생해도_방장_변경_안내는_한_번만_전달된다() throws InterruptedException {
             // given
             long hostId = loginGuest("host").userId();
@@ -449,7 +533,7 @@ class ConsistencyRulesIntegrationTest {
 
     @Nested
     class ReadyStartBoundaryTests {
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 준비_완료와_퇴장이_동시에_일어나도_시작_가능_여부는_최종_참가자_기준으로_계산된다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -485,7 +569,7 @@ class ConsistencyRulesIntegrationTest {
                     .containsExactlyInAnyOrder(hostUserId, readyGuestUserId);
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 준비_취소와_게임_시작_요청이_동시에_일어나면_준비_취소가_반영된_경우_게임_시작이_거부된다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -514,7 +598,7 @@ class ConsistencyRulesIntegrationTest {
 
     @Nested
     class GameLoadEndBoundaryTests {
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 참가자들이_동시에_게임_화면_로딩을_완료해도_전체_로딩_완료는_한_번만_확정된다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -548,7 +632,7 @@ class ConsistencyRulesIntegrationTest {
 
     @Nested
     class RoundTransitionConcurrencyTests {
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 라운드_종료와_다음_라운드_시작이_겹쳐도_문제_순서가_중복되거나_건너뛰지_않는다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -596,7 +680,7 @@ class ConsistencyRulesIntegrationTest {
             assertThat(nextQuizStartEventRef.get().payload().quiz().quizId()).isEqualTo(gameAfter.getCurrentQuizId());
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 같은_라운드의_종료_처리_요청이_중복되어도_결과_집계는_한_번만_수행된다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -643,7 +727,7 @@ class ConsistencyRulesIntegrationTest {
 
     @Nested
     class SubmitScoringEndBoundaryTests {
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 한_사용자가_답을_연속으로_제출하면_가장_마지막_제출만_최종_답으로_인정된다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -688,7 +772,7 @@ class ConsistencyRulesIntegrationTest {
             assertThat(hostResult.quizResult()).isEqualTo(QuizResult.CORRECT);
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 답_제출과_라운드_종료가_동시에_발생해도_채점_결과는_요청_순서에_따라_흔들리지_않는다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -741,7 +825,7 @@ class ConsistencyRulesIntegrationTest {
             }
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 라운드_종료_시점과_제출_요청이_경계에서_겹쳐도_종료_이후_제출은_채점에_반영되지_않는다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -783,7 +867,7 @@ class ConsistencyRulesIntegrationTest {
             assertThat(hostResult.quizResult()).isEqualTo(QuizResult.NO_SUBMISSION);
         }
 
-        @RepeatedTest(value = 100, failureThreshold = 1)
+        @Test
         void 게임_종료와_답_제출이_동시에_발생해도_종료된_gameId에_제출_데이터가_남지_않는다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
