@@ -41,6 +41,11 @@ export interface GameRanking {
   score: number;
 }
 
+export interface GameEnd {
+  reason: GameEndReason;
+  rankings: GameRanking[];
+}
+
 // 게임 상태
 export interface GameState {
   roomId: string;
