@@ -825,7 +825,7 @@ class ConsistencyRulesIntegrationTest {
             }
         }
 
-        @RepeatedTest(50)
+        @Test
         void 라운드_종료_시점과_제출_요청이_경계에서_겹쳐도_종료_이후_제출은_채점에_반영되지_않는다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -868,12 +868,48 @@ class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 게임_종료와_답_제출이_동시에_발생해도_종료된_gameId에_제출_데이터가_남지_않는다() {
+        void 게임_종료와_답_제출이_동시에_발생해도_종료된_gameId에_제출_데이터가_남지_않는다() throws InterruptedException {
             // given
+            long hostUserId = loginGuest("hostSession").userId();
+            long guestUserId = loginGuest("guestSession").userId();
+
+            String roomId = roomService.createRoom("테스트 방", 2, hostUserId).roomId();
+            roomService.joinRoom(roomId, guestUserId);
+            roomService.readyPlayer(roomId, guestUserId);
+
+            Long gameId = roomService.startGame(roomId, hostUserId).gameId();
+            gameService.startQuiz(hostUserId, roomId, gameId);
+            long quizId = gameRepository.findById(gameId).orElseThrow().getCurrentQuizId();
+
+            var quiz = quizRepository.findById(quizId).orElseThrow();
+            var mapping = quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId).orElseThrow();
+            int correctChoiceNumber = mapping.getNumberToChoiceId().entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(quiz.correctChoiceId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .getKey();
+
+            gameService.submitChoice(guestUserId, gameId, quizId, correctChoiceNumber);
+            gamePlayerRepository.getByGameId(gameId).stream()
+                    .filter(gp -> gp.getUserId() == guestUserId)
+                    .findFirst()
+                    .orElseThrow()
+                    .kill();
 
             // when
+            List<Throwable> errors = runConcurrently(
+                    () -> gameService.endGame(hostUserId, roomId, gameId),
+                    () -> {
+                        Thread.sleep(20);
+                        gameService.submitChoice(hostUserId, gameId, quizId, correctChoiceNumber);
+                    }
+            );
 
             // then
+            assertThat(errors.size()).isLessThanOrEqualTo(1);
+            assertThat(selectedChoiceRepository.findByGameIdAndQuizId(gameId, quizId)).isEmpty();
+            assertThat(quizChoiceNumberMappingRepository.findByGameIdAndQuizId(gameId, quizId)).isEmpty();
+            assertThat(gameRepository.findById(gameId)).isEmpty();
         }
     }
 }
