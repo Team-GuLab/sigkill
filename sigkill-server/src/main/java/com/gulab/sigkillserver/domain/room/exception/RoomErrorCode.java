@@ -30,6 +30,8 @@ public enum RoomErrorCode implements CustomErrorCodeInterface {
     NOT_ENOUGH_PLAYERS_TO_START(String.format("게임 시작 최소 인원은 %d명입니다.", MIN_PLAYERS_TO_START), HttpStatus.CONFLICT),
     PLAYERS_NOT_READY("모든 플레이어가 준비 상태여야 합니다.", HttpStatus.CONFLICT),
     USER_ALREADY_IN_ROOM("사용자가 이미 방에 참여 중입니다", HttpStatus.CONFLICT),
+    ROOM_JOIN_RESERVATION_NOT_FOUND("방 입장 예약 정보를 찾을 수 없습니다", HttpStatus.CONFLICT),
+    ROOM_JOIN_RESERVATION_INVALID("방 입장 예약 정보가 유효하지 않습니다", HttpStatus.CONFLICT),
     ROOM_ALREADY_STARTED("이미 게임이 시작된 방입니다", HttpStatus.CONFLICT),
     ROOM_NOT_STARTED("게임이 시작되지 않은 방입니다", HttpStatus.CONFLICT);
 

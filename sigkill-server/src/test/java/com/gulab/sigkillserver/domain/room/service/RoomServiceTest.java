@@ -766,6 +766,72 @@ class RoomServiceTest {
     }
 
     @Nested
+    class ConfirmJoinTests {
+        @Test
+        void pending_join을_confirm하면_player가_생성되고_pending이_삭제된다() {
+            // given
+            User host = createAndSaveUser("host-session-confirm", "호스트");
+            User guest = createAndSaveUser("guest-session-confirm", "게스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, 3, host);
+            ReserveJoinResponse reserve = roomService.reserveJoin(TEST_ROOM_ID, guest.getUserId());
+
+            // when
+            PlayerJoinEvent result = roomService.confirmJoin(TEST_ROOM_ID, guest.getUserId(), reserve.joinTxId());
+
+            // then
+            assertThat(result.players()).extracting("userId")
+                    .contains(host.getUserId(), guest.getUserId());
+            assertThat(playerRepository.existsByRoomIdAndUserId(TEST_ROOM_ID, guest.getUserId())).isTrue();
+            assertThat(pendingJoinRepository.findByJoinTxId(reserve.joinTxId())).isEmpty();
+        }
+
+        @Test
+        void 예약이_없는_joinTxId로_confirm하면_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session-no-reserve", "호스트");
+            User guest = createAndSaveUser("guest-session-no-reserve", "게스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, 3, host);
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.confirmJoin(TEST_ROOM_ID, guest.getUserId(), "missing-join-tx"),
+                    RoomErrorCode.ROOM_JOIN_RESERVATION_NOT_FOUND.name());
+        }
+
+        @Test
+        void 다른_유저의_joinTxId로_confirm하면_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("host-session-invalid-tx", "호스트");
+            User guest1 = createAndSaveUser("guest-session-1-invalid-tx", "게스트1");
+            User guest2 = createAndSaveUser("guest-session-2-invalid-tx", "게스트2");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, 3, host);
+            ReserveJoinResponse reserve = roomService.reserveJoin(TEST_ROOM_ID, guest1.getUserId());
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.confirmJoin(TEST_ROOM_ID, guest2.getUserId(), reserve.joinTxId()),
+                    RoomErrorCode.ROOM_JOIN_RESERVATION_INVALID.name());
+        }
+
+        @Test
+        void 이미_active인_유저가_confirm을_재요청하면_멱등_성공한다() {
+            // given
+            User host = createAndSaveUser("host-session-idempotent-confirm", "호스트");
+            User guest = createAndSaveUser("guest-session-idempotent-confirm", "게스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, 3, host);
+            ReserveJoinResponse reserve = roomService.reserveJoin(TEST_ROOM_ID, guest.getUserId());
+            roomService.confirmJoin(TEST_ROOM_ID, guest.getUserId(), reserve.joinTxId());
+
+            // when
+            PlayerJoinEvent result = roomService.confirmJoin(TEST_ROOM_ID, guest.getUserId(), reserve.joinTxId());
+
+            // then
+            assertThat(result.players()).hasSize(2);
+            assertThat(playerRepository.existsByRoomIdAndUserId(TEST_ROOM_ID, guest.getUserId())).isTrue();
+        }
+    }
+
+    @Nested
     class JoinRoomTests {
         @Test
         void 플레이어가_방에_정상적으로_참가한다() {

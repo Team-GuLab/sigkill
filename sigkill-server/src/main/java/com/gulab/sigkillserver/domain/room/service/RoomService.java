@@ -16,6 +16,8 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_C
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_ID_ALREADY_EXISTS;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_IN_GAME;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_JOIN_RESERVATION_INVALID;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_JOIN_RESERVATION_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID;
@@ -52,6 +54,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -268,6 +271,49 @@ public class RoomService {
         );
     }
 
+    /**
+     * 방 참가 확정 (PENDING -> ACTIVE)
+     */
+    public PlayerJoinEvent confirmJoin(String roomId, Long userId, String joinTxId) {
+        validateRoomId(roomId);
+        Objects.requireNonNull(joinTxId, "joinTxId must not be null");
+        User user = getUserOrThrow(userId);
+
+        return roomLockManager.executeWithLock(roomId, () -> {
+            long now = Instant.now().toEpochMilli();
+            pendingJoinRepository.deleteExpired(now);
+
+            Room room = getRoomOrThrow(roomId);
+            validateRoomNotInGame(room);
+
+            // 멱등성을 위한 처리
+            Player existingPlayer = playerRepository.findById(userId).orElse(null);
+            if (existingPlayer != null) {
+                if (!existingPlayer.getRoomId().equals(roomId)) {
+                    throw new CustomException(USER_ALREADY_IN_ROOM);
+                }
+                return buildPlayerJoinEvent(room);
+            }
+
+            PendingJoin pendingJoin = pendingJoinRepository.findByJoinTxId(joinTxId)
+                    .orElseThrow(() -> new CustomException(ROOM_JOIN_RESERVATION_NOT_FOUND));
+
+            if (!pendingJoin.roomId().equals(roomId) || !pendingJoin.userId().equals(userId)) {
+                throw new CustomException(ROOM_JOIN_RESERVATION_INVALID);
+            }
+            if (pendingJoin.isExpiredAt(now)) {
+                pendingJoinRepository.deleteByJoinTxId(joinTxId);
+                throw new CustomException(ROOM_JOIN_RESERVATION_NOT_FOUND);
+            }
+
+            Player player = Player.create(userId, roomId, user.getNickname());
+            playerRepository.create(player);
+            pendingJoinRepository.deleteByJoinTxId(joinTxId);
+
+            return buildPlayerJoinEvent(room);
+        });
+    }
+
     private boolean isRoomFullForReserve(Room room, long nowEpochMillis) {
         int activePlayers = getPlayerCountInRoom(room.getRoomId());
         int pendingPlayers = pendingJoinRepository.countUnexpiredByRoomId(room.getRoomId(), nowEpochMillis);
@@ -300,12 +346,10 @@ public class RoomService {
         Player player = Player.create(userId, roomId, user.getNickname());
         playerRepository.create(player);
 
-        List<Player> playersInRoom = playerRepository.findAllByRoomId(roomId);
-        List<PlayerInfo> playerInfos = playersInRoom.stream()
-                .map(p -> PlayerInfo.of(p, room.getHostId()))
-                .toList();
-        log.info("room.join success - roomId={}, userId={}, players={}", roomId, userId, playerInfos.size());
-        return PlayerJoinEvent.of(room, playerInfos);
+        PlayerJoinEvent playerJoinEvent = buildPlayerJoinEvent(room);
+        log.info("room.join success - roomId={}, userId={}, players={}", roomId, userId,
+                playerJoinEvent.players().size());
+        return playerJoinEvent;
     }
 
     private void validateCanJoinRoom(Long userId, Room room) {
@@ -318,6 +362,13 @@ public class RoomService {
         if (playerRepository.findById(userId).isPresent()) {
             throw new CustomException(USER_ALREADY_IN_ROOM);
         }
+    }
+
+    private PlayerJoinEvent buildPlayerJoinEvent(Room room) {
+        List<PlayerInfo> playerInfos = playerRepository.findAllByRoomId(room.getRoomId()).stream()
+                .map(player -> PlayerInfo.of(player, room.getHostId()))
+                .toList();
+        return PlayerJoinEvent.of(room, playerInfos);
     }
 
     /**
