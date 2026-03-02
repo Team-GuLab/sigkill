@@ -1,4 +1,4 @@
-import { checkRoomAvailability } from "@/api/room";
+import { reserverRoomJoin } from "@/api/room";
 import type { RoomItem } from "@/api/room/types";
 import { Item, ItemContent, ItemTitle, ItemActions } from "@/ui/item";
 import { Badge } from "@/ui/badge";
@@ -23,9 +23,13 @@ export default function RoomItem({
 
   const handleRoomItemClick = async () => {
     try {
-      await checkRoomAvailability(roomId);
+      const { joinTxId } = await reserverRoomJoin(roomId);
 
-      navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId), { replace: true });
+      // joinTxId를 router state로 전달
+      navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId), {
+        state: { joinTxId },
+        replace: true,
+      });
     } catch (error) {
       if (error instanceof AppError) {
         toast.error(error.message);

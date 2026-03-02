@@ -38,7 +38,7 @@ export const wsHandlers = [
           console.log(`[MSW] Routing to destination: ${destination}`);
 
           switch (destination) {
-            case "/app/room/join":
+            case "/app/room/confirm-join":
               handleRoomJoin(room, currentSubscriptionId);
               break;
 

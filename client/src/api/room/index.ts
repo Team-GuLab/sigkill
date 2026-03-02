@@ -43,18 +43,19 @@ export const createRoom = async ({
   return response.data.result;
 };
 
-export const checkRoomAvailability = async <
-  T = { roomId: string; canJoin: boolean },
->(
+export interface ReserverRoomJoinResponse {
+  joinTxId: string;
+  expiresAt: number;
+  ttlMillis: number;
+}
+export const reserverRoomJoin = async <T = ReserverRoomJoinResponse>(
   roomId: string,
 ): Promise<T> => {
-  try {
-    const response = await axiosInstance.get<APIResponse<T>>(
-      `/api/v1/rooms/${roomId}/availability`,
-    );
+  const response = await axiosInstance.post<
+    APIResponse<T>,
+    AxiosResponse<APIResponse<T>>,
+    void
+  >(`/api/v1/rooms/${roomId}/join`);
 
-    return response.data.result;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.result;
 };

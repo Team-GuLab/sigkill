@@ -27,7 +27,7 @@ export function handleRoomJoin(
   room: ReturnType<typeof ws.link>,
   subscriptionId: string,
 ) {
-  console.log("[MSW] Handling /app/room/join request");
+  console.log("[MSW] Handling /app/room/confirm-join request");
 
   const responseData = {
     type: "PLAYER_JOIN",
