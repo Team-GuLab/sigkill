@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.EndQuizOrGameEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameLoadEvent;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
@@ -27,6 +28,7 @@ import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
+import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PendingJoinMemoryRepository;
@@ -47,12 +49,14 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -334,48 +338,102 @@ class ConsistencyRulesIntegrationTest {
 
             RoomCreateResponse rcr = roomService.createRoom("테스트 방", TEST_CAPACITY, hostUserId);
             String roomId = rcr.roomId();
-            Set<Long> joinedUserIds = ConcurrentHashMap.newKeySet();
 
             // when
             runConcurrently(
                     () -> {
                         if (roomService.checkRoomAvailability(roomId, user1.userId()).canJoin()) {
                             roomService.joinRoom(roomId, user1.userId());
-                            joinedUserIds.add(user1.userId());
                         }
                     },
                     () -> {
                         if (roomService.checkRoomAvailability(roomId, user2.userId()).canJoin()) {
                             roomService.joinRoom(roomId, user2.userId());
-                            joinedUserIds.add(user2.userId());
                         }
                     },
                     () -> {
                         if (roomService.checkRoomAvailability(roomId, user3.userId()).canJoin()) {
                             roomService.joinRoom(roomId, user3.userId());
-                            joinedUserIds.add(user3.userId());
                         }
                     },
                     () -> {
                         if (roomService.checkRoomAvailability(roomId, user4.userId()).canJoin()) {
                             roomService.joinRoom(roomId, user4.userId());
-                            joinedUserIds.add(user4.userId());
                         }
                     },
                     () -> {
                         if (roomService.checkRoomAvailability(roomId, user5.userId()).canJoin()) {
                             roomService.joinRoom(roomId, user5.userId());
-                            joinedUserIds.add(user5.userId());
                         }
                     }
             );
 
             // then
             List<Player> players = playerRepository.findAllByRoomId(roomId);
-            for (Player p : players) {
-                System.out.println("player userId: " + p.getUserId());
-            }
             assertThat(players).hasSize(TEST_CAPACITY);
+        }
+
+        @Test
+        void 동시에_여러_사용자가_입장해도_방_정원을_넘겨_입장되지_않는다() throws InterruptedException {
+            // given
+            long hostUserId = loginGuest("hostSession").userId();
+            final int TEST_CAPACITY = 2;
+
+            LoginResponse user1 = loginGuest("session1");
+            LoginResponse user2 = loginGuest("session2");
+            LoginResponse user3 = loginGuest("session3");
+            LoginResponse user4 = loginGuest("session4");
+            LoginResponse user5 = loginGuest("session5");
+
+            RoomCreateResponse rcr = roomService.createRoom("테스트 방", TEST_CAPACITY, hostUserId);
+            String roomId = rcr.roomId();
+
+            // when
+            List<Throwable> errors = runConcurrently(
+                    () -> {
+                        String joinTxId = roomService.reserveJoin(roomId, user1.userId()).joinTxId();
+                        roomService.confirmJoin(roomId, user1.userId(), joinTxId);
+                    },
+                    () -> {
+                        String joinTxId = roomService.reserveJoin(roomId, user2.userId()).joinTxId();
+                        roomService.confirmJoin(roomId, user2.userId(), joinTxId);
+                    },
+                    () -> {
+                        String joinTxId = roomService.reserveJoin(roomId, user3.userId()).joinTxId();
+                        roomService.confirmJoin(roomId, user3.userId(), joinTxId);
+                    },
+                    () -> {
+                        String joinTxId = roomService.reserveJoin(roomId, user4.userId()).joinTxId();
+                        roomService.confirmJoin(roomId, user4.userId(), joinTxId);
+                    },
+                    () -> {
+                        String joinTxId = roomService.reserveJoin(roomId, user5.userId()).joinTxId();
+                        roomService.confirmJoin(roomId, user5.userId(), joinTxId);
+                    }
+            );
+
+            // then
+            List<Player> players = playerRepository.findAllByRoomId(roomId);
+            Map<String, Long> errorCodeCounts = errors.stream()
+                    .collect(Collectors.groupingBy(
+                            error -> {
+                                if (error instanceof CustomException customException) {
+                                    return customException.getErrorCode().getCode();
+                                }
+                                return error.getClass().getSimpleName();
+                            },
+                            Collectors.counting()
+                    ));
+            assertThat(errors)
+                    .withFailMessage("errors.size=%s, errorCodeCounts=%s, players(userId)=%s",
+                            errors.size(), errorCodeCounts, players.stream().map(Player::getUserId).toList())
+                    .hasSize(4);
+            assertThat(errorCodeCounts).containsOnlyKeys(RoomErrorCode.ROOM_FULL.name());
+            assertThat(errorCodeCounts.get(RoomErrorCode.ROOM_FULL.name())).isEqualTo(4L);
+            assertThat(players)
+                    .withFailMessage("players(userId)=%s, errorCodeCounts=%s",
+                            players.stream().map(Player::getUserId).toList(), errorCodeCounts)
+                    .hasSize(TEST_CAPACITY);
         }
 
         @Test
