@@ -39,5 +39,14 @@ public class SelectedChoiceMemoryRepository implements SelectedChoiceRepository 
         store.keySet().removeIf(key -> key.gameId() == gameId);
     }
 
+    @Override
+    public int clear() {
+        int removedCount = store.values().stream()
+                .mapToInt(Map::size)
+                .sum();
+        store.clear();
+        return removedCount;
+    }
+
     private record GameQuizKey(long gameId, long quizId) {}
 }

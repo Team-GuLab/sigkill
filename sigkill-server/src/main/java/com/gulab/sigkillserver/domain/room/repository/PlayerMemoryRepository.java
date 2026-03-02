@@ -57,4 +57,11 @@ public class PlayerMemoryRepository implements PlayerRepository {
         Player player = store.get(userId);
         return player != null && player.getRoomId().equals(roomId);
     }
+
+    @Override
+    public int clear() {
+        int removedCount = store.size();
+        store.clear();
+        return removedCount;
+    }
 }

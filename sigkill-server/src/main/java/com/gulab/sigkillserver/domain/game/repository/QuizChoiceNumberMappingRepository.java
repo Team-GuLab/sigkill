@@ -12,4 +12,11 @@ public interface QuizChoiceNumberMappingRepository {
     void deleteByGameIdAndQuizId(long gameId, long quizId);
 
     void deleteByGameId(long gameId);
+
+    /**
+     * 모든 선택지 번호 매핑 데이터 정리
+     *
+     * @return 삭제된 매핑 수
+     */
+    int clear();
 }

@@ -1,6 +1,11 @@
 package com.gulab.sigkillserver.domain.test.controller;
 
 import com.gulab.sigkillserver.common.BaseResponse;
+import com.gulab.sigkillserver.domain.game.repository.GamePlayerRepository;
+import com.gulab.sigkillserver.domain.game.repository.GameRepository;
+import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
+import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
+import com.gulab.sigkillserver.domain.game.service.GameFlowOrchestrator;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
@@ -38,6 +43,11 @@ public class TestController {
     private final UserRepository userRepository;
     private final PlayerRepository playerRepository;
     private final RoomRepository roomRepository;
+    private final GameRepository gameRepository;
+    private final GamePlayerRepository gamePlayerRepository;
+    private final SelectedChoiceRepository selectedChoiceRepository;
+    private final QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
+    private final GameFlowOrchestrator gameFlowOrchestrator;
     private final RoomService roomService;
 
     /**
@@ -104,6 +114,45 @@ public class TestController {
         ));
     }
 
+    /**
+     * 방/게임 관련 인메모리 데이터를 전체 초기화한다.
+     * (유저 메모리는 유지)
+     */
+    @PostMapping("/cleanup-room-memory")
+    public BaseResponse<RoomMemoryCleanupResponse> cleanupRoomMemory() {
+        GameFlowOrchestrator.FlowCleanupResult flowCleanupResult = gameFlowOrchestrator.clearAllFlows();
+        int clearedSelectedChoiceCount = selectedChoiceRepository.clear();
+        int clearedQuizChoiceMappingCount = quizChoiceNumberMappingRepository.clear();
+        int clearedGamePlayerCount = gamePlayerRepository.clear();
+        int clearedGameCount = gameRepository.clear();
+        int clearedPlayerCount = playerRepository.clear();
+        int clearedRoomCount = roomRepository.clear();
+
+        RoomMemoryCleanupResponse response = new RoomMemoryCleanupResponse(
+                clearedRoomCount,
+                clearedPlayerCount,
+                clearedGameCount,
+                clearedGamePlayerCount,
+                clearedSelectedChoiceCount,
+                clearedQuizChoiceMappingCount,
+                flowCleanupResult.canceledScheduledTaskCount(),
+                flowCleanupResult.clearedInitialQuizStartFlagCount()
+        );
+
+        log.info("테스트 메모리 정리 완료(유저 유지) - rooms={}, players={}, games={}, gamePlayers={}, selectedChoices={}, "
+                        + "quizChoiceMappings={}, canceledFlows={}, clearedInitialFlags={}",
+                response.clearedRoomCount(),
+                response.clearedPlayerCount(),
+                response.clearedGameCount(),
+                response.clearedGamePlayerCount(),
+                response.clearedSelectedChoiceCount(),
+                response.clearedQuizChoiceMappingCount(),
+                response.canceledScheduledFlowCount(),
+                response.clearedInitialQuizStartFlagCount());
+
+        return BaseResponse.onSuccess(response);
+    }
+
     private List<LoginResponse> createRandomUsers(int count) {
         List<LoginResponse> users = new ArrayList<>(count);
         for (int i = 1; i <= count; i++) {
@@ -164,6 +213,18 @@ public class TestController {
             String roomTitle,
             int playerCount,
             int capacity
+    ) {
+    }
+
+    public record RoomMemoryCleanupResponse(
+            int clearedRoomCount,
+            int clearedPlayerCount,
+            int clearedGameCount,
+            int clearedGamePlayerCount,
+            int clearedSelectedChoiceCount,
+            int clearedQuizChoiceMappingCount,
+            int canceledScheduledFlowCount,
+            int clearedInitialQuizStartFlagCount
     ) {
     }
 }

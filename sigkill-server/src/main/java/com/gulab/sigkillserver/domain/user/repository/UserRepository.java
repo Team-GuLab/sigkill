@@ -28,4 +28,11 @@ public interface UserRepository {
      * 모든 사용자 조회
      */
     List<User> findAll();
+
+    /**
+     * 모든 사용자 데이터 정리
+     *
+     * @return 삭제된 사용자 수
+     */
+    int clear();
 }
