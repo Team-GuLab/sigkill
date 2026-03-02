@@ -3,6 +3,7 @@ package com.gulab.sigkillserver.domain.room.controller;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
+import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomJoinCommand;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
@@ -29,6 +30,18 @@ public class RoomWebSocketController {
         Long userId = Long.parseLong(principal.getName());
 
         PlayerJoinEvent playerJoinEvent = roomService.joinRoom(request.roomId(), userId);
+
+        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
+
+        log.debug("방 참가 브로드캐스트 완료 - roomId: {}, players: {}",
+                request.roomId(), playerJoinEvent.players().size());
+    }
+
+    @MessageMapping("/room/confirm-join")
+    public void joinRoom(@Valid @Payload RoomJoinCommand request, Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+
+        PlayerJoinEvent playerJoinEvent = roomService.confirmJoin(request.roomId(), userId, request.joinTxId());
 
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
 
