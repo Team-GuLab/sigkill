@@ -16,14 +16,32 @@ export function uniqueRoomTitle(prefix: string): string {
 }
 
 /**
+ * 토스트 메시지가 보이는지 확인
+ * @param page - 페이지
+ * @param text - 토스트 메시지 텍스트
+ */
+export async function expectToBeVisibleInToast(
+  page: Page,
+  text: string | RegExp,
+): Promise<void> {
+  await expect(
+    page.getByRole("listitem").filter({ hasText: text }),
+  ).toBeVisible({ timeout: 10000 });
+}
+
+/**
  * 두 명의 사용자가 대기방에 입장한 상태를 세팅
  * - 사용자 A(page): 방을 생성하고 입장
- * - 사용자 B(theOtherPage): 별도 컨텍스트로 방에 입장
+ * - 사용자 B(pageB): 별도 컨텍스트로 방에 입장
  */
 export async function setupRoom(
   page: Page,
   browser: Browser,
-): Promise<{ theOtherContext: BrowserContext; theOtherPage: Page }> {
+): Promise<{
+  contextB: BrowserContext;
+  pageB: Page;
+  roomTitle: string;
+}> {
   const roomTitle = uniqueRoomTitle("SIGKILL");
 
   await page.goto(ROUTE_PATHS.HOME);
@@ -34,17 +52,18 @@ export async function setupRoom(
   await page.getByLabel("방 제목").fill(roomTitle);
   await page.getByRole("button", { name: "생성하기" }).click();
 
-  const theOtherContext = await browser.newContext();
-  const theOtherPage = await theOtherContext.newPage();
+  // 사용자 B: 방 입장
+  const contextB = await browser.newContext();
+  const pageB = await contextB.newPage();
 
-  await theOtherPage.goto(ROUTE_PATHS.HOME);
-  await theOtherPage.getByRole("button", { name: "Game Start" }).click();
-  await expect(theOtherPage).toHaveURL(ROUTE_PATHS.ROOM_LIST);
+  await pageB.goto(ROUTE_PATHS.HOME);
+  await pageB.getByRole("button", { name: "Game Start" }).click();
+  await expect(pageB).toHaveURL(ROUTE_PATHS.ROOM_LIST);
 
-  await expect(theOtherPage.getByText(roomTitle).first()).toBeVisible({
+  await expect(pageB.getByText(roomTitle).first()).toBeVisible({
     timeout: 10000,
   });
-  await theOtherPage.getByText(roomTitle).first().click();
+  await pageB.getByText(roomTitle).first().click();
 
-  return { theOtherContext, theOtherPage };
+  return { contextB, pageB, roomTitle };
 }
