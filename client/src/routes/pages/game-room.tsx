@@ -5,6 +5,9 @@ import QuizBanner from "@/components/game/quiz-banner";
 import QuizTimer from "@/components/game/quiz-timer";
 import PlayerField from "@/components/game/player-field";
 import Choices from "@/components/game/choices";
+import QuizResultAlert from "@/components/game/quiz-result-alert";
+import GameEndAlert from "@/components/game/game-end-alert";
+import GameResultOverlay from "@/components/game/game-result-overlay";
 import { useEffect } from "react";
 
 export default function GameRoom() {
@@ -31,6 +34,7 @@ export default function GameRoom() {
 
   return (
     <div className="flex h-full flex-col pt-8">
+      <GameResultOverlay />
       {/* 퀴즈 출제 배너 */}
       <section className="mx-auto flex w-full flex-col gap-2">
         <QuizBanner />
@@ -46,6 +50,8 @@ export default function GameRoom() {
 
       {/* 선지 */}
       <section className="my-2 flex shrink-0 flex-col space-y-2">
+        <GameEndAlert />
+        <QuizResultAlert />
         <Choices />
       </section>
     </div>

@@ -15,7 +15,12 @@ export interface QuizInfo {
 
 // 게임 플레이어 상태
 export type PlayerStatus = "ALIVE" | "DEAD";
-export type QuizResult = "CORRECT" | "WRONG" | "NO_SUBMISSION" | "SKIPPED_DEAD";
+export type QuizResult =
+  | "CORRECT"
+  | "WRONG"
+  | "NO_SUBMISSION"
+  | "SKIPPED_DEAD"
+  | "NONE";
 
 export interface GamePlayer {
   userId: number;
@@ -26,7 +31,7 @@ export interface GamePlayer {
 }
 
 // 게임 종료 이유
-export type GameEndReason = "ONE_SURVIVOR" | "ALL_DEAD" | "QUIZ_END";
+export type GameEndReason = "ONE_SURVIVOR" | "ALL_DEAD" | "QUIZ_EXHAUSTED";
 
 // 게임 랭킹
 export interface GameRanking {
@@ -34,6 +39,11 @@ export interface GameRanking {
   userId: number;
   nickname: string;
   score: number;
+}
+
+export interface GameEnd {
+  reason: GameEndReason;
+  rankings: GameRanking[];
 }
 
 // 게임 상태
@@ -85,14 +95,16 @@ export type ChoiceSubmitMessage = GameBroadcastMessage<
   }
 >;
 
+export interface QuizAnswer {
+  correctChoiceNumber: number;
+  explanation: string;
+}
+
 export type QuizEndMessage = GameBroadcastMessage<
   "QUIZ_END",
   {
     quiz: QuizInfo & { quizId: number };
-    answer: {
-      correctChoiceNumber: number;
-      explanation: string;
-    };
+    answer: QuizAnswer;
     players: GamePlayer[];
   }
 >;

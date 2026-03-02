@@ -29,7 +29,7 @@ public class GameConstants {
     /**
      * 최대 퀴즈 개수
      */
-    public static final int QUIZ_COUNT = 10;
+    public static final int QUIZ_COUNT = 5;
 
     private GameConstants() {
     }

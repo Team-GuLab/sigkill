@@ -14,27 +14,47 @@ export const handleGameMessage = (message: GameWebSocketMessage) => {
     }
 
     case "QUIZ_START": {
-      const { setQuiz, resetChoiceSubmits } = useGameStore.getState();
-      // 새 라운드 시작 시 이전 라운드의 제출 기록 초기화
+      const {
+        setQuiz,
+        resetChoiceSubmits,
+        setQuizEndAnswer,
+        setQuizEndPlayerResults,
+      } = useGameStore.getState();
+      // 새 라운드 시작 시 이전 라운드의 게임 정보 초기화
       resetChoiceSubmits();
+      setQuizEndAnswer(null);
+      setQuizEndPlayerResults([]);
       setQuiz(message.payload.quiz);
       break;
     }
 
     case "CHOICE_SUBMIT": {
       const { setChoiceSubmit } = useGameStore.getState();
-      setChoiceSubmit(message.payload.actor.userId, message.payload.choiceNumber);
+      setChoiceSubmit(
+        message.payload.actor.userId,
+        message.payload.choiceNumber,
+      );
       break;
     }
 
     case "QUIZ_END": {
-      const { setPlayers } = useGameStore.getState();
-      setPlayers(message.payload.players);
+      const { setQuizEndAnswer, setQuizEndPlayerResults } =
+        useGameStore.getState();
+      setQuizEndAnswer(message.payload.answer);
+      setQuizEndPlayerResults(message.payload.players);
+      // 플레이어 상태 반영
+      const players = message.payload.players;
+      setTimeout(() => {
+        useGameStore.getState().setPlayers(players);
+      }, 3000);
       break;
     }
 
-    case "GAME_END":
+    case "GAME_END": {
+      const { setGameEnd } = useGameStore.getState();
+      setGameEnd(message.payload);
       break;
+    }
 
     default:
       // @ts-ignore
