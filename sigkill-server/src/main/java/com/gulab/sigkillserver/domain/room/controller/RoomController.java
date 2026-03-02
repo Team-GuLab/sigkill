@@ -2,6 +2,7 @@ package com.gulab.sigkillserver.domain.room.controller;
 
 import com.gulab.sigkillserver.common.BaseResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.request.RoomCreateRequest;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.ReserveJoinResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
@@ -64,6 +65,15 @@ public class RoomController {
             @PathVariable String roomId
     ) {
         RoomAvailabilityResponse response = roomService.checkRoomAvailability(roomId, userId);
+        return BaseResponse.onSuccess(response);
+    }
+
+    @PostMapping("/rooms/{roomId}/join")
+    public BaseResponse<ReserveJoinResponse> reserveJoin(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable String roomId
+    ) {
+        ReserveJoinResponse response = roomService.reserveJoin(roomId, userId);
         return BaseResponse.onSuccess(response);
     }
 }
