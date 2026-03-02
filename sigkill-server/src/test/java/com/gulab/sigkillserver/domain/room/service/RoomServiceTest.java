@@ -750,6 +750,22 @@ class RoomServiceTest {
         }
 
         @Test
+        void 같은_유저가_다른_방에_유효한_pending이_있으면_예약을_거절한다() {
+            // given
+            User host1 = createAndSaveUser("host-session-pending-conflict-1", "호스트1");
+            User host2 = createAndSaveUser("host-session-pending-conflict-2", "호스트2");
+            User guest = createAndSaveUser("guest-session-pending-conflict", "게스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, 3, host1);
+            createAndSaveRoomWithHost("9999", "다른 방", 3, host2);
+            roomService.reserveJoin(TEST_ROOM_ID, guest.getUserId());
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.reserveJoin("9999", guest.getUserId()),
+                    RoomErrorCode.USER_ALREADY_HAS_PENDING_JOIN.name());
+        }
+
+        @Test
         void pending_인원도_정원_계산에_포함되어_초과_예약을_막는다() {
             // given
             User host = createAndSaveUser("host-session-capacity", "호스트");

@@ -1,5 +1,8 @@
 package com.gulab.sigkillserver.domain.room.repository;
 
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_ALREADY_HAS_PENDING_JOIN;
+
+import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.room.model.PendingJoin;
 import java.util.List;
 import java.util.Map;
@@ -11,9 +14,14 @@ import org.springframework.stereotype.Repository;
 public class PendingJoinMemoryRepository implements PendingJoinRepository {
 
     private final Map<String, PendingJoin> store = new ConcurrentHashMap<>();
+    private final Map<Long, String> userPendingIndex = new ConcurrentHashMap<>();
 
     @Override
     public PendingJoin save(PendingJoin pendingJoin) {
+        String existingJoinTxId = userPendingIndex.putIfAbsent(pendingJoin.userId(), pendingJoin.joinTxId());
+        if (existingJoinTxId != null && !existingJoinTxId.equals(pendingJoin.joinTxId())) {
+            throw new CustomException(USER_ALREADY_HAS_PENDING_JOIN);
+        }
         store.put(pendingJoin.joinTxId(), pendingJoin);
         return pendingJoin;
     }
@@ -46,6 +54,13 @@ public class PendingJoinMemoryRepository implements PendingJoinRepository {
     }
 
     @Override
+    public List<PendingJoin> findAllByUserId(Long userId) {
+        return store.values().stream()
+                .filter(pendingJoin -> pendingJoin.userId().equals(userId))
+                .toList();
+    }
+
+    @Override
     public int countUnexpiredByRoomId(String roomId, long nowEpochMillis) {
         return (int) store.values().stream()
                 .filter(pendingJoin -> pendingJoin.roomId().equals(roomId))
@@ -55,21 +70,35 @@ public class PendingJoinMemoryRepository implements PendingJoinRepository {
 
     @Override
     public void deleteByJoinTxId(String joinTxId) {
-        store.remove(joinTxId);
+        PendingJoin removed = store.remove(joinTxId);
+        if (removed != null) {
+            userPendingIndex.remove(removed.userId(), removed.joinTxId());
+        }
     }
 
     @Override
     public void deleteByRoomId(String roomId) {
-        store.values().removeIf(pendingJoin -> pendingJoin.roomId().equals(roomId));
+        store.values().stream()
+                .filter(pendingJoin -> pendingJoin.roomId().equals(roomId))
+                .map(PendingJoin::joinTxId)
+                .toList()
+                .forEach(this::deleteByJoinTxId);
     }
 
     @Override
     public void deleteByUserId(Long userId) {
-        store.values().removeIf(pendingJoin -> pendingJoin.userId().equals(userId));
+        findAllByUserId(userId).stream()
+                .map(PendingJoin::joinTxId)
+                .toList()
+                .forEach(this::deleteByJoinTxId);
     }
 
     @Override
     public void deleteExpired(long nowEpochMillis) {
-        store.values().removeIf(pendingJoin -> pendingJoin.isExpiredAt(nowEpochMillis));
+        store.values().stream()
+                .filter(pendingJoin -> pendingJoin.isExpiredAt(nowEpochMillis))
+                .map(PendingJoin::joinTxId)
+                .toList()
+                .forEach(this::deleteByJoinTxId);
     }
 }

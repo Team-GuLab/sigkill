@@ -16,6 +16,8 @@ public interface PendingJoinRepository {
 
     List<PendingJoin> findAllByRoomId(String roomId);
 
+    List<PendingJoin> findAllByUserId(Long userId);
+
     int countUnexpiredByRoomId(String roomId, long nowEpochMillis);
 
     void deleteByJoinTxId(String joinTxId);

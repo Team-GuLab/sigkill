@@ -2,9 +2,11 @@ package com.gulab.sigkillserver.domain.room.service;
 
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.DEFAULT_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_CAPACITY;
+import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_ROOM_NUMBER;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TITLE_LENGTH;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_PLAYERS_TO_START;
+import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_ROOM_NUMBER;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
@@ -22,6 +24,7 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_N
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_TITLE_INVALID;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_ALREADY_HAS_PENDING_JOIN;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_ALREADY_IN_ROOM;
 import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_NOT_FOUND;
 
@@ -191,7 +194,7 @@ public class RoomService {
      * 4자리 랜덤 정수 생성 (1000 ~ 9999)
      */
     private String generateRoomId() {
-        return String.valueOf(ThreadLocalRandom.current().nextInt(1000, 10000));
+        return String.valueOf(ThreadLocalRandom.current().nextInt(MIN_ROOM_NUMBER, MAX_ROOM_NUMBER + 1));
     }
 
     private void validateRoomCreateRequest(String roomTitle, int capacity) {
@@ -241,6 +244,12 @@ public class RoomService {
                     .orElse(null);
             if (existingPendingJoin != null) {
                 return existingPendingJoin;
+            }
+            PendingJoin existingPendingJoinByUser = pendingJoinRepository.findByUserId(userId)
+                    .filter(existing -> !existing.isExpiredAt(now))
+                    .orElse(null);
+            if (existingPendingJoinByUser != null) {
+                throw new CustomException(USER_ALREADY_HAS_PENDING_JOIN);
             }
 
             if (isRoomFullForReserve(room, now)) {
@@ -330,7 +339,7 @@ public class RoomService {
         } catch (NumberFormatException e) {
             throw new CustomException(ROOM_NUMBER_ERROR);
         }
-        if (roomIdInt < 1000 || roomIdInt > 9999) {
+        if (roomIdInt < MIN_ROOM_NUMBER || roomIdInt > MAX_ROOM_NUMBER) {
             throw new CustomException(ROOM_NUMBER_ERROR);
         }
     }
@@ -407,22 +416,27 @@ public class RoomService {
      * disconnect 발생 시 확정되지 않은 입장 예약 정리
      */
     public boolean rollbackPendingJoinOnDisconnect(Long userId) {
-        PendingJoin pendingJoin = pendingJoinRepository.findByUserId(userId).orElse(null);
-        if (pendingJoin == null) {
+        List<PendingJoin> pendingJoins = pendingJoinRepository.findAllByUserId(userId);
+        if (pendingJoins.isEmpty()) {
             return false;
         }
 
-        return roomLockManager.executeWithLock(pendingJoin.roomId(), () -> {
-            PendingJoin current = pendingJoinRepository.findByJoinTxId(pendingJoin.joinTxId()).orElse(null);
-            if (current == null || !current.userId().equals(userId)) {
-                return false;
-            }
+        boolean rolledBack = false;
+        for (PendingJoin pendingJoin : pendingJoins) {
+            boolean removed = roomLockManager.executeWithLock(pendingJoin.roomId(), () -> {
+                PendingJoin current = pendingJoinRepository.findByJoinTxId(pendingJoin.joinTxId()).orElse(null);
+                if (current == null || !current.userId().equals(userId)) {
+                    return false;
+                }
 
-            pendingJoinRepository.deleteByJoinTxId(current.joinTxId());
-            log.info("room.pending.rollback success - roomId={}, userId={}, joinTxId={}",
-                    current.roomId(), userId, current.joinTxId());
-            return true;
-        });
+                pendingJoinRepository.deleteByJoinTxId(current.joinTxId());
+                log.info("room.pending.rollback success - roomId={}, userId={}, joinTxId={}",
+                        current.roomId(), userId, current.joinTxId());
+                return true;
+            });
+            rolledBack = rolledBack || removed;
+        }
+        return rolledBack;
     }
 
     /**

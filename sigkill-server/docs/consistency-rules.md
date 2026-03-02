@@ -24,6 +24,8 @@
 #### 방 입장 (joinRoom)
 
 - `방 입장` 을 여러명의 유저가 동시에 요청할 경우, 먼저 요청을 보낸 유저가 방에 입장한다.
+- `reserveJoin -> confirmJoin` 2단계에서 `userId` 당 유효한 `PENDING` 예약은 최대 1개만 허용한다.
+- 같은 사용자가 다른 방에 이미 유효한 `PENDING` 예약이 있으면 신규 `reserveJoin`은 거부되어야 한다.
 
 #### 방 나가기 (leaveRoom)
 
