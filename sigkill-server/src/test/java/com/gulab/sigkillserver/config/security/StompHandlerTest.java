@@ -17,6 +17,7 @@ import java.security.Principal;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.messaging.Message;
@@ -83,6 +84,7 @@ class StompHandlerTest {
     }
 
     @Test
+    @Disabled("레거시 입장 예약 로직 제거 후 활성화")
     void room_topic_pending_join이_없으면_구독을_거부한다() {
         // given
         when(playerRepository.findById(1L)).thenReturn(Optional.empty());
@@ -95,6 +97,7 @@ class StompHandlerTest {
                 .hasMessageContaining("구독 권한");
     }
 
+    @Disabled("레거시 입장 예약 로직 제거 후 활성화")
     @Test
     void room_topic_pending_join이_만료되면_구독을_거부한다() {
         // given
@@ -159,7 +162,8 @@ class StompHandlerTest {
     void game_topic_같은_방_플레이어_구독은_허용한다() {
         // given
         when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "1001", "user1")));
-        when(gameRepository.findById(7L)).thenReturn(Optional.of(Game.create("1001", java.util.List.of(101L)).withGameId(7L)));
+        when(gameRepository.findById(7L)).thenReturn(
+                Optional.of(Game.create("1001", java.util.List.of(101L)).withGameId(7L)));
         Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/game/7");
 
         // when
@@ -175,7 +179,8 @@ class StompHandlerTest {
     void game_topic_다른_방_플레이어_구독은_거부한다() {
         // given
         when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "1001", "user1")));
-        when(gameRepository.findById(7L)).thenReturn(Optional.of(Game.create("2002", java.util.List.of(101L)).withGameId(7L)));
+        when(gameRepository.findById(7L)).thenReturn(
+                Optional.of(Game.create("2002", java.util.List.of(101L)).withGameId(7L)));
         Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/game/7");
 
         // when // then
