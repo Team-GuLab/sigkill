@@ -115,11 +115,10 @@ public class TestController {
     }
 
     /**
-     * 방/게임 관련 인메모리 데이터를 전체 초기화한다.
-     * (유저 메모리는 유지)
+     * 유저/방/게임 관련 인메모리 데이터를 전체 초기화한다.
      */
-    @PostMapping("/cleanup-room-memory")
-    public BaseResponse<RoomMemoryCleanupResponse> cleanupRoomMemory() {
+    @PostMapping("/clear-memory")
+    public BaseResponse<MemoryCleanupResponse> clearMemory() {
         GameFlowOrchestrator.FlowCleanupResult flowCleanupResult = gameFlowOrchestrator.clearAllFlows();
         int clearedSelectedChoiceCount = selectedChoiceRepository.clear();
         int clearedQuizChoiceMappingCount = quizChoiceNumberMappingRepository.clear();
@@ -127,8 +126,10 @@ public class TestController {
         int clearedGameCount = gameRepository.clear();
         int clearedPlayerCount = playerRepository.clear();
         int clearedRoomCount = roomRepository.clear();
+        int clearedUserCount = userRepository.clear();
 
-        RoomMemoryCleanupResponse response = new RoomMemoryCleanupResponse(
+        MemoryCleanupResponse response = new MemoryCleanupResponse(
+                clearedUserCount,
                 clearedRoomCount,
                 clearedPlayerCount,
                 clearedGameCount,
@@ -139,8 +140,9 @@ public class TestController {
                 flowCleanupResult.clearedInitialQuizStartFlagCount()
         );
 
-        log.info("테스트 메모리 정리 완료(유저 유지) - rooms={}, players={}, games={}, gamePlayers={}, selectedChoices={}, "
+        log.info("테스트 메모리 정리 완료 - users={}, rooms={}, players={}, games={}, gamePlayers={}, selectedChoices={}, "
                         + "quizChoiceMappings={}, canceledFlows={}, clearedInitialFlags={}",
+                response.clearedUserCount(),
                 response.clearedRoomCount(),
                 response.clearedPlayerCount(),
                 response.clearedGameCount(),
@@ -216,7 +218,8 @@ public class TestController {
     ) {
     }
 
-    public record RoomMemoryCleanupResponse(
+    public record MemoryCleanupResponse(
+            int clearedUserCount,
             int clearedRoomCount,
             int clearedPlayerCount,
             int clearedGameCount,
