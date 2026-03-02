@@ -214,7 +214,7 @@
                 6) 생성된 <code>roomId</code>를 아래 참가/준비/시작/나가기 입력창에 자동 반영
             </div>
             <div class="hint">
-                생성 직후에는 이미 host가 방에 들어가 있으므로 <code>/app/room/join</code> 전송은 필요 없습니다.
+                생성 직후에는 이미 host가 방에 들어가 있으므로 <code>/app/room/confirm-join</code> 전송은 필요 없습니다.
             </div>
             <div class="grid-2">
                 <div>
@@ -242,18 +242,18 @@
         <div class="card">
             <div class="card-head">
                 <h2>4. 방 참가 (통합 실행)</h2>
-                <span class="endpoint">GET availability + WS connect + SUBSCRIBE + SEND /app/room/join</span>
+                <span class="endpoint">POST reserveJoin + WS connect + SUBSCRIBE + SEND /app/room/confirm-join</span>
             </div>
             <div class="hint">
                 실행 순서:<br/>
-                1) <code>GET /api/v1/rooms/{roomId}/availability</code>로 참가 가능 여부 확인<br/>
+                1) <code>POST /api/v1/rooms/{roomId}/join</code>로 참가 예약(<code>joinTxId</code>) 생성<br/>
                 2) <code>/ws</code> 연결<br/>
                 3) <code>/user/queue/errors</code>, <code>/user/queue/pong</code> 구독<br/>
                 4) <code>/topic/room/{roomId}</code> 구독<br/>
-                5) <code>/app/room/join</code> 전송
+                5) <code>/app/room/confirm-join</code> 전송 (<code>roomId + joinTxId</code>)
             </div>
             <div class="hint">
-                표시: availability REST 요청/응답, join SEND JSON.
+                표시: reserveJoin REST 요청/응답, confirm-join SEND JSON.
                 join 결과는 우측 Room/Error 이벤트 패널에서 확인하세요.
             </div>
             <div class="grid-3">
@@ -273,13 +273,13 @@
             <div class="actions">
                 <button id="joinFlowBtn">실행</button>
             </div>
-            <label>REST 요청 (availability)</label>
+            <label>REST 요청 (reserveJoin)</label>
             <pre class="panel" id="joinRequest">-</pre>
             <div style="height:8px;"></div>
-            <label>REST 응답 (availability)</label>
+            <label>REST 응답 (reserveJoin)</label>
             <pre class="panel" id="joinResponse">-</pre>
             <div style="height:8px;"></div>
-            <label>SEND (/app/room/join)</label>
+            <label>SEND (/app/room/confirm-join)</label>
             <pre class="panel" id="joinSend">-</pre>
         </div>
 
