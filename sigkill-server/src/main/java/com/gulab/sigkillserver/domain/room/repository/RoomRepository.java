@@ -33,4 +33,11 @@ public interface RoomRepository {
     void deleteById(String roomId);
 
     boolean existsById(String roomId);
+
+    /**
+     * 모든 방 데이터 정리
+     *
+     * @return 삭제된 방 수
+     */
+    int clear();
 }

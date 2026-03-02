@@ -28,4 +28,11 @@ public interface PlayerRepository {
      * 특정 방에 특정 유저가 있는지 확인
      */
     boolean existsByRoomIdAndUserId(String roomId, Long userId);
+
+    /**
+     * 모든 플레이어 데이터 정리
+     *
+     * @return 삭제된 플레이어 수
+     */
+    int clear();
 }

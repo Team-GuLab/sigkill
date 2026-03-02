@@ -223,4 +223,33 @@ class GameFlowOrchestratorTest {
             verify(gameService, times(1)).startQuiz(hostId, roomId, gameId);
         }
     }
+
+    @Nested
+    class ClearAllFlowsTests {
+
+        @Test
+        void 전체_게임_플로우_정리시_예약된_태스크와_초기_시작_플래그를_모두_초기화한다() {
+            // given
+            ScheduledFuture<Object> scheduledFuture = mockScheduledFuture();
+            when(gameTaskScheduler.schedule(any(Runnable.class), any(Instant.class)))
+                    .thenAnswer(invocation -> scheduledFuture);
+            gameFlowOrchestrator.onAllPlayersLoaded("1001", 77L);
+
+            // when
+            GameFlowOrchestrator.FlowCleanupResult cleanupResult = gameFlowOrchestrator.clearAllFlows();
+
+            // then
+            verify(scheduledFuture, times(1)).cancel(false);
+            assertThat(cleanupResult).isEqualTo(new GameFlowOrchestrator.FlowCleanupResult(1, 1));
+        }
+
+        @Test
+        void 정리할_플로우가_없으면_정리_카운트는_모두_0이다() {
+            // when
+            GameFlowOrchestrator.FlowCleanupResult cleanupResult = gameFlowOrchestrator.clearAllFlows();
+
+            // then
+            assertThat(cleanupResult).isEqualTo(new GameFlowOrchestrator.FlowCleanupResult(0, 0));
+        }
+    }
 }

@@ -58,6 +58,19 @@ public class GameFlowOrchestrator {
         initialQuizStartTriggeredGames.remove(gameId);
     }
 
+    public FlowCleanupResult clearAllFlows() {
+        int scheduledTaskCount = scheduledTasks.size();
+        scheduledTasks.values().forEach(scheduledFuture -> scheduledFuture.cancel(false));
+        scheduledTasks.clear();
+
+        int initialQuizStartFlagCount = initialQuizStartTriggeredGames.size();
+        initialQuizStartTriggeredGames.clear();
+
+        log.info("game.flow cleanup - canceledScheduledTasks={}, clearedInitialFlags={}",
+                scheduledTaskCount, initialQuizStartFlagCount);
+        return new FlowCleanupResult(scheduledTaskCount, initialQuizStartFlagCount);
+    }
+
     private void scheduleQuizStart(String roomId, Long gameId, long delayMillis) {
         ScheduledFuture<?> future = gameTaskScheduler.schedule(
                 () -> handleQuizStart(roomId, gameId),
@@ -149,5 +162,8 @@ public class GameFlowOrchestrator {
         return roomRepository.findById(roomId)
                 .map(Room::getHostId)
                 .orElse(null);
+    }
+
+    public record FlowCleanupResult(int canceledScheduledTaskCount, int clearedInitialQuizStartFlagCount) {
     }
 }

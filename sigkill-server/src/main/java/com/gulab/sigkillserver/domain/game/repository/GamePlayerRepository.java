@@ -9,4 +9,11 @@ public interface GamePlayerRepository {
     List<GamePlayer> getByGameId(long gameId);
 
     void deleteByGameId(long gameId);
+
+    /**
+     * 모든 게임 플레이어 데이터 정리
+     *
+     * @return 삭제된 게임 플레이어 수
+     */
+    int clear();
 }

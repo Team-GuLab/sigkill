@@ -55,4 +55,12 @@ public class GamePlayerMemoryRepository implements GamePlayerRepository {
             gameIdIndex.remove(gameId);
         }
     }
+
+    @Override
+    public synchronized int clear() {
+        int removedCount = store.size();
+        store.clear();
+        gameIdIndex.clear();
+        return removedCount;
+    }
 }

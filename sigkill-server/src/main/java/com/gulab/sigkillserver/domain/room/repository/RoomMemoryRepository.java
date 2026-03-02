@@ -58,4 +58,11 @@ public class RoomMemoryRepository implements RoomRepository {
     public boolean existsById(String roomId) {
         return store.containsKey(roomId);
     }
+
+    @Override
+    public int clear() {
+        int removedCount = store.size();
+        store.clear();
+        return removedCount;
+    }
 }

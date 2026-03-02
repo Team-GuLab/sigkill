@@ -14,4 +14,11 @@ public interface GameRepository {
     Optional<Game> findByRoomId(String roomId);
 
     void deleteByRoomId(String roomId);
+
+    /**
+     * 모든 게임 데이터 정리
+     *
+     * @return 삭제된 게임 수
+     */
+    int clear();
 }

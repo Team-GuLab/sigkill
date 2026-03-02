@@ -50,4 +50,13 @@ public class UserMemoryRepository implements UserRepository {
     public List<User> findAll() {
         return new ArrayList<>(store.values());
     }
+
+    @Override
+    public synchronized int clear() {
+        int removedCount = store.size();
+        store.clear();
+        sessionIndex.clear();
+        idGenerator.set(0);
+        return removedCount;
+    }
 }

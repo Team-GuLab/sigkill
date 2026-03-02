@@ -33,6 +33,13 @@ public class QuizChoiceNumberMappingMemoryRepository implements QuizChoiceNumber
         store.keySet().removeIf(key -> key.gameId() == gameId);
     }
 
+    @Override
+    public int clear() {
+        int removedCount = store.size();
+        store.clear();
+        return removedCount;
+    }
+
     private record MappingKey(long gameId, long quizId) {
         private static MappingKey of(long gameId, long quizId) {
             return new MappingKey(gameId, quizId);

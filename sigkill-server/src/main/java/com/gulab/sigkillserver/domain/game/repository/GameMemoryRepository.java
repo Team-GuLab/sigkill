@@ -65,4 +65,13 @@ public class GameMemoryRepository implements GameRepository {
             store.remove(gameId);
         }
     }
+
+    @Override
+    public synchronized int clear() {
+        int removedCount = store.size();
+        store.clear();
+        roomIdIndex.clear();
+        idGenerator.set(0);
+        return removedCount;
+    }
 }

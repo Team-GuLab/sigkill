@@ -11,4 +11,11 @@ public interface SelectedChoiceRepository {
     void deleteByGameIdAndQuizId(long gameId, long quizId);
 
     void deleteByGameId(long gameId);
+
+    /**
+     * 모든 제출 선택지 데이터 정리
+     *
+     * @return 삭제된 제출 건수
+     */
+    int clear();
 }
