@@ -18,14 +18,20 @@ import { useResetRoom } from "@/store/room-store";
 /**
  * 대기방 웹소켓 연결 및 상태 관리
  * @param roomId - 방 ID
+ * @param joinTxId - 입장 예약 트랜잭션 ID
  * @param myUserId - 내 유저 ID
  */
 interface UseRoomSocketProps {
   roomId: string | undefined;
+  joinTxId: string | undefined;
   myUserId: number;
 }
 
-export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
+export const useRoomSocket = ({
+  roomId,
+  joinTxId,
+  myUserId,
+}: UseRoomSocketProps) => {
   const navigate = useNavigate();
   const setGameInfo = useSetGameInfo();
   const setGamePlayers = useSetGamePlayers();
@@ -39,7 +45,11 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
   const isGameStarted = useRef(false);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !joinTxId) {
+      navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
+      toast.error("비정상적인 접근으로 방 목록으로 이동합니다.");
+      return;
+    }
 
     const setupConnection = async () => {
       try {
@@ -73,9 +83,10 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
         // 에러 메시지 구독
         errorUnsubscribe.current = subscribeError(error => {
           handleErrorMessage(error);
+          navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
         });
 
-        publishMessage("/app/room/join", { roomId });
+        publishMessage("/app/room/confirm-join", { roomId, joinTxId });
       } catch (error) {
         console.error("Connection failed:", error);
         navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
@@ -102,7 +113,7 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
       disconnectWebSocket();
       resetRoom();
     };
-  }, [roomId, myUserId, navigate, resetRoom]);
+  }, [roomId, joinTxId, myUserId, navigate, resetRoom]);
 
   return { isPending, isGameStarting };
 };

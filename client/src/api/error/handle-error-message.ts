@@ -6,5 +6,9 @@ export const handleErrorMessage = (message: ErrorWebSocketMessage) => {
     case "ROOM_NOT_FOUND":
       toast.error(message.message);
       break;
+
+    case "ROOM_JOIN_RESERVATION_NOT_FOUND":
+      toast.error(message.message);
+      break;
   }
 };
