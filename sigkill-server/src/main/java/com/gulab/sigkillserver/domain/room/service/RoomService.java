@@ -305,6 +305,9 @@ public class RoomService {
                 pendingJoinRepository.deleteByJoinTxId(joinTxId);
                 throw new CustomException(ROOM_JOIN_RESERVATION_NOT_FOUND);
             }
+            if (isRoomFull(room)) {
+                throw new CustomException(ROOM_FULL);
+            }
 
             Player player = Player.create(userId, roomId, user.getNickname());
             playerRepository.create(player);
