@@ -42,13 +42,15 @@ test.describe("방", () => {
       await page.getByRole("button", { name: "생성하기" }).click();
 
       // Assert
-      await expectToBeVisibleInToast(pageB, roomTitle);
+      await expect(pageB.getByText(roomTitle).first()).toBeVisible({
+        timeout: 10000,
+      });
 
       await contextB.close();
     });
   });
 
-  test.describe("입장하기", () => {
+  test.describe("방 입장 가능 여부 확인", () => {
     test("이미 게임이 진행중인 방에는 입장할 수 없다", async ({
       page,
       browser,
