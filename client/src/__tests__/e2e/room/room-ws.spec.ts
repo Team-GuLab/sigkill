@@ -1,5 +1,5 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
-import { setupRoom } from "../utils";
+import { test, type BrowserContext, type Page } from "@playwright/test";
+import { setupRoom, expectToBeVisibleInToast } from "../utils";
 
 test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
   let contextB: BrowserContext;
@@ -21,9 +21,7 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
     }) => {
       ({ contextB, pageB } = await setupRoom(page, browser));
 
-      await expect(
-        page.getByRole("listitem").filter({ hasText: /.*님이 입장했습니다./ }),
-      ).toBeVisible({ timeout: 10000 });
+      await expectToBeVisibleInToast(page, /.*님이 입장했습니다./);
     });
   });
 
@@ -35,9 +33,8 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
       ({ contextB, pageB } = await setupRoom(page, browser));
 
       await pageB.getByRole("button", { name: "나가기" }).click();
-      await expect(
-        page.getByRole("listitem").filter({ hasText: /.*님이 퇴장했습니다./ }),
-      ).toBeVisible({ timeout: 10000 });
+
+      await expectToBeVisibleInToast(page, /.*님이 퇴장했습니다./);
     });
   });
 
@@ -49,11 +46,8 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
       ({ contextB, pageB } = await setupRoom(page, browser));
 
       await page.getByRole("button", { name: "나가기" }).click();
-      await expect(
-        pageB
-          .getByRole("listitem")
-          .filter({ hasText: /방장이 .*님으로 변경되었습니다./ }),
-      ).toBeVisible({ timeout: 10000 });
+
+      await expectToBeVisibleInToast(pageB, /방장이 .*님으로 변경되었습니다./);
     });
   });
 
@@ -65,9 +59,8 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
       ({ contextB, pageB } = await setupRoom(page, browser));
 
       await pageB.getByRole("button", { name: "준비" }).click();
-      await expect(
-        page.getByRole("listitem").filter({ hasText: /.*님이 준비했습니다./ }),
-      ).toBeVisible({ timeout: 10000 });
+
+      await expectToBeVisibleInToast(page, /.*님이 준비했습니다./);
     });
   });
 
@@ -80,11 +73,8 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
 
       await pageB.getByRole("button", { name: "준비" }).click();
       await pageB.getByRole("button", { name: "준비 취소" }).click();
-      await expect(
-        page
-          .getByRole("listitem")
-          .filter({ hasText: /.*님이 준비 취소했습니다./ }),
-      ).toBeVisible({ timeout: 10000 });
+
+      await expectToBeVisibleInToast(page, /.*님이 준비 취소했습니다./);
     });
   });
 });
