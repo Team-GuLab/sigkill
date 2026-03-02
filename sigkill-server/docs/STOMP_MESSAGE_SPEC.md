@@ -142,6 +142,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 - SUBSCRIBE: `/topic/room/{roomId}`
 - Response type: `PLAYER_JOIN`
 - 요청 payload는 `RoomJoinCommand`를 사용하며, `joinTxId`는 `POST /api/v1/rooms/{roomId}/join` 응답 값을 사용한다.
+- 클라이언트가 confirm 전에 연결을 종료하면 해당 `PENDING` 예약은 서버에서 롤백(삭제)된다.
 
 ```json
 {
