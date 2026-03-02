@@ -484,17 +484,21 @@
     }
 
     function sendRoomCommand(command, roomId) {
+        return sendRoomCommandWithPayload(command, {roomId: roomId});
+    }
+
+    function sendRoomCommandWithPayload(command, payload) {
         if (!state.stompClient || !state.stompClient.connected) {
             throw new Error("WebSocket 연결이 필요합니다.");
         }
 
         const destination = "/app/room/" + command;
-        const payload = JSON.stringify({roomId: roomId});
-        state.stompClient.send(destination, {"content-type": "application/json"}, payload);
+        const payloadJson = JSON.stringify(payload);
+        state.stompClient.send(destination, {"content-type": "application/json"}, payloadJson);
 
         return {
             destination: destination,
-            payload: {roomId: roomId}
+            payload: payload
         };
     }
 
@@ -520,40 +524,41 @@
     async function executeJoinFlow() {
         normalizeRoomIdAcrossSections(joinRoomIdInput);
         const roomId = getValueOrThrow(joinRoomIdInput, "roomId");
-        const availabilityPath = "/api/v1/rooms/" + encodeURIComponent(roomId) + "/availability";
+        const reserveJoinPath = "/api/v1/rooms/" + encodeURIComponent(roomId) + "/join";
 
         setPanel(joinRequestEl, {
-            method: "GET",
-            path: availabilityPath
+            method: "POST",
+            path: reserveJoinPath
         });
         setPanel(joinSendEl, "-");
 
-        const availabilityResponse = await fetchJson(availabilityPath, {
-            method: "GET",
+        const reserveJoinResponse = await fetchJson(reserveJoinPath, {
+            method: "POST",
             credentials: "include"
         });
-        setPanel(joinResponseEl, getResponseBodyForPanel(availabilityResponse));
+        setPanel(joinResponseEl, getResponseBodyForPanel(reserveJoinResponse));
 
-        if (!availabilityResponse.ok) {
-            throw new Error("방 참가 가능 여부 조회 실패: HTTP " + availabilityResponse.status);
+        if (!reserveJoinResponse.ok) {
+            throw new Error("방 참가 예약 실패: HTTP " + reserveJoinResponse.status);
         }
 
-        const canJoin = Boolean(
-            availabilityResponse.body &&
-            availabilityResponse.body.result &&
-            availabilityResponse.body.result.canJoin
-        );
-        if (!canJoin) {
-            throw new Error("참가 불가 상태입니다. canJoin=false");
+        const joinTxId = reserveJoinResponse.body &&
+            reserveJoinResponse.body.result &&
+            reserveJoinResponse.body.result.joinTxId;
+        if (!joinTxId) {
+            throw new Error("joinTxId를 찾을 수 없습니다.");
         }
 
         await connectStompIfNeeded();
         subscribeErrorQueueOnce();
         subscribePongQueueOnce();
         subscribeRoomTopic(roomId);
-        const sendResult = sendRoomCommand("join", roomId);
+        const sendResult = sendRoomCommandWithPayload("confirm-join", {
+            roomId: roomId,
+            joinTxId: joinTxId
+        });
         setPanel(joinSendEl, sendResult);
-        log("4) 방 참가 통합 실행 완료");
+        log("4) 방 참가 통합 실행 완료 (confirm-join)");
     }
 
     async function executePing() {

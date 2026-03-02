@@ -2,10 +2,12 @@ package com.gulab.sigkillserver.domain.room.controller;
 
 import com.gulab.sigkillserver.common.BaseResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.request.RoomCreateRequest;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.ReserveJoinResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -57,13 +59,30 @@ public class RoomController {
 
     /**
      * 방 참가 가능 여부 확인
+     *
+     * @deprecated use POST /api/v1/rooms/{roomId}/join
      */
+    @Deprecated
+    @Operation(
+            summary = "방 참가 가능 여부 확인 (Deprecated 예정)",
+            description = "대신 POST /api/v1/rooms/{roomId}/join (reserveJoin)을 사용하세요.",
+            deprecated = true
+    )
     @GetMapping("/rooms/{roomId}/availability")
     public BaseResponse<RoomAvailabilityResponse> checkRoomAvailability(
             @AuthenticationPrincipal Long userId,
             @PathVariable String roomId
     ) {
         RoomAvailabilityResponse response = roomService.checkRoomAvailability(roomId, userId);
+        return BaseResponse.onSuccess(response);
+    }
+
+    @PostMapping("/rooms/{roomId}/join")
+    public BaseResponse<ReserveJoinResponse> reserveJoin(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable String roomId
+    ) {
+        ReserveJoinResponse response = roomService.reserveJoin(roomId, userId);
         return BaseResponse.onSuccess(response);
     }
 }

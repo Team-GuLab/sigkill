@@ -30,6 +30,16 @@ public class RoomConstants {
      */
     public static final int MIN_PLAYERS_TO_START = 2;
 
+    /**
+     * 최소 방 번호
+     */
+    public static final int MIN_ROOM_NUMBER = 1000;
+
+    /**
+     * 최대 방 번호
+     */
+    public static final int MAX_ROOM_NUMBER = 9999;
+
     private RoomConstants() {
     }
 }
