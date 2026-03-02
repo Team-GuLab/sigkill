@@ -32,6 +32,7 @@ import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomResponseType;
 import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerRole;
 import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
+import com.gulab.sigkillserver.domain.room.model.PendingJoin;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.ReadyStatus;
 import com.gulab.sigkillserver.domain.room.model.Room;
@@ -1108,10 +1109,14 @@ class RoomServiceTest {
         void 마지막_플레이어가_퇴장할_경우_방이_삭제된다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
+            User pendingGuest = createAndSaveUser("pending-guest-session", "예약게스트");
             Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
             roomRepository.save(room);
 
             playerRepository.create(Player.create(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            pendingJoinRepository.save(
+                    PendingJoin.create("tx-room-delete", TEST_ROOM_ID, pendingGuest.getUserId(), 1_000L, 99_999L)
+            );
 
             // when
             var result = roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
@@ -1123,6 +1128,45 @@ class RoomServiceTest {
             assertThat(result.hostChangedEvent()).isNull();
             assertThat(roomRepository.findById(TEST_ROOM_ID)).isEmpty();
             assertThat(playerRepository.countByRoomId(TEST_ROOM_ID)).isZero();
+            assertThat(pendingJoinRepository.findAllByRoomId(TEST_ROOM_ID)).isEmpty();
+        }
+    }
+
+    @Nested
+    class PendingRollbackTests {
+        @Test
+        void disconnect_롤백시_유저의_pending_join을_삭제한다() {
+            // given
+            User host = createAndSaveUser("host-session-pending-rollback", "호스트");
+            User guest = createAndSaveUser("guest-session-pending-rollback", "게스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+
+            pendingJoinRepository.save(PendingJoin.create(
+                    "tx-disconnect-rollback",
+                    TEST_ROOM_ID,
+                    guest.getUserId(),
+                    1_000L,
+                    99_999L
+            ));
+
+            // when
+            boolean rolledBack = roomService.rollbackPendingJoinOnDisconnect(guest.getUserId());
+
+            // then
+            assertThat(rolledBack).isTrue();
+            assertThat(pendingJoinRepository.findByRoomIdAndUserId(TEST_ROOM_ID, guest.getUserId())).isEmpty();
+        }
+
+        @Test
+        void disconnect_롤백시_pending_join이_없으면_false를_반환한다() {
+            // given
+            User guest = createAndSaveUser("guest-session-no-pending", "게스트");
+
+            // when
+            boolean rolledBack = roomService.rollbackPendingJoinOnDisconnect(guest.getUserId());
+
+            // then
+            assertThat(rolledBack).isFalse();
         }
     }
 

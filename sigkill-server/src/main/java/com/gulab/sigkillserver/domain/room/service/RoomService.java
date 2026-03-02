@@ -382,11 +382,13 @@ public class RoomService {
         if (getPlayerCountInRoom(roomId) <= 1) {
             roomRepository.deleteById(roomId);
             playerRepository.deleteById(userId);
+            pendingJoinRepository.deleteByRoomId(roomId);
             log.info("room.leave success - roomId={}, userId={}, roomDeleted=true", roomId, userId);
             return LeaveRoomResult.of(playerLeftEvent);
         }
 
         playerRepository.deleteById(userId);
+        pendingJoinRepository.deleteByUserId(userId);
 
         if (room.getHostId().equals(userId)) {
             HostChangedEvent hostChangedEvent = changeHost(room, player);
@@ -396,6 +398,28 @@ public class RoomService {
 
         log.info("room.leave success - roomId={}, userId={}, hostChanged=false", roomId, userId);
         return LeaveRoomResult.of(playerLeftEvent);
+    }
+
+    /**
+     * disconnect 발생 시 확정되지 않은 입장 예약 정리
+     */
+    public boolean rollbackPendingJoinOnDisconnect(Long userId) {
+        PendingJoin pendingJoin = pendingJoinRepository.findByUserId(userId).orElse(null);
+        if (pendingJoin == null) {
+            return false;
+        }
+
+        return roomLockManager.executeWithLock(pendingJoin.roomId(), () -> {
+            PendingJoin current = pendingJoinRepository.findByJoinTxId(pendingJoin.joinTxId()).orElse(null);
+            if (current == null || !current.userId().equals(userId)) {
+                return false;
+            }
+
+            pendingJoinRepository.deleteByJoinTxId(current.joinTxId());
+            log.info("room.pending.rollback success - roomId={}, userId={}, joinTxId={}",
+                    current.roomId(), userId, current.joinTxId());
+            return true;
+        });
     }
 
     /**

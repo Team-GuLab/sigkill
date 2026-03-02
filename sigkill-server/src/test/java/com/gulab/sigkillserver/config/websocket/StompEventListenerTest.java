@@ -50,6 +50,7 @@ class StompEventListenerTest {
 
         // then
         verify(roomService).leaveRoom("1001", userId);
+        verify(roomService, never()).rollbackPendingJoinOnDisconnect(anyLong());
         verify(messagingTemplate).convertAndSend("/topic/room/1001", playerLeftEvent);
     }
 
@@ -80,6 +81,7 @@ class StompEventListenerTest {
         // given
         Long userId = 1L;
         when(playerRepository.findById(userId)).thenReturn(Optional.empty());
+        when(roomService.rollbackPendingJoinOnDisconnect(userId)).thenReturn(false);
 
         SessionDisconnectEvent event = createDisconnectEvent("session-1", () -> String.valueOf(userId));
 
@@ -87,6 +89,25 @@ class StompEventListenerTest {
         stompEventListener.disconnectHandle(event);
 
         // then
+        verify(roomService, never()).leaveRoom(anyString(), anyLong());
+        verify(roomService).rollbackPendingJoinOnDisconnect(userId);
+        verifyNoInteractions(messagingTemplate);
+    }
+
+    @Test
+    void disconnect_시_pending_예약이_있으면_롤백을_수행한다() {
+        // given
+        Long userId = 2L;
+        when(playerRepository.findById(userId)).thenReturn(Optional.empty());
+        when(roomService.rollbackPendingJoinOnDisconnect(userId)).thenReturn(true);
+
+        SessionDisconnectEvent event = createDisconnectEvent("session-2", () -> String.valueOf(userId));
+
+        // when
+        stompEventListener.disconnectHandle(event);
+
+        // then
+        verify(roomService).rollbackPendingJoinOnDisconnect(userId);
         verify(roomService, never()).leaveRoom(anyString(), anyLong());
         verifyNoInteractions(messagingTemplate);
     }
