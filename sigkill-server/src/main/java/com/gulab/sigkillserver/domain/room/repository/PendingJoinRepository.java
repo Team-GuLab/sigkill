@@ -10,6 +10,8 @@ public interface PendingJoinRepository {
 
     Optional<PendingJoin> findByJoinTxId(String joinTxId);
 
+    Optional<PendingJoin> findByUserId(Long userId);
+
     Optional<PendingJoin> findByRoomIdAndUserId(String roomId, Long userId);
 
     List<PendingJoin> findAllByRoomId(String roomId);

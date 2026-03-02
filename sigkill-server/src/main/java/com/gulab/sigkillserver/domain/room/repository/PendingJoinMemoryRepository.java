@@ -24,6 +24,13 @@ public class PendingJoinMemoryRepository implements PendingJoinRepository {
     }
 
     @Override
+    public Optional<PendingJoin> findByUserId(Long userId) {
+        return store.values().stream()
+                .filter(pendingJoin -> pendingJoin.userId().equals(userId))
+                .findFirst();
+    }
+
+    @Override
     public Optional<PendingJoin> findByRoomIdAndUserId(String roomId, Long userId) {
         return store.values().stream()
                 .filter(pendingJoin -> pendingJoin.roomId().equals(roomId))
