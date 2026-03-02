@@ -23,7 +23,9 @@ import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryReposi
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
 import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
+import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.ReserveJoinResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomResponseType;
@@ -34,6 +36,8 @@ import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.ReadyStatus;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.model.RoomStatus;
+import com.gulab.sigkillserver.domain.room.repository.PendingJoinMemoryRepository;
+import com.gulab.sigkillserver.domain.room.repository.PendingJoinRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
@@ -68,6 +72,8 @@ class RoomServiceTest {
     private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
     private GamePlayerRepository gamePlayerRepository;
     private GameEventBuilder gameEventBuilder;
+    private PendingJoinRepository pendingJoinRepository;
+    private RoomLockManager roomLockManager;
 
     private RoomService roomService;
     private GameService gameService;
@@ -84,6 +90,8 @@ class RoomServiceTest {
         quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
         gamePlayerRepository = new GamePlayerMemoryRepository();
         gameEventBuilder = new GameEventBuilder();
+        pendingJoinRepository = new PendingJoinMemoryRepository();
+        roomLockManager = new RoomLockManager();
 
         gameService = new GameService(
                 userRepository,
@@ -96,7 +104,14 @@ class RoomServiceTest {
                 gamePlayerRepository,
                 gameEventBuilder
         );
-        roomService = new RoomService(roomRepository, userRepository, playerRepository, gameService);
+        roomService = new RoomService(
+                roomRepository,
+                userRepository,
+                playerRepository,
+                pendingJoinRepository,
+                roomLockManager,
+                gameService
+        );
     }
 
     /**
@@ -563,6 +578,8 @@ class RoomServiceTest {
                     retryingRoomRepository,
                     userRepository,
                     playerRepository,
+                    pendingJoinRepository,
+                    roomLockManager,
                     gameService
             );
 
@@ -687,6 +704,64 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.checkRoomAvailability("9999", guest.getUserId()),
                     RoomErrorCode.USER_ALREADY_IN_ROOM.name());
+        }
+    }
+
+    @Nested
+    class ReserveJoinTests {
+        @Test
+        void 플레이어가_방_입장_예약을_생성할_수_있다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트");
+            User guest = createAndSaveUser("guest-session", "게스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, 3, host);
+
+            // when
+            ReserveJoinResponse response = roomService.reserveJoin(TEST_ROOM_ID, guest.getUserId());
+
+            // then
+            assertThat(response.joinTxId()).isNotBlank();
+            assertThat(response.expiresAt()).isPositive();
+            assertThat(response.ttlMillis()).isPositive();
+            assertThat(pendingJoinRepository.findByJoinTxId(response.joinTxId()))
+                    .isPresent()
+                    .get()
+                    .satisfies(pendingJoin -> {
+                        assertThat(pendingJoin.roomId()).isEqualTo(TEST_ROOM_ID);
+                        assertThat(pendingJoin.userId()).isEqualTo(guest.getUserId());
+                        assertThat(pendingJoin.expiresAtMillis()).isEqualTo(response.expiresAt());
+                    });
+        }
+
+        @Test
+        void 같은_유저가_같은_방에_예약을_재시도하면_기존_joinTxId를_재사용한다() {
+            // given
+            User host = createAndSaveUser("host-session-idempotent", "호스트");
+            User guest = createAndSaveUser("guest-session-idempotent", "게스트");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, 3, host);
+
+            // when
+            ReserveJoinResponse firstResponse = roomService.reserveJoin(TEST_ROOM_ID, guest.getUserId());
+            ReserveJoinResponse secondResponse = roomService.reserveJoin(TEST_ROOM_ID, guest.getUserId());
+
+            // then
+            assertThat(secondResponse.joinTxId()).isEqualTo(firstResponse.joinTxId());
+        }
+
+        @Test
+        void pending_인원도_정원_계산에_포함되어_초과_예약을_막는다() {
+            // given
+            User host = createAndSaveUser("host-session-capacity", "호스트");
+            User guest1 = createAndSaveUser("guest-session-1", "게스트1");
+            User guest2 = createAndSaveUser("guest-session-2", "게스트2");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, 2, host);
+
+            roomService.reserveJoin(TEST_ROOM_ID, guest1.getUserId());
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.reserveJoin(TEST_ROOM_ID, guest2.getUserId()),
+                    RoomErrorCode.ROOM_FULL.name());
         }
     }
 

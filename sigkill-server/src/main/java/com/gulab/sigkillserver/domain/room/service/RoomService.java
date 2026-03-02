@@ -14,8 +14,8 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_IN_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_ID_ALREADY_EXISTS;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_IN_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID;
@@ -26,7 +26,9 @@ import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_N
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.service.GameService;
+import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.ReserveJoinResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
@@ -37,16 +39,20 @@ import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerInfo;
+import com.gulab.sigkillserver.domain.room.model.PendingJoin;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
+import com.gulab.sigkillserver.domain.room.repository.PendingJoinRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -62,10 +68,13 @@ import org.springframework.stereotype.Service;
 public class RoomService {
 
     private static final String HOST_CHANGED_REASON_HOST_LEFT = "HOST_LEFT";
+    private static final long PENDING_JOIN_TTL_MILLIS = 15_000L;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final PlayerRepository playerRepository;
+    private final PendingJoinRepository pendingJoinRepository;
 
+    private final RoomLockManager roomLockManager;
     private final GameService gameService;
 
     /**
@@ -203,13 +212,66 @@ public class RoomService {
      */
     public RoomAvailabilityResponse checkRoomAvailability(String roomId, Long userId) {
         validateRoomId(roomId);
-
         Room room = getRoomOrThrow(roomId);
-
         // TODO: 동시성 문제 해결
         validateCanJoinRoom(userId, room);
 
         return new RoomAvailabilityResponse(room.getRoomId(), true);
+    }
+
+    /**
+     * 방 참가 예약
+     */
+    public ReserveJoinResponse reserveJoin(String roomId, Long userId) {
+        validateRoomId(roomId);
+        getUserOrThrow(userId);
+
+        PendingJoin reservedPendingJoin = roomLockManager.executeWithLock(roomId, () -> {
+            long now = Instant.now().toEpochMilli();
+            pendingJoinRepository.deleteExpired(now);
+
+            Room room = getRoomOrThrow(roomId);
+            validateCanJoinRoom(userId, room);
+
+            PendingJoin existingPendingJoin = pendingJoinRepository.findByRoomIdAndUserId(roomId, userId)
+                    .filter(existing -> !existing.isExpiredAt(now))
+                    .orElse(null);
+            if (existingPendingJoin != null) {
+                return existingPendingJoin;
+            }
+
+            if (isRoomFullForReserve(room, now)) {
+                throw new CustomException(ROOM_FULL);
+            }
+
+            String createdJoinTxId = UUID.randomUUID().toString();
+            PendingJoin createdPendingJoin = PendingJoin.create(
+                    createdJoinTxId,
+                    roomId,
+                    userId,
+                    now,
+                    now + PENDING_JOIN_TTL_MILLIS
+            );
+            pendingJoinRepository.save(createdPendingJoin);
+            return createdPendingJoin;
+        });
+
+        long now = Instant.now().toEpochMilli();
+        long ttlMillis = Math.max(0L, reservedPendingJoin.expiresAtMillis() - now);
+
+        log.info("room.reserveJoin success - roomId={}, userId={}, joinTxId={}",
+                roomId, userId, reservedPendingJoin.joinTxId());
+        return new ReserveJoinResponse(
+                reservedPendingJoin.joinTxId(),
+                reservedPendingJoin.expiresAtMillis(),
+                ttlMillis
+        );
+    }
+
+    private boolean isRoomFullForReserve(Room room, long nowEpochMillis) {
+        int activePlayers = getPlayerCountInRoom(room.getRoomId());
+        int pendingPlayers = pendingJoinRepository.countUnexpiredByRoomId(room.getRoomId(), nowEpochMillis);
+        return activePlayers + pendingPlayers >= room.getCapacity();
     }
 
     private void validateRoomId(String roomId) {

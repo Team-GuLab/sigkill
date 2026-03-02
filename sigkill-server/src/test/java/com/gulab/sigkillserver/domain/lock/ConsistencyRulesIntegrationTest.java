@@ -29,6 +29,8 @@ import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
+import com.gulab.sigkillserver.domain.room.repository.PendingJoinMemoryRepository;
+import com.gulab.sigkillserver.domain.room.repository.PendingJoinRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
@@ -76,6 +78,8 @@ class ConsistencyRulesIntegrationTest {
     private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
     private GamePlayerRepository gamePlayerRepository;
     private GameEventBuilder gameEventBuilder;
+    private PendingJoinRepository pendingJoinRepository;
+    private RoomLockManager roomLockManager;
 
     private UserService userService;
     private GameService gameService;
@@ -92,6 +96,8 @@ class ConsistencyRulesIntegrationTest {
         quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
         gamePlayerRepository = new GamePlayerMemoryRepository();
         gameEventBuilder = new GameEventBuilder();
+        pendingJoinRepository = new PendingJoinMemoryRepository();
+        roomLockManager = new RoomLockManager();
 
         userService = new UserService(userRepository);
 
@@ -106,7 +112,14 @@ class ConsistencyRulesIntegrationTest {
                 gamePlayerRepository,
                 gameEventBuilder
         );
-        roomService = new RoomService(roomRepository, userRepository, playerRepository, gameService);
+        roomService = new RoomService(
+                roomRepository,
+                userRepository,
+                playerRepository,
+                pendingJoinRepository,
+                roomLockManager,
+                gameService
+        );
     }
 
     @AfterEach
