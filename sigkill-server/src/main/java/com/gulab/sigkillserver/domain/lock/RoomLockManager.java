@@ -34,9 +34,5 @@ public class RoomLockManager {
 
     private void release(String roomId, ReentrantLock lock) {
         lock.unlock();
-        // Remove only when no owner/waiter remains to avoid dropping an active lock.
-        if (!lock.isLocked() && !lock.hasQueuedThreads()) {
-            roomLocks.remove(roomId, lock);
-        }
     }
 }
