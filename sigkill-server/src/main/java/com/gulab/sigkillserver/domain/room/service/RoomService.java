@@ -68,7 +68,7 @@ import org.springframework.stereotype.Service;
 public class RoomService {
 
     private static final String HOST_CHANGED_REASON_HOST_LEFT = "HOST_LEFT";
-    private static final long PENDING_JOIN_TTL_MILLIS = 15_000L;
+    private static final long PENDING_JOIN_TTL_MILLIS = 5_000L;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final PlayerRepository playerRepository;
