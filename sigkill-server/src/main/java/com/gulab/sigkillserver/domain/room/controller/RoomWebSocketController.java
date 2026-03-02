@@ -25,8 +25,12 @@ public class RoomWebSocketController {
     private final RoomService roomService;
     private final SimpMessagingTemplate messagingTemplate;
 
+    /**
+     * @deprecated use /app/room/confirm-join with RoomJoinCommand
+     */
+    @Deprecated
     @MessageMapping("/room/join")
-    public void joinRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
+    public void joinRoomLegacy(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
 
         PlayerJoinEvent playerJoinEvent = roomService.joinRoom(request.roomId(), userId);
@@ -38,7 +42,7 @@ public class RoomWebSocketController {
     }
 
     @MessageMapping("/room/confirm-join")
-    public void joinRoom(@Valid @Payload RoomJoinCommand request, Principal principal) {
+    public void confirmJoinRoom(@Valid @Payload RoomJoinCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
 
         PlayerJoinEvent playerJoinEvent = roomService.confirmJoin(request.roomId(), userId, request.joinTxId());

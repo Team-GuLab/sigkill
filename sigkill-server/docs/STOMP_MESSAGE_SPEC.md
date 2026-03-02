@@ -6,6 +6,9 @@
 
 - 현재 구현/계약 범위: Room 도메인 이벤트 (`join`, `leave`, `ready`, `unready`), Game 도메인 이벤트 (`game/start`, `quiz/start`, `submit`,
   `quiz/end`, `game/end`), 연결 상태 확인 이벤트 (`ping`)
+- 마이그레이션 노트:
+    - REST `GET /api/v1/rooms/{roomId}/availability`는 Deprecated 예정
+    - 방 입장은 `POST /api/v1/rooms/{roomId}/join`(reserve) + STOMP confirm 흐름 권장
 
 ## 2. 연결 및 목적지 규칙
 
@@ -35,7 +38,7 @@
 
 ## 4. 공통 DTO
 
-### 4.1 Request
+### 4.1 RoomIdCommand Request (leave/ready/unready/start)
 
 ```json
 {
@@ -46,7 +49,20 @@
 - 타입: `RoomIdCommand`
 - 제약: `roomId`는 공백 불가(`@NotBlank`)
 
-### 4.2 Shared Response
+### 4.2 RoomJoinCommand Request (join confirm)
+
+```json
+{
+  "roomId": "1234",
+  "joinTxId": "f56e13a5-ef35-4b43-8997-886f2ec54870"
+}
+```
+
+- 타입: `RoomJoinCommand`
+- 제약: `roomId`, `joinTxId`는 공백 불가(`@NotBlank`)
+- 사용 경로: `SEND /app/room/confirm-join`
+
+### 4.3 Shared Response
 
 ```json
 {
@@ -70,7 +86,7 @@
 - `PlayerInfo.status`: `READY | NOT_READY`
 - `PlayerInfo.role`: `HOST | GUEST`
 
-### 4.3 Game Request DTO
+### 4.4 Game Request DTO
 
 `GAME_START` 요청
 
@@ -90,7 +106,7 @@
 }
 ```
 
-### 4.4 Game Response Envelope (MVP)
+### 4.5 Game Response Envelope (MVP)
 
 Game 이벤트 응답은 공통 Envelope를 사용한다.
 
@@ -106,11 +122,26 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 
 ## 5. Room 이벤트 계약
 
-### 5.1 플레이어 입장
+### 5.1 플레이어 입장 (레거시, Deprecated 예정)
 
 - SEND: `/app/room/join`
 - SUBSCRIBE: `/topic/room/{roomId}`
 - Response type: `PLAYER_JOIN`
+- 요청 payload는 `RoomIdCommand`
+- 현재 구현은 즉시 입장(legacy) 동작이며, 향후 제거 예정
+
+```json
+{
+  "roomId": "1234"
+}
+```
+
+### 5.1.1 플레이어 입장 확정 (권장)
+
+- SEND: `/app/room/confirm-join`
+- SUBSCRIBE: `/topic/room/{roomId}`
+- Response type: `PLAYER_JOIN`
+- 요청 payload는 `RoomJoinCommand`를 사용하며, `joinTxId`는 `POST /api/v1/rooms/{roomId}/join` 응답 값을 사용한다.
 
 ```json
 {
