@@ -31,8 +31,8 @@ public class RoomWebSocketController {
 
         RoomSnapshotEvent roomSnapshotEvent = roomService.snapshot(request.roomId(), userId);
 
-        messagingTemplate.convertAndSend("/topic/room", roomSnapshotEvent);
-        
+        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), roomSnapshotEvent);
+
         log.debug("방 스냅샷 브로드캐스트 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
 
