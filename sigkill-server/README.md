@@ -52,13 +52,19 @@
 
 ```json
 {
-  "roomId": "5340",
-  "roomTitle": "새 퀴즈방",
-  "hostId": 69,
-  "capacity": 6,
-  "status": "WAITING"
+  "room": {
+    "roomId": "5340",
+    "roomTitle": "새 퀴즈방",
+    "hostId": 69,
+    "capacity": 6,
+    "status": "WAITING"
+  }
 }
 ```
+
+- `POST /api/v1/rooms/{roomId}/join`
+  - 방 입장
+  - 응답 `result` 형식은 방 생성과 동일하게 `{"room": {...}}`
 
 ## STOMP 기능
 
