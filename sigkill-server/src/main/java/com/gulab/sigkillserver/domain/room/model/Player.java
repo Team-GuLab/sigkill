@@ -18,7 +18,7 @@ public class Player extends BaseEntity {
     }
 
     public static Player create(Long userId, String roomId, String nickname) {
-        return new Player(userId, roomId, nickname, ReadyStatus.UNREADY);
+        return new Player(userId, roomId, nickname, ReadyStatus.NOT_READY);
     }
 
     public void ready() {
@@ -26,7 +26,7 @@ public class Player extends BaseEntity {
     }
 
     public void unready() {
-        this.readyStatus = ReadyStatus.UNREADY;
+        this.readyStatus = ReadyStatus.NOT_READY;
     }
 
     public boolean isReady() {
