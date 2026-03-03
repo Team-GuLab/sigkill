@@ -11,6 +11,7 @@
     const readyBtn = document.getElementById("readyBtn");
     const unreadyBtn = document.getElementById("unreadyBtn");
     const startBtn = document.getElementById("startBtn");
+    const gameLoadBtn = document.getElementById("gameLoadBtn");
     const submitChoiceBtn = document.getElementById("submitChoiceBtn");
     const leaveDisconnectBtn = document.getElementById("leaveDisconnectBtn");
     const pingBtn = document.getElementById("pingBtn");
@@ -39,6 +40,7 @@
     const startPayloadPreviewInput = document.getElementById("startPayloadPreview");
     const quizStartDestinationInput = document.getElementById("quizStartDestination");
     const quizStartPayloadPreviewInput = document.getElementById("quizStartPayloadPreview");
+    const gameLoadPayloadPreviewInput = document.getElementById("gameLoadPayloadPreview");
     const submitPayloadPreviewInput = document.getElementById("submitPayloadPreview");
     const leavePayloadPreviewInput = document.getElementById("leavePayloadPreview");
 
@@ -53,6 +55,7 @@
     const readyResponseEl = document.getElementById("readyResponse");
     const startResponseEl = document.getElementById("startResponse");
     const quizStartResponseEl = document.getElementById("quizStartResponse");
+    const gameLoadResponseEl = document.getElementById("gameLoadResponse");
     const submitResponseEl = document.getElementById("submitResponse");
     const leaveResponseEl = document.getElementById("leaveResponse");
 
@@ -208,6 +211,9 @@
         quizStartPayloadPreviewInput.value = startQuizRoomId
             ? "GAME_START 수신 시 자동 구독"
             : "방 참가 후 GAME_START 수신 대기";
+        gameLoadPayloadPreviewInput.value = startQuizGameId
+            ? JSON.stringify({gameId: Number(startQuizGameId)})
+            : "{\"gameId\":{gameId}}";
 
         const submitGameId = submitGameIdInput.value.trim();
         const submitQuizId = submitQuizIdInput.value.trim();
@@ -523,6 +529,21 @@
         };
     }
 
+    function sendGameLoadCommand(gameId) {
+        if (!state.stompClient || !state.stompClient.connected) {
+            throw new Error("WebSocket 연결이 필요합니다.");
+        }
+
+        const destination = "/app/game/load";
+        const payload = {gameId: gameId};
+        state.stompClient.send(destination, {"content-type": "application/json"}, JSON.stringify(payload));
+
+        return {
+            destination: destination,
+            payload: payload
+        };
+    }
+
     async function executeJoinFlow() {
         normalizeRoomIdAcrossSections(joinRoomIdInput);
         const roomId = getValueOrThrow(joinRoomIdInput, "roomId");
@@ -580,6 +601,25 @@
         const sendResult = sendRoomCommand("start", roomId);
         setPanel(startResponseEl, sendResult);
         log("6) START 전송 완료");
+    }
+
+    async function executeGameLoad() {
+        const gameId = Number(getValueOrThrow(startQuizGameIdInput, "gameId"));
+        if (!Number.isInteger(gameId) || gameId <= 0) {
+            throw new Error("gameId는 1 이상의 정수여야 합니다.");
+        }
+
+        await connectStompIfNeeded();
+        subscribeErrorQueueOnce();
+        subscribePongQueueOnce();
+        const gameSubscribeResult = subscribeGameTopic(String(gameId));
+        const sendResult = sendGameLoadCommand(gameId);
+
+        setPanel(gameLoadResponseEl, {
+            ...sendResult,
+            gameSubscription: gameSubscribeResult
+        });
+        log("7) GAME_LOAD 전송 완료");
     }
 
     async function executeSubmitChoice() {
@@ -681,6 +721,7 @@
     bindAsync(readyBtn, async () => executeReadyLike("ready"));
     bindAsync(unreadyBtn, async () => executeReadyLike("unready"));
     bindAsync(startBtn, async () => executeStartGame());
+    bindAsync(gameLoadBtn, executeGameLoad);
     bindAsync(submitChoiceBtn, executeSubmitChoice);
     bindAsync(leaveDisconnectBtn, executeLeaveAndDisconnect);
     bindAsync(pingBtn, executePing);

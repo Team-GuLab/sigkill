@@ -149,11 +149,14 @@
    - 생성 응답에서 `roomId` 추출
    - `/ws` 연결 후 `/user/queue/errors`, `/user/queue/pong`, `/topic/room/{roomId}` 구독
 4. 방 참가 통합 실행
-   - availability 확인
+   - `POST /api/v1/rooms/{roomId}/join` 실행
    - `/user/queue/errors`, `/user/queue/pong`, `/topic/room/{roomId}` 구독
    - `SEND /app/room/join` (구독 중인 room topic으로 `PLAYER_JOIN` 수신)
-5. `READY/UNREADY`, `LEAVE + DISCONNECT` 테스트
-6. `PING 전송`으로 pong 응답 확인
+5. 게임 시작 및 로딩 완료 전송
+   - `SEND /app/room/start`로 `GAME_START` 수신
+   - `GAME_START` 수신 후 자동 구독된 game topic에서 `SEND /app/game/load`
+6. `READY/UNREADY`, `정답 제출`, `LEAVE + DISCONNECT` 테스트
+7. `PING 전송`으로 pong 응답 확인
 
 정확한 payload, 에러 코드, 이벤트 계약은 `docs/STOMP_MESSAGE_SPEC.md`를 기준으로 확인하세요.
 
