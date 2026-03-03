@@ -11,9 +11,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameResponseType;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
+import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GamePlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GamePlayerRepository;
-import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
@@ -702,6 +702,77 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()),
                     RoomErrorCode.ROOM_IN_GAME.name());
+        }
+    }
+
+    @Nested
+    class JoinEventTests {
+        @Test
+        void joinEvent는_입장한_플레이어_1명을_반환한다() {
+            // given
+            User host = createAndSaveUser("join-event-host-session", "호스트유저");
+            User guest = createAndSaveUser("join-event-guest-session", "게스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+            roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
+
+            // when
+            PlayerJoinEvent result = roomService.joinEvent(TEST_ROOM_ID, guest.getUserId());
+
+            // then
+            assertThat(result.type()).isEqualTo(RoomResponseType.PLAYER_JOIN);
+            assertThat(result.room().roomId()).isEqualTo(TEST_ROOM_ID);
+            assertThat(result.player().userId()).isEqualTo(guest.getUserId());
+            assertThat(result.player().nickname()).isEqualTo(guest.getNickname());
+            assertThat(result.player().role()).isEqualTo(PlayerRole.GUEST);
+        }
+
+        @Test
+        void joinEvent는_플레이어가_방에_없으면_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("join-event-host-session-2", "호스트유저");
+            User guest = createAndSaveUser("join-event-guest-session-2", "게스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinEvent(TEST_ROOM_ID, guest.getUserId()),
+                    PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
+        }
+    }
+
+    @Nested
+    class SnapshotTests {
+        @Test
+        void snapshot은_방과_플레이어_스냅샷을_반환한다() {
+            // given
+            User host = createAndSaveUser("snapshot-host-session", "호스트유저");
+            User guest = createAndSaveUser("snapshot-guest-session", "게스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+            roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
+
+            // when
+            RoomSnapshotEvent result = roomService.snapshot(TEST_ROOM_ID, guest.getUserId());
+
+            // then
+            assertThat(result.type()).isEqualTo(RoomResponseType.ROOM_SNAPSHOT);
+            assertThat(result.room().roomId()).isEqualTo(TEST_ROOM_ID);
+            assertThat(result.players()).hasSize(2);
+            assertThat(result.players())
+                    .extracting("userId")
+                    .containsExactlyInAnyOrder(host.getUserId(), guest.getUserId());
+        }
+
+        @Test
+        void snapshot은_요청자가_방에_없으면_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("snapshot-host-session-2", "호스트유저");
+            User outsider = createAndSaveUser("snapshot-outsider-session", "외부유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.snapshot(TEST_ROOM_ID, outsider.getUserId()),
+                    PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
         }
     }
 

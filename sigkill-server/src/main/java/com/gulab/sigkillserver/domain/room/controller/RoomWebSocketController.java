@@ -6,6 +6,7 @@ import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomSnapshotEvent;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -24,20 +25,15 @@ public class RoomWebSocketController {
     private final RoomService roomService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    /**
-     * @deprecated use /app/room/confirm-join with RoomJoinCommand
-     */
-    @Deprecated
-    @MessageMapping("/room/join")
-    public void joinRoomLegacy(@Valid @Payload RoomIdCommand request, Principal principal) {
+    @MessageMapping("/room/snapshot")
+    public void roomSnapshot(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
 
-        PlayerJoinEvent playerJoinEvent = roomService.joinRoom(request.roomId(), userId);
+        RoomSnapshotEvent roomSnapshotEvent = roomService.snapshot(request.roomId(), userId);
 
-        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
-
-        log.debug("방 참가 브로드캐스트 완료 - roomId: {}, players: {}",
-                request.roomId(), playerJoinEvent.players().size());
+        messagingTemplate.convertAndSend("/topic/room", roomSnapshotEvent);
+        
+        log.debug("방 스냅샷 브로드캐스트 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
 
     @MessageMapping("/room/join")
