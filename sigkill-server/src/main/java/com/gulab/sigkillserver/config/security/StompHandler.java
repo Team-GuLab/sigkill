@@ -2,7 +2,6 @@ package com.gulab.sigkillserver.config.security;
 
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.room.model.Player;
-import com.gulab.sigkillserver.domain.room.repository.PendingJoinRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.security.Principal;
@@ -39,7 +38,6 @@ public class StompHandler implements ChannelInterceptor {
     );
 
     private final PlayerRepository playerRepository;
-    private final PendingJoinRepository pendingJoinRepository;
     private final GameRepository gameRepository;
     private final MeterRegistry meterRegistry;
 

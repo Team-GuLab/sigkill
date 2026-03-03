@@ -8,16 +8,13 @@ import static org.mockito.Mockito.when;
 
 import com.gulab.sigkillserver.domain.game.model.Game;
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
-import com.gulab.sigkillserver.domain.room.model.PendingJoin;
 import com.gulab.sigkillserver.domain.room.model.Player;
-import com.gulab.sigkillserver.domain.room.repository.PendingJoinRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.security.Principal;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.messaging.Message;
@@ -30,7 +27,6 @@ import org.springframework.security.access.AccessDeniedException;
 class StompHandlerTest {
 
     private PlayerRepository playerRepository;
-    private PendingJoinRepository pendingJoinRepository;
     private GameRepository gameRepository;
     private StompHandler stompHandler;
     private MessageChannel messageChannel;
@@ -38,11 +34,9 @@ class StompHandlerTest {
     @BeforeEach
     void setup() {
         playerRepository = mock(PlayerRepository.class);
-        pendingJoinRepository = mock(PendingJoinRepository.class);
         gameRepository = mock(GameRepository.class);
         stompHandler = new StompHandler(
                 playerRepository,
-                pendingJoinRepository,
                 gameRepository,
                 new SimpleMeterRegistry()
         );
@@ -66,50 +60,6 @@ class StompHandlerTest {
         // then
         assertThat(result).isSameAs(message);
         verify(playerRepository).findById(1L);
-    }
-
-    @Test
-    void room_topic_유효한_pending_join이_있으면_구독을_허용한다() {
-        // given
-        when(playerRepository.findById(1L)).thenReturn(Optional.empty());
-        when(pendingJoinRepository.findByRoomIdAndUserId("1001", 1L))
-                .thenReturn(Optional.of(PendingJoin.create("tx-1", "1001", 1L, 0L, Long.MAX_VALUE)));
-        Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/room/1001");
-
-        // when
-        Message<?> result = stompHandler.preSend(message, messageChannel);
-
-        // then
-        assertThat(result).isSameAs(message);
-    }
-
-    @Test
-    @Disabled("레거시 입장 예약 로직 제거 후 활성화")
-    void room_topic_pending_join이_없으면_구독을_거부한다() {
-        // given
-        when(playerRepository.findById(1L)).thenReturn(Optional.empty());
-        when(pendingJoinRepository.findByRoomIdAndUserId("1001", 1L)).thenReturn(Optional.empty());
-        Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/room/1001");
-
-        // when // then
-        assertThatThrownBy(() -> stompHandler.preSend(message, messageChannel))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("구독 권한");
-    }
-
-    @Disabled("레거시 입장 예약 로직 제거 후 활성화")
-    @Test
-    void room_topic_pending_join이_만료되면_구독을_거부한다() {
-        // given
-        when(playerRepository.findById(1L)).thenReturn(Optional.empty());
-        when(pendingJoinRepository.findByRoomIdAndUserId("1001", 1L))
-                .thenReturn(Optional.of(PendingJoin.create("tx-expired", "1001", 1L, 0L, 0L)));
-        Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/room/1001");
-
-        // when // then
-        assertThatThrownBy(() -> stompHandler.preSend(message, messageChannel))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("구독 권한");
     }
 
     @Test

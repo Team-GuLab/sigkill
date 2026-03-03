@@ -3,7 +3,6 @@ package com.gulab.sigkillserver.domain.room.controller;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
-import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomJoinCommand;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
@@ -41,11 +40,11 @@ public class RoomWebSocketController {
                 request.roomId(), playerJoinEvent.players().size());
     }
 
-    @MessageMapping("/room/confirm-join")
-    public void confirmJoinRoom(@Valid @Payload RoomJoinCommand request, Principal principal) {
+    @MessageMapping("/room/join")
+    public void joinRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
 
-        PlayerJoinEvent playerJoinEvent = roomService.confirmJoin(request.roomId(), userId, request.joinTxId());
+        PlayerJoinEvent playerJoinEvent = roomService.joinEvent(request.roomId(), userId);
 
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
 
