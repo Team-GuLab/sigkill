@@ -1,4 +1,4 @@
-package com.gulab.sigkillserver.domain.room.dto.stomp.shared;
+package com.gulab.sigkillserver.domain.room.dto.shared;
 
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.ReadyStatus;

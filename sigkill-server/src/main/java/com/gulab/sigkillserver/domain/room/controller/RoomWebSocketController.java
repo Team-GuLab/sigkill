@@ -3,10 +3,10 @@ package com.gulab.sigkillserver.domain.room.controller;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
-import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomJoinCommand;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomSnapshotEvent;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -25,32 +25,26 @@ public class RoomWebSocketController {
     private final RoomService roomService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    /**
-     * @deprecated use /app/room/confirm-join with RoomJoinCommand
-     */
-    @Deprecated
-    @MessageMapping("/room/join")
-    public void joinRoomLegacy(@Valid @Payload RoomIdCommand request, Principal principal) {
+    @MessageMapping("/room/snapshot")
+    public void roomSnapshot(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
 
-        PlayerJoinEvent playerJoinEvent = roomService.joinRoom(request.roomId(), userId);
+        RoomSnapshotEvent roomSnapshotEvent = roomService.snapshot(request.roomId(), userId);
 
-        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
+        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), roomSnapshotEvent);
 
-        log.debug("방 참가 브로드캐스트 완료 - roomId: {}, players: {}",
-                request.roomId(), playerJoinEvent.players().size());
+        log.debug("방 스냅샷 브로드캐스트 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
 
-    @MessageMapping("/room/confirm-join")
-    public void confirmJoinRoom(@Valid @Payload RoomJoinCommand request, Principal principal) {
+    @MessageMapping("/room/join")
+    public void joinRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
 
-        PlayerJoinEvent playerJoinEvent = roomService.confirmJoin(request.roomId(), userId, request.joinTxId());
+        PlayerJoinEvent playerJoinEvent = roomService.joinEvent(request.roomId(), userId);
 
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
 
-        log.debug("방 참가 브로드캐스트 완료 - roomId: {}, players: {}",
-                request.roomId(), playerJoinEvent.players().size());
+        log.debug("방 참가 알림 브로드캐스트 완료 - roomId: {}", request.roomId());
     }
 
     @MessageMapping("/room/leave")

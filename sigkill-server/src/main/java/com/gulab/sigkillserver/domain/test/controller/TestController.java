@@ -6,7 +6,7 @@ import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
 import com.gulab.sigkillserver.domain.game.service.GameFlowOrchestrator;
-import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
+import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
@@ -15,6 +15,8 @@ import com.gulab.sigkillserver.domain.user.dto.rest.response.LoginResponse;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/test")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Test API", description = "개발/테스트용 데이터 관리 API")
 public class TestController {
 
     private static final int TEST_USER_COUNT = 20;
@@ -52,10 +55,16 @@ public class TestController {
 
     /**
      * 임의 유저 20명 생성 + 5/6, 6/6, 2/6, 3/6 상태의 방 4개 생성
-     * - 테스트 방 A(5/6): 참가자 전원 READY
-     * - 테스트 방 B/C: 참가자 전원 NOT_READY
-     * - 테스트 방 D(3/6): INGAME 상태
+     *
+     * - 테스트 방 A (5/6): 참가자 전원 READY
+     * - 테스트 방 B (6/6): 참가자 전원 NOT_READY
+     * - 테스트 방 C (2/6): 참가자 전원 NOT_READY
+     * - 테스트 방 D (3/6): INGAME 상태
      */
+    @Operation(
+            summary = "테스트 방 시드 데이터 생성",
+            description = "테스트 유저와 방 데이터를 인메모리에 생성합니다. 개발/테스트 환경 전용 엔드포인트입니다."
+    )
     @PostMapping("/seed-rooms")
     public BaseResponse<TestSeedResponse> seedRooms() {
         List<LoginResponse> createdUsers = createRandomUsers(TEST_USER_COUNT);
@@ -117,6 +126,10 @@ public class TestController {
     /**
      * 유저/방/게임 관련 인메모리 데이터를 전체 초기화한다.
      */
+    @Operation(
+            summary = "인메모리 데이터 초기화",
+            description = "유저/방/게임 관련 인메모리 데이터를 전체 삭제합니다. 개발/테스트 환경 전용 엔드포인트입니다."
+    )
     @PostMapping("/clear-memory")
     public BaseResponse<MemoryCleanupResponse> clearMemory() {
         GameFlowOrchestrator.FlowCleanupResult flowCleanupResult = gameFlowOrchestrator.clearAllFlows();
@@ -184,8 +197,8 @@ public class TestController {
         }
 
         LoginResponse host = users.get(startIndex);
-        RoomCreateResponse roomCreateResponse = roomService.createRoom(roomTitle, capacity, host.userId());
-        String roomId = roomCreateResponse.room().roomId();
+        RoomInfoResponse roomInfoResponse = roomService.createRoom(roomTitle, capacity, host.userId());
+        String roomId = roomInfoResponse.roomId();
 
         for (int i = 1; i < targetOccupancy; i++) {
             LoginResponse guest = users.get(startIndex + i);

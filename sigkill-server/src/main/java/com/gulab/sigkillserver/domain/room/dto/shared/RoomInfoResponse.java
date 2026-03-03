@@ -1,17 +1,17 @@
-package com.gulab.sigkillserver.domain.room.dto.stomp.shared;
+package com.gulab.sigkillserver.domain.room.dto.shared;
 
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.model.RoomStatus;
 
-public record RoomInfo(
+public record RoomInfoResponse(
         String roomId,
         String roomTitle,
         Long hostId,
         int capacity,
         RoomStatus status
 ) {
-    public static RoomInfo of(Room room) {
-        return new RoomInfo(
+    public static RoomInfoResponse of(Room room) {
+        return new RoomInfoResponse(
                 room.getRoomId(),
                 room.getRoomTitle(),
                 room.getHostId(),

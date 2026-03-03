@@ -8,9 +8,11 @@
     const loadRoomsBtn = document.getElementById("loadRoomsBtn");
     const createRoomFlowBtn = document.getElementById("createRoomFlowBtn");
     const joinFlowBtn = document.getElementById("joinFlowBtn");
+    const snapshotBtn = document.getElementById("snapshotBtn");
     const readyBtn = document.getElementById("readyBtn");
     const unreadyBtn = document.getElementById("unreadyBtn");
     const startBtn = document.getElementById("startBtn");
+    const gameLoadBtn = document.getElementById("gameLoadBtn");
     const submitChoiceBtn = document.getElementById("submitChoiceBtn");
     const leaveDisconnectBtn = document.getElementById("leaveDisconnectBtn");
     const pingBtn = document.getElementById("pingBtn");
@@ -23,6 +25,7 @@
     const createRoomCapacityInput = document.getElementById("createRoomCapacity");
 
     const joinRoomIdInput = document.getElementById("joinRoomId");
+    const snapshotRoomIdInput = document.getElementById("snapshotRoomId");
     const readyRoomIdInput = document.getElementById("readyRoomId");
     const startRoomIdInput = document.getElementById("startRoomId");
     const startQuizRoomIdInput = document.getElementById("startQuizRoomId");
@@ -35,10 +38,12 @@
     const roomTopicPreviewInput = document.getElementById("roomTopicPreview");
     const gameTopicPreviewInput = document.getElementById("gameTopicPreview");
     const errorTopicPreviewInput = document.getElementById("errorTopicPreview");
+    const snapshotPayloadPreviewInput = document.getElementById("snapshotPayloadPreview");
     const readyPayloadPreviewInput = document.getElementById("readyPayloadPreview");
     const startPayloadPreviewInput = document.getElementById("startPayloadPreview");
     const quizStartDestinationInput = document.getElementById("quizStartDestination");
     const quizStartPayloadPreviewInput = document.getElementById("quizStartPayloadPreview");
+    const gameLoadPayloadPreviewInput = document.getElementById("gameLoadPayloadPreview");
     const submitPayloadPreviewInput = document.getElementById("submitPayloadPreview");
     const leavePayloadPreviewInput = document.getElementById("leavePayloadPreview");
 
@@ -50,9 +55,11 @@
     const createRequestEl = document.getElementById("createRequest");
     const createResponseEl = document.getElementById("createResponse");
     const createWsResultEl = document.getElementById("createWsResult");
+    const snapshotResponseEl = document.getElementById("snapshotResponse");
     const readyResponseEl = document.getElementById("readyResponse");
     const startResponseEl = document.getElementById("startResponse");
     const quizStartResponseEl = document.getElementById("quizStartResponse");
+    const gameLoadResponseEl = document.getElementById("gameLoadResponse");
     const submitResponseEl = document.getElementById("submitResponse");
     const leaveResponseEl = document.getElementById("leaveResponse");
 
@@ -168,6 +175,9 @@
         if (sourceInput !== joinRoomIdInput) {
             joinRoomIdInput.value = roomId;
         }
+        if (sourceInput !== snapshotRoomIdInput) {
+            snapshotRoomIdInput.value = roomId;
+        }
         if (sourceInput !== readyRoomIdInput) {
             readyRoomIdInput.value = roomId;
         }
@@ -195,6 +205,11 @@
         const joinRoomId = joinRoomIdInput.value.trim();
         roomTopicPreviewInput.value = joinRoomId ? "/topic/room/" + joinRoomId : "/topic/room/{roomId}";
 
+        const snapshotRoomId = snapshotRoomIdInput.value.trim();
+        snapshotPayloadPreviewInput.value = snapshotRoomId
+            ? JSON.stringify({roomId: snapshotRoomId})
+            : "{\"roomId\":\"{roomId}\"}";
+
         const readyRoomId = readyRoomIdInput.value.trim();
         readyPayloadPreviewInput.value = readyRoomId ? JSON.stringify({roomId: readyRoomId}) : "{\"roomId\":\"{roomId}\"}";
 
@@ -208,6 +223,9 @@
         quizStartPayloadPreviewInput.value = startQuizRoomId
             ? "GAME_START 수신 시 자동 구독"
             : "방 참가 후 GAME_START 수신 대기";
+        gameLoadPayloadPreviewInput.value = startQuizGameId
+            ? JSON.stringify({gameId: Number(startQuizGameId)})
+            : "{\"gameId\":{gameId}}";
 
         const submitGameId = submitGameIdInput.value.trim();
         const submitQuizId = submitQuizIdInput.value.trim();
@@ -285,6 +303,7 @@
 
     function syncRoomIdToAllInputs(roomId) {
         joinRoomIdInput.value = roomId;
+        snapshotRoomIdInput.value = roomId;
         readyRoomIdInput.value = roomId;
         startRoomIdInput.value = roomId;
         startQuizRoomIdInput.value = roomId;
@@ -335,12 +354,14 @@
         const errorSubscribeResult = subscribeErrorQueueOnce();
         const pongSubscribeResult = subscribePongQueueOnce();
         const roomSubscribeResult = subscribeRoomTopic(createdRoomId);
+        const roomSnapshotSendResult = sendRoomCommand("snapshot", createdRoomId);
 
         setPanel(createWsResultEl, {
             wsConnected: connectResult,
             errorSubscription: errorSubscribeResult,
             pongSubscription: pongSubscribeResult,
             roomSubscription: roomSubscribeResult,
+            roomSnapshotSend: roomSnapshotSendResult,
             autoFilledRoomId: createdRoomId
         });
 
@@ -521,44 +542,54 @@
         };
     }
 
+    function sendGameLoadCommand(gameId) {
+        if (!state.stompClient || !state.stompClient.connected) {
+            throw new Error("WebSocket 연결이 필요합니다.");
+        }
+
+        const destination = "/app/game/load";
+        const payload = {gameId: gameId};
+        state.stompClient.send(destination, {"content-type": "application/json"}, JSON.stringify(payload));
+
+        return {
+            destination: destination,
+            payload: payload
+        };
+    }
+
     async function executeJoinFlow() {
         normalizeRoomIdAcrossSections(joinRoomIdInput);
         const roomId = getValueOrThrow(joinRoomIdInput, "roomId");
-        const reserveJoinPath = "/api/v1/rooms/" + encodeURIComponent(roomId) + "/join";
+        const joinPath = "/api/v1/rooms/" + encodeURIComponent(roomId) + "/join";
 
         setPanel(joinRequestEl, {
             method: "POST",
-            path: reserveJoinPath
+            path: joinPath
         });
         setPanel(joinSendEl, "-");
 
-        const reserveJoinResponse = await fetchJson(reserveJoinPath, {
+        const joinResponse = await fetchJson(joinPath, {
             method: "POST",
             credentials: "include"
         });
-        setPanel(joinResponseEl, getResponseBodyForPanel(reserveJoinResponse));
+        setPanel(joinResponseEl, getResponseBodyForPanel(joinResponse));
 
-        if (!reserveJoinResponse.ok) {
-            throw new Error("방 참가 예약 실패: HTTP " + reserveJoinResponse.status);
-        }
-
-        const joinTxId = reserveJoinResponse.body &&
-            reserveJoinResponse.body.result &&
-            reserveJoinResponse.body.result.joinTxId;
-        if (!joinTxId) {
-            throw new Error("joinTxId를 찾을 수 없습니다.");
+        if (!joinResponse.ok) {
+            throw new Error("방 참가 실패: HTTP " + joinResponse.status);
         }
 
         await connectStompIfNeeded();
         subscribeErrorQueueOnce();
         subscribePongQueueOnce();
         subscribeRoomTopic(roomId);
-        const sendResult = sendRoomCommandWithPayload("confirm-join", {
-            roomId: roomId,
-            joinTxId: joinTxId
+
+        const roomJoinSendResult = sendRoomCommand("join", roomId);
+        const roomSnapshotSendResult = sendRoomCommand("snapshot", roomId);
+        setPanel(joinSendEl, {
+            roomJoinSend: roomJoinSendResult,
+            roomSnapshotSend: roomSnapshotSendResult
         });
-        setPanel(joinSendEl, sendResult);
-        log("4) 방 참가 통합 실행 완료 (confirm-join)");
+        log("4) 방 참가 통합 실행 완료 (rest join + ws join + ws snapshot)");
     }
 
     async function executePing() {
@@ -569,12 +600,29 @@
         log("PING 전송 완료");
     }
 
+    async function executeSnapshot() {
+        const roomId = getValueOrThrow(snapshotRoomIdInput, "roomId");
+        normalizeRoomIdAcrossSections(snapshotRoomIdInput);
+
+        await connectStompIfNeeded();
+        subscribeErrorQueueOnce();
+        subscribePongQueueOnce();
+        const roomSubscribeResult = subscribeRoomTopic(roomId);
+        const sendResult = sendRoomCommand("snapshot", roomId);
+
+        setPanel(snapshotResponseEl, {
+            ...sendResult,
+            roomSubscription: roomSubscribeResult
+        });
+        log("5) SNAPSHOT 전송 완료");
+    }
+
     function executeReadyLike(command) {
         const roomId = getValueOrThrow(readyRoomIdInput, "roomId");
         normalizeRoomIdAcrossSections(readyRoomIdInput);
         const sendResult = sendRoomCommand(command, roomId);
         setPanel(readyResponseEl, sendResult);
-        log("5) " + command.toUpperCase() + " 전송 완료");
+        log("6) " + command.toUpperCase() + " 전송 완료");
     }
 
     function executeStartGame() {
@@ -582,7 +630,26 @@
         normalizeRoomIdAcrossSections(startRoomIdInput);
         const sendResult = sendRoomCommand("start", roomId);
         setPanel(startResponseEl, sendResult);
-        log("6) START 전송 완료");
+        log("7) START 전송 완료");
+    }
+
+    async function executeGameLoad() {
+        const gameId = Number(getValueOrThrow(startQuizGameIdInput, "gameId"));
+        if (!Number.isInteger(gameId) || gameId <= 0) {
+            throw new Error("gameId는 1 이상의 정수여야 합니다.");
+        }
+
+        await connectStompIfNeeded();
+        subscribeErrorQueueOnce();
+        subscribePongQueueOnce();
+        const gameSubscribeResult = subscribeGameTopic(String(gameId));
+        const sendResult = sendGameLoadCommand(gameId);
+
+        setPanel(gameLoadResponseEl, {
+            ...sendResult,
+            gameSubscription: gameSubscribeResult
+        });
+        log("8) GAME_LOAD 전송 완료");
     }
 
     async function executeSubmitChoice() {
@@ -610,7 +677,7 @@
             ...sendResult,
             gameSubscription: gameSubscribeResult
         });
-        log("8) 정답 제출 전송 완료");
+        log("9) 정답 제출 전송 완료");
     }
 
     function disconnectStomp() {
@@ -650,9 +717,9 @@
             setPanel(leaveResponseEl, sendResult);
             await new Promise((resolve) => setTimeout(resolve, 150));
             disconnectStomp();
-            log("9) LEAVE 전송 + WS 연결 해제 완료");
+            log("10) LEAVE 전송 + WS 연결 해제 완료");
         } else {
-            log("9) WS 미연결 상태로 연결해제 단계만 스킵");
+            log("10) WS 미연결 상태로 연결해제 단계만 스킵");
         }
     }
 
@@ -668,6 +735,7 @@
 
     serverBaseInput.addEventListener("input", refreshComputedFields);
     joinRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(joinRoomIdInput));
+    snapshotRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(snapshotRoomIdInput));
     readyRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(readyRoomIdInput));
     startRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startRoomIdInput));
     startQuizRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startQuizRoomIdInput));
@@ -681,9 +749,11 @@
     bindAsync(loadRoomsBtn, executeLoadRooms);
     bindAsync(createRoomFlowBtn, executeCreateRoomFlow);
     bindAsync(joinFlowBtn, executeJoinFlow);
+    bindAsync(snapshotBtn, executeSnapshot);
     bindAsync(readyBtn, async () => executeReadyLike("ready"));
     bindAsync(unreadyBtn, async () => executeReadyLike("unready"));
     bindAsync(startBtn, async () => executeStartGame());
+    bindAsync(gameLoadBtn, executeGameLoad);
     bindAsync(submitChoiceBtn, executeSubmitChoice);
     bindAsync(leaveDisconnectBtn, executeLeaveAndDisconnect);
     bindAsync(pingBtn, executePing);

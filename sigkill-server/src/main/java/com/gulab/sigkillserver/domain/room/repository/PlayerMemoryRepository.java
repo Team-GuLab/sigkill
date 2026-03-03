@@ -1,6 +1,6 @@
 package com.gulab.sigkillserver.domain.room.repository;
 
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYER_ID_ALREADY_EXISTS;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_ALREADY_IN_ROOM;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.room.model.Player;
@@ -24,7 +24,7 @@ public class PlayerMemoryRepository implements PlayerRepository {
     public Player create(Player player) {
         Player existing = store.putIfAbsent(player.getUserId(), player);
         if (existing != null) {
-            throw new CustomException(PLAYER_ID_ALREADY_EXISTS);
+            throw new CustomException(USER_ALREADY_IN_ROOM);
         }
         return player;
     }

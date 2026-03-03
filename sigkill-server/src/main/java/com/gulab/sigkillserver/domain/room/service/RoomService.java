@@ -18,13 +18,10 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_C
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_ID_ALREADY_EXISTS;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_IN_GAME;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_JOIN_RESERVATION_INVALID;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_JOIN_RESERVATION_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_PAGING_PARAMETER_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_TITLE_INVALID;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_ALREADY_HAS_PENDING_JOIN;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.USER_ALREADY_IN_ROOM;
 import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_NOT_FOUND;
 
@@ -33,32 +30,26 @@ import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
-import com.gulab.sigkillserver.domain.room.dto.rest.response.ReserveJoinResponse;
-import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
-import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
+import com.gulab.sigkillserver.domain.room.dto.shared.PlayerInfo;
+import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
-import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerInfo;
-import com.gulab.sigkillserver.domain.room.model.PendingJoin;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomSnapshotEvent;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
-import com.gulab.sigkillserver.domain.room.repository.PendingJoinRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -74,11 +65,9 @@ import org.springframework.stereotype.Service;
 public class RoomService {
 
     private static final String HOST_CHANGED_REASON_HOST_LEFT = "HOST_LEFT";
-    private static final long PENDING_JOIN_TTL_MILLIS = 5_000L;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final PlayerRepository playerRepository;
-    private final PendingJoinRepository pendingJoinRepository;
 
     private final RoomLockManager roomLockManager;
     private final GameService gameService;
@@ -157,7 +146,7 @@ public class RoomService {
     /**
      * 방 생성
      */
-    public RoomCreateResponse createRoom(String roomTitle, Integer capacity, Long userId) {
+    public RoomInfoResponse createRoom(String roomTitle, Integer capacity, Long userId) {
         roomTitle = roomTitle.strip();
         int resolvedCapacity = capacity != null ? capacity : DEFAULT_CAPACITY;
         validateRoomCreateRequest(roomTitle, resolvedCapacity);
@@ -177,7 +166,7 @@ public class RoomService {
                 playerRepository.create(hostPlayer);
 
                 log.info("room.create success - roomId={}, hostId={}, capacity={}", roomId, userId, resolvedCapacity);
-                return RoomCreateResponse.of(room, hostPlayer);
+                return RoomInfoResponse.of(room);
             } catch (CustomException e) {
                 if (ROOM_ID_ALREADY_EXISTS.name().equals(e.getErrorCode().getCode())) {
                     log.debug("Room ID 중복 발생, 재시도 중 (attempt: {}): {}", i + 1, e.getMessage());
@@ -213,125 +202,6 @@ public class RoomService {
         }
     }
 
-    /**
-     * 방 참가 가능 여부 확인
-     */
-    public RoomAvailabilityResponse checkRoomAvailability(String roomId, Long userId) {
-        validateRoomId(roomId);
-        Room room = getRoomOrThrow(roomId);
-        // TODO: 동시성 문제 해결
-        validateCanJoinRoom(userId, room);
-
-        return new RoomAvailabilityResponse(room.getRoomId(), true);
-    }
-
-    /**
-     * 방 참가 예약
-     */
-    public ReserveJoinResponse reserveJoin(String roomId, Long userId) {
-        validateRoomId(roomId);
-        getUserOrThrow(userId);
-
-        PendingJoin reservedPendingJoin = roomLockManager.executeWithLock(roomId, () -> {
-            long now = Instant.now().toEpochMilli();
-            pendingJoinRepository.deleteExpired(now);
-
-            Room room = getRoomOrThrow(roomId);
-            validateCanJoinRoom(userId, room);
-
-            PendingJoin existingPendingJoin = pendingJoinRepository.findByRoomIdAndUserId(roomId, userId)
-                    .filter(existing -> !existing.isExpiredAt(now))
-                    .orElse(null);
-            if (existingPendingJoin != null) {
-                return existingPendingJoin;
-            }
-            PendingJoin existingPendingJoinByUser = pendingJoinRepository.findByUserId(userId)
-                    .filter(existing -> !existing.isExpiredAt(now))
-                    .orElse(null);
-            if (existingPendingJoinByUser != null) {
-                throw new CustomException(USER_ALREADY_HAS_PENDING_JOIN);
-            }
-
-            if (isRoomFullForReserve(room, now)) {
-                throw new CustomException(ROOM_FULL);
-            }
-
-            String createdJoinTxId = UUID.randomUUID().toString();
-            PendingJoin createdPendingJoin = PendingJoin.create(
-                    createdJoinTxId,
-                    roomId,
-                    userId,
-                    now,
-                    now + PENDING_JOIN_TTL_MILLIS
-            );
-            pendingJoinRepository.save(createdPendingJoin);
-            return createdPendingJoin;
-        });
-
-        long now = Instant.now().toEpochMilli();
-        long ttlMillis = Math.max(0L, reservedPendingJoin.expiresAtMillis() - now);
-
-        log.info("room.reserveJoin success - roomId={}, userId={}, joinTxId={}",
-                roomId, userId, reservedPendingJoin.joinTxId());
-        return new ReserveJoinResponse(
-                reservedPendingJoin.joinTxId(),
-                reservedPendingJoin.expiresAtMillis(),
-                ttlMillis
-        );
-    }
-
-    /**
-     * 방 참가 확정 (PENDING -> ACTIVE)
-     */
-    public PlayerJoinEvent confirmJoin(String roomId, Long userId, String joinTxId) {
-        validateRoomId(roomId);
-        Objects.requireNonNull(joinTxId, "joinTxId must not be null");
-        User user = getUserOrThrow(userId);
-
-        return roomLockManager.executeWithLock(roomId, () -> {
-            long now = Instant.now().toEpochMilli();
-            pendingJoinRepository.deleteExpired(now);
-
-            Room room = getRoomOrThrow(roomId);
-            validateRoomNotInGame(room);
-
-            // 멱등성을 위한 처리
-            Player existingPlayer = playerRepository.findById(userId).orElse(null);
-            if (existingPlayer != null) {
-                if (!existingPlayer.getRoomId().equals(roomId)) {
-                    throw new CustomException(USER_ALREADY_IN_ROOM);
-                }
-                return buildPlayerJoinEvent(room);
-            }
-
-            PendingJoin pendingJoin = pendingJoinRepository.findByJoinTxId(joinTxId)
-                    .orElseThrow(() -> new CustomException(ROOM_JOIN_RESERVATION_NOT_FOUND));
-
-            if (!pendingJoin.roomId().equals(roomId) || !pendingJoin.userId().equals(userId)) {
-                throw new CustomException(ROOM_JOIN_RESERVATION_INVALID);
-            }
-            if (pendingJoin.isExpiredAt(now)) {
-                pendingJoinRepository.deleteByJoinTxId(joinTxId);
-                throw new CustomException(ROOM_JOIN_RESERVATION_NOT_FOUND);
-            }
-            if (isRoomFull(room)) {
-                throw new CustomException(ROOM_FULL);
-            }
-
-            Player player = Player.create(userId, roomId, user.getNickname());
-            playerRepository.create(player);
-            pendingJoinRepository.deleteByJoinTxId(joinTxId);
-
-            return buildPlayerJoinEvent(room);
-        });
-    }
-
-    private boolean isRoomFullForReserve(Room room, long nowEpochMillis) {
-        int activePlayers = getPlayerCountInRoom(room.getRoomId());
-        int pendingPlayers = pendingJoinRepository.countUnexpiredByRoomId(room.getRoomId(), nowEpochMillis);
-        return activePlayers + pendingPlayers >= room.getCapacity();
-    }
-
     private void validateRoomId(String roomId) {
         int roomIdInt;
         try {
@@ -347,21 +217,31 @@ public class RoomService {
     /**
      * 플레이어 방 참가
      */
-    public PlayerJoinEvent joinRoom(String roomId, Long userId) {
+    public RoomInfoResponse joinRoom(String roomId, Long userId) {
         validateRoomId(roomId);
         User user = getUserOrThrow(userId);
 
+        RoomInfoResponse roomInfoResponse = roomLockManager.executeWithLock(roomId, () -> {
+            Room room = getRoomOrThrow(roomId);
+            validateCanJoinRoom(userId, room);
+            Player player = Player.create(userId, roomId, user.getNickname());
+            playerRepository.create(player);
+            return RoomInfoResponse.of(room);
+        });
+
+        log.info("room.join success - roomId={}, userId={}", roomId, userId);
+        return roomInfoResponse;
+    }
+
+    /**
+     * 플레이어 방 참가 정보 알림
+     */
+    public PlayerJoinEvent joinEvent(String roomId, Long userId) {
+        validateRoomId(roomId);
         Room room = getRoomOrThrow(roomId);
-
-        validateCanJoinRoom(userId, room);
-
-        Player player = Player.create(userId, roomId, user.getNickname());
-        playerRepository.create(player);
-
-        PlayerJoinEvent playerJoinEvent = buildPlayerJoinEvent(room);
-        log.info("room.join success - roomId={}, userId={}, players={}", roomId, userId,
-                playerJoinEvent.players().size());
-        return playerJoinEvent;
+        Player player = getPlayerInRoomOrThrow(userId, roomId);
+        log.info("room.joinEvent success - roomId={}, userId={}", roomId, userId);
+        return PlayerJoinEvent.of(room, PlayerInfo.of(player, room.getHostId()));
     }
 
     private void validateCanJoinRoom(Long userId, Room room) {
@@ -371,16 +251,23 @@ public class RoomService {
         if (isRoomFull(room)) {
             throw new CustomException(ROOM_FULL);
         }
-        if (playerRepository.findById(userId).isPresent()) {
-            throw new CustomException(USER_ALREADY_IN_ROOM);
-        }
+        validateUserNotInRoom(userId);
     }
 
-    private PlayerJoinEvent buildPlayerJoinEvent(Room room) {
-        List<PlayerInfo> playerInfos = playerRepository.findAllByRoomId(room.getRoomId()).stream()
-                .map(player -> PlayerInfo.of(player, room.getHostId()))
+    /**
+     * 방 내부 스냅샷 조회
+     */
+    public RoomSnapshotEvent snapshot(String roomId, Long userId) {
+        validateRoomId(roomId);
+        Room room = getRoomOrThrow(roomId);
+        getPlayerInRoomOrThrow(userId, roomId);
+        return RoomSnapshotEvent.of(RoomInfoResponse.of(room), buildPlayerInfoList(room));
+    }
+
+    private List<PlayerInfo> buildPlayerInfoList(Room room) {
+        return playerRepository.findAllByRoomId(room.getRoomId()).stream()
+                .map(p -> PlayerInfo.of(p, room.getHostId()))
                 .toList();
-        return PlayerJoinEvent.of(room, playerInfos);
     }
 
     /**
@@ -394,13 +281,11 @@ public class RoomService {
         if (getPlayerCountInRoom(roomId) <= 1) {
             roomRepository.deleteById(roomId);
             playerRepository.deleteById(userId);
-            pendingJoinRepository.deleteByRoomId(roomId);
             log.info("room.leave success - roomId={}, userId={}, roomDeleted=true", roomId, userId);
             return LeaveRoomResult.of(playerLeftEvent);
         }
 
         playerRepository.deleteById(userId);
-        pendingJoinRepository.deleteByUserId(userId);
 
         if (room.getHostId().equals(userId)) {
             HostChangedEvent hostChangedEvent = changeHost(room, player);
@@ -410,33 +295,6 @@ public class RoomService {
 
         log.info("room.leave success - roomId={}, userId={}, hostChanged=false", roomId, userId);
         return LeaveRoomResult.of(playerLeftEvent);
-    }
-
-    /**
-     * disconnect 발생 시 확정되지 않은 입장 예약 정리
-     */
-    public boolean rollbackPendingJoinOnDisconnect(Long userId) {
-        List<PendingJoin> pendingJoins = pendingJoinRepository.findAllByUserId(userId);
-        if (pendingJoins.isEmpty()) {
-            return false;
-        }
-
-        boolean rolledBack = false;
-        for (PendingJoin pendingJoin : pendingJoins) {
-            boolean removed = roomLockManager.executeWithLock(pendingJoin.roomId(), () -> {
-                PendingJoin current = pendingJoinRepository.findByJoinTxId(pendingJoin.joinTxId()).orElse(null);
-                if (current == null || !current.userId().equals(userId)) {
-                    return false;
-                }
-
-                pendingJoinRepository.deleteByJoinTxId(current.joinTxId());
-                log.info("room.pending.rollback success - roomId={}, userId={}, joinTxId={}",
-                        current.roomId(), userId, current.joinTxId());
-                return true;
-            });
-            rolledBack = rolledBack || removed;
-        }
-        return rolledBack;
     }
 
     /**

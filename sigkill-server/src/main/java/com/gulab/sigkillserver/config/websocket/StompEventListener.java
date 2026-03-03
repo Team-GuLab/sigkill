@@ -63,8 +63,7 @@ public class StompEventListener {
                 return;
             }
 
-            playerRepository.findById(userId).ifPresentOrElse(this::leaveRoomByDisconnect,
-                    () -> rollbackPendingJoinByDisconnect(userId));
+            playerRepository.findById(userId).ifPresent(this::leaveRoomByDisconnect);
         } finally {
             MDC.remove("channel");
         }
@@ -88,14 +87,5 @@ public class StompEventListener {
         }
 
         log.debug("DISCONNECT 자동 퇴장 처리 완료 - roomId={}, userId={}", roomId, userId);
-    }
-
-    private void rollbackPendingJoinByDisconnect(Long userId) {
-        boolean rolledBack = roomService.rollbackPendingJoinOnDisconnect(userId);
-        if (rolledBack) {
-            log.debug("DISCONNECT pending 예약 롤백 완료 - userId={}", userId);
-            return;
-        }
-        log.debug("DISCONNECT 후 정리 대상 플레이어/예약 없음 - userId={}", userId);
     }
 }

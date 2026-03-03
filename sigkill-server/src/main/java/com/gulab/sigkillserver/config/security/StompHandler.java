@@ -2,7 +2,6 @@ package com.gulab.sigkillserver.config.security;
 
 import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.room.model.Player;
-import com.gulab.sigkillserver.domain.room.repository.PendingJoinRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.security.Principal;
@@ -39,7 +38,6 @@ public class StompHandler implements ChannelInterceptor {
     );
 
     private final PlayerRepository playerRepository;
-    private final PendingJoinRepository pendingJoinRepository;
     private final GameRepository gameRepository;
     private final MeterRegistry meterRegistry;
 
@@ -148,19 +146,8 @@ public class StompHandler implements ChannelInterceptor {
             return;
         }
 
-        // TODO: 레거시 입장 예약 로직 제거 후 주석 해제
-//        long now = Instant.now().toEpochMilli();
-//        boolean hasValidPendingJoin = pendingJoinRepository.findByRoomIdAndUserId(roomId, userId)
-//                .filter(pendingJoin -> !pendingJoin.isExpiredAt(now))
-//                .isPresent();
-//
-//        if (!hasValidPendingJoin) {
-//            log.warn("[SUBSCRIBE] 실패: 입장 예약 없음 - userId={}, roomId={}, destination={}",
-//                    userId, roomId, destination);
-//            throw new AccessDeniedException("방 구독 권한이 없습니다.");
-//        }
-
-        log.debug("[SUBSCRIBE] pending join 구독 - userId={}, roomId={}", userId, roomId);
+        log.warn("[SUBSCRIBE] 실패: 방 멤버 아님 - userId={}, roomId={}, destination={}", userId, roomId, destination);
+        throw new AccessDeniedException("방 구독 권한이 없습니다.");
     }
 
     private void authorizeGameTopicSubscription(Principal user, String destination) {

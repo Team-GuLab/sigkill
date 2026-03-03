@@ -26,13 +26,11 @@ import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
 import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
-import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
+import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
-import com.gulab.sigkillserver.domain.room.repository.PendingJoinMemoryRepository;
-import com.gulab.sigkillserver.domain.room.repository.PendingJoinRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
@@ -83,7 +81,6 @@ class ConsistencyRulesIntegrationTest {
     private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
     private GamePlayerRepository gamePlayerRepository;
     private GameEventBuilder gameEventBuilder;
-    private PendingJoinRepository pendingJoinRepository;
     private RoomLockManager roomLockManager;
 
     private UserService userService;
@@ -101,7 +98,6 @@ class ConsistencyRulesIntegrationTest {
         quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
         gamePlayerRepository = new GamePlayerMemoryRepository();
         gameEventBuilder = new GameEventBuilder();
-        pendingJoinRepository = new PendingJoinMemoryRepository();
         roomLockManager = new RoomLockManager();
 
         userService = new UserService(userRepository);
@@ -121,7 +117,6 @@ class ConsistencyRulesIntegrationTest {
                 roomRepository,
                 userRepository,
                 playerRepository,
-                pendingJoinRepository,
                 roomLockManager,
                 gameService
         );
@@ -273,27 +268,27 @@ class ConsistencyRulesIntegrationTest {
             // when
             List<Throwable> errors = runConcurrently(
                     () -> {
-                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user1.userId());
+                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user1.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user2.userId());
+                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user2.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user3.userId());
+                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user3.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user4.userId());
+                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user4.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user5.userId());
+                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user5.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomCreateResponse res = roomService.createRoom("테스트 방", 6, user6.userId());
+                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user6.userId());
                         roomIds.add(res.roomId());
                     }
             );
@@ -327,55 +322,6 @@ class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 동시에_여러_사용자가_입장해도_방_정원을_넘겨_입장되지_않는다_레거시() throws InterruptedException {
-            // given
-            long hostUserId = loginGuest("hostSession").userId();
-            final int TEST_CAPACITY = 2;
-
-            LoginResponse user1 = loginGuest("session1");
-            LoginResponse user2 = loginGuest("session2");
-            LoginResponse user3 = loginGuest("session3");
-            LoginResponse user4 = loginGuest("session4");
-            LoginResponse user5 = loginGuest("session5");
-
-            RoomCreateResponse rcr = roomService.createRoom("테스트 방", TEST_CAPACITY, hostUserId);
-            String roomId = rcr.roomId();
-
-            // when
-            runConcurrently(
-                    () -> {
-                        if (roomService.checkRoomAvailability(roomId, user1.userId()).canJoin()) {
-                            roomService.joinRoom(roomId, user1.userId());
-                        }
-                    },
-                    () -> {
-                        if (roomService.checkRoomAvailability(roomId, user2.userId()).canJoin()) {
-                            roomService.joinRoom(roomId, user2.userId());
-                        }
-                    },
-                    () -> {
-                        if (roomService.checkRoomAvailability(roomId, user3.userId()).canJoin()) {
-                            roomService.joinRoom(roomId, user3.userId());
-                        }
-                    },
-                    () -> {
-                        if (roomService.checkRoomAvailability(roomId, user4.userId()).canJoin()) {
-                            roomService.joinRoom(roomId, user4.userId());
-                        }
-                    },
-                    () -> {
-                        if (roomService.checkRoomAvailability(roomId, user5.userId()).canJoin()) {
-                            roomService.joinRoom(roomId, user5.userId());
-                        }
-                    }
-            );
-
-            // then
-            List<Player> players = playerRepository.findAllByRoomId(roomId);
-            assertThat(players).hasSize(TEST_CAPACITY);
-        }
-
-        @Test
         void 동시에_여러_사용자가_입장해도_방_정원을_넘겨_입장되지_않는다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -387,31 +333,16 @@ class ConsistencyRulesIntegrationTest {
             LoginResponse user4 = loginGuest("session4");
             LoginResponse user5 = loginGuest("session5");
 
-            RoomCreateResponse rcr = roomService.createRoom("테스트 방", TEST_CAPACITY, hostUserId);
-            String roomId = rcr.roomId();
+            RoomInfoResponse res = roomService.createRoom("테스트 방", TEST_CAPACITY, hostUserId);
+            String roomId = res.roomId();
 
             // when
             List<Throwable> errors = runConcurrently(
-                    () -> {
-                        String joinTxId = roomService.reserveJoin(roomId, user1.userId()).joinTxId();
-                        roomService.confirmJoin(roomId, user1.userId(), joinTxId);
-                    },
-                    () -> {
-                        String joinTxId = roomService.reserveJoin(roomId, user2.userId()).joinTxId();
-                        roomService.confirmJoin(roomId, user2.userId(), joinTxId);
-                    },
-                    () -> {
-                        String joinTxId = roomService.reserveJoin(roomId, user3.userId()).joinTxId();
-                        roomService.confirmJoin(roomId, user3.userId(), joinTxId);
-                    },
-                    () -> {
-                        String joinTxId = roomService.reserveJoin(roomId, user4.userId()).joinTxId();
-                        roomService.confirmJoin(roomId, user4.userId(), joinTxId);
-                    },
-                    () -> {
-                        String joinTxId = roomService.reserveJoin(roomId, user5.userId()).joinTxId();
-                        roomService.confirmJoin(roomId, user5.userId(), joinTxId);
-                    }
+                    () -> roomService.joinRoom(roomId, user1.userId()),
+                    () -> roomService.joinRoom(roomId, user2.userId()),
+                    () -> roomService.joinRoom(roomId, user3.userId()),
+                    () -> roomService.joinRoom(roomId, user4.userId()),
+                    () -> roomService.joinRoom(roomId, user5.userId())
             );
 
             // then
@@ -445,7 +376,7 @@ class ConsistencyRulesIntegrationTest {
             long readyGuestUserId = loginGuest("readyGuestSession").userId();
             long lateJoinerUserId = loginGuest("lateJoinerSession").userId();
 
-            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
             roomService.joinRoom(roomId, readyGuestUserId);
             roomService.readyPlayer(roomId, readyGuestUserId);
@@ -489,7 +420,7 @@ class ConsistencyRulesIntegrationTest {
             long hostUserId = loginGuest("hostSession").userId();
             long leavingGuestUserId = loginGuest("leavingGuestSession").userId();
             long joiningGuestUserId = loginGuest("joiningGuestSession").userId();
-            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
             roomService.joinRoom(roomId, leavingGuestUserId);
 
@@ -515,7 +446,7 @@ class ConsistencyRulesIntegrationTest {
             long leavingGuestUserId = loginGuest("leavingGuestSession").userId();
             long stayingGuestUserId = loginGuest("stayingGuestSession").userId();
 
-            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
             roomService.joinRoom(roomId, leavingGuestUserId);
             roomService.joinRoom(roomId, stayingGuestUserId);
@@ -556,7 +487,7 @@ class ConsistencyRulesIntegrationTest {
             long guest1UserId = loginGuest("guest1Session").userId();
             long guest2UserId = loginGuest("guest2Session").userId();
 
-            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
             roomService.joinRoom(roomId, guest1UserId);
             roomService.joinRoom(roomId, guest2UserId);
@@ -625,7 +556,7 @@ class ConsistencyRulesIntegrationTest {
             long readyGuestUserId = loginGuest("readyGuestSession").userId();
             long leavingGuestUserId = loginGuest("leavingGuestSession").userId();
 
-            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
             roomService.joinRoom(roomId, readyGuestUserId);
             roomService.joinRoom(roomId, leavingGuestUserId);
@@ -661,7 +592,7 @@ class ConsistencyRulesIntegrationTest {
             long readyGuest1UserId = loginGuest("readyGuest1Session").userId();
             long readyGuest2UserId = loginGuest("readyGuest2Session").userId();
 
-            RoomCreateResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
             roomService.joinRoom(roomId, readyGuest1UserId);
             roomService.joinRoom(roomId, readyGuest2UserId);

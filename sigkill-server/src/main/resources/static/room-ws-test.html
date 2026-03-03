@@ -202,7 +202,7 @@
         <div class="card">
             <div class="card-head">
                 <h2>3. 방 생성 (REST + WS 후속 처리)</h2>
-                <span class="endpoint">POST /api/v1/rooms + WS connect + SUBSCRIBE</span>
+                <span class="endpoint">POST /api/v1/rooms + WS connect + SUBSCRIBE /topic/room/{roomId} + SEND /app/room/snapshot</span>
             </div>
             <div class="hint">
                 실행 순서:<br/>
@@ -211,10 +211,11 @@
                 3) <code>/ws</code> 연결<br/>
                 4) <code>/user/queue/errors</code>, <code>/user/queue/pong</code> 구독<br/>
                 5) <code>/topic/room/{roomId}</code> 구독<br/>
-                6) 생성된 <code>roomId</code>를 아래 참가/준비/시작/나가기 입력창에 자동 반영
+                6) <code>/app/room/snapshot</code> 전송<br/>
+                7) 생성된 <code>roomId</code>를 아래 참가/준비/시작/나가기 입력창에 자동 반영
             </div>
             <div class="hint">
-                생성 직후에는 이미 host가 방에 들어가 있으므로 <code>/app/room/confirm-join</code> 전송은 필요 없습니다.
+                생성 직후 host는 이미 입장 상태이며, snapshot 요청으로 현재 방 상태를 바로 확인할 수 있습니다.
             </div>
             <div class="grid-2">
                 <div>
@@ -242,18 +243,19 @@
         <div class="card">
             <div class="card-head">
                 <h2>4. 방 참가 (통합 실행)</h2>
-                <span class="endpoint">POST reserveJoin + WS connect + SUBSCRIBE + SEND /app/room/confirm-join</span>
+                <span class="endpoint">POST /api/v1/rooms/{roomId}/join + WS connect + SUBSCRIBE /topic/room/{roomId} + SEND /app/room/join + /app/room/snapshot</span>
             </div>
             <div class="hint">
                 실행 순서:<br/>
-                1) <code>POST /api/v1/rooms/{roomId}/join</code>로 참가 예약(<code>joinTxId</code>) 생성<br/>
+                1) <code>POST /api/v1/rooms/{roomId}/join</code>로 참가 확정<br/>
                 2) <code>/ws</code> 연결<br/>
                 3) <code>/user/queue/errors</code>, <code>/user/queue/pong</code> 구독<br/>
                 4) <code>/topic/room/{roomId}</code> 구독<br/>
-                5) <code>/app/room/confirm-join</code> 전송 (<code>roomId + joinTxId</code>)
+                5) <code>/app/room/join</code> 전송 (<code>roomId</code>)<br/>
+                6) <code>/app/room/snapshot</code> 전송 (<code>roomId</code>)
             </div>
             <div class="hint">
-                표시: reserveJoin REST 요청/응답, confirm-join SEND JSON.
+                표시: join REST 요청/응답, join/snapshot SEND JSON.
                 join 결과는 우측 Room/Error 이벤트 패널에서 확인하세요.
             </div>
             <div class="grid-3">
@@ -273,19 +275,41 @@
             <div class="actions">
                 <button id="joinFlowBtn">실행</button>
             </div>
-            <label>REST 요청 (reserveJoin)</label>
+            <label>REST 요청 (join)</label>
             <pre class="panel" id="joinRequest">-</pre>
             <div style="height:8px;"></div>
-            <label>REST 응답 (reserveJoin)</label>
+            <label>REST 응답 (join)</label>
             <pre class="panel" id="joinResponse">-</pre>
             <div style="height:8px;"></div>
-            <label>SEND (/app/room/confirm-join)</label>
+            <label>SEND (/app/room/join, /app/room/snapshot)</label>
             <pre class="panel" id="joinSend">-</pre>
         </div>
 
         <div class="card">
             <div class="card-head">
-                <h2>5. 방 준비 / 해제</h2>
+                <h2>5. 방 스냅샷</h2>
+                <span class="endpoint">SEND /app/room/snapshot</span>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="snapshotRoomId">roomId</label>
+                    <input id="snapshotRoomId" placeholder="예: 1001" type="text"/>
+                </div>
+                <div>
+                    <label for="snapshotPayloadPreview">payload</label>
+                    <input id="snapshotPayloadPreview" readonly type="text"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="snapshotBtn">SNAPSHOT 실행</button>
+            </div>
+            <div class="hint">표시: SEND JSON (Room 이벤트는 우측 패널에서 확인)</div>
+            <pre class="panel" id="snapshotResponse">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>6. 방 준비 / 해제</h2>
                 <span class="endpoint">SEND /app/room/ready | /app/room/unready</span>
             </div>
             <div class="grid-2">
@@ -308,7 +332,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>6. 게임 시작</h2>
+                <h2>7. 게임 시작</h2>
                 <span class="endpoint">SEND /app/room/start</span>
             </div>
             <div class="grid-2">
@@ -330,13 +354,14 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>7. Game 토픽 자동 구독</h2>
-                <span class="endpoint">AUTO SUBSCRIBE /topic/game/{gameId} (on GAME_START)</span>
+                <h2>8. Game 토픽 구독 + LOAD 전송</h2>
+                <span class="endpoint">AUTO SUBSCRIBE /topic/game/{gameId} + SEND /app/game/load</span>
             </div>
             <div class="hint">
                 방장이 <code>START</code>를 눌러 <code>Room</code> 토픽에서 <code>GAME_START</code> 이벤트가 오면,
                 방에 참가한 모든 사용자 클라이언트가 Game 토픽을 자동 구독합니다.<br/>
-                <code>GAME_LOADED(allLoaded=true)</code> 이후 퀴즈는 서버 오케스트레이터가 자동으로 시작/종료를 진행합니다.
+                <code>GAME_START</code> 수신 후 <code>GAME_LOADED</code>를 보내면
+                <code>allLoaded=true</code> 시점에 서버 오케스트레이터가 퀴즈를 자동 시작/종료합니다.
             </div>
             <div class="grid-2">
                 <div>
@@ -364,13 +389,25 @@
                     <input id="quizStartPayloadPreview" readonly type="text"/>
                 </div>
             </div>
-            <div class="hint">표시: 자동 구독 결과</div>
+            <div class="grid-2">
+                <div>
+                    <label for="gameLoadPayloadPreview">game/load payload</label>
+                    <input id="gameLoadPayloadPreview" readonly type="text"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="gameLoadBtn">GAME_LOAD 전송</button>
+            </div>
+            <div class="hint">표시: 자동 구독 결과 + game/load SEND JSON</div>
             <pre class="panel" id="quizStartResponse">-</pre>
+            <div style="height:8px;"></div>
+            <label>GAME_LOAD 전송 결과</label>
+            <pre class="panel" id="gameLoadResponse">-</pre>
         </div>
 
         <div class="card">
             <div class="card-head">
-                <h2>8. 정답 제출</h2>
+                <h2>9. 정답 제출</h2>
                 <span class="endpoint">SEND /app/game/submit</span>
             </div>
             <div class="hint">
@@ -406,7 +443,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>9. 방 나가기 + WS 연결 해제</h2>
+                <h2>10. 방 나가기 + WS 연결 해제</h2>
                 <span class="endpoint">SEND /app/room/leave + DISCONNECT</span>
             </div>
             <div class="grid-2">
@@ -428,7 +465,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>10. Ping / Pong 확인</h2>
+                <h2>11. Ping / Pong 확인</h2>
                 <span class="endpoint">SEND /app/ping | SUBSCRIBE /user/queue/pong</span>
             </div>
             <div class="actions">

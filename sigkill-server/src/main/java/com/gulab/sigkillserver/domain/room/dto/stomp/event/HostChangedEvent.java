@@ -1,6 +1,6 @@
 package com.gulab.sigkillserver.domain.room.dto.stomp.event;
 
-import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerInfo;
+import com.gulab.sigkillserver.domain.room.dto.shared.PlayerInfo;
 import com.gulab.sigkillserver.domain.room.model.Player;
 
 public record HostChangedEvent(

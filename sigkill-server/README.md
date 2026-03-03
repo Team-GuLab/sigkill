@@ -52,25 +52,13 @@
 
 ```json
 {
-  "room": {
-    "roomId": "5340",
-    "roomTitle": "새 퀴즈방",
-    "hostId": 69,
-    "capacity": 6,
-    "status": "WAITING"
-  },
-  "players": [
-    {
-      "userId": 69,
-      "nickname": "미소짓는 구렁이",
-      "status": "NOT_READY"
-    }
-  ]
+  "roomId": "5340",
+  "roomTitle": "새 퀴즈방",
+  "hostId": 69,
+  "capacity": 6,
+  "status": "WAITING"
 }
 ```
-
-- `GET /api/v1/rooms/{roomId}/availability`
-  - 방 입장 가능 여부 확인
 
 ## STOMP 기능
 
@@ -124,9 +112,8 @@
 
 - `/topic/room/{roomId}` 구독 허용:
   - 현재 해당 방 멤버
-  - 현재 어떤 방에도 속하지 않은 사용자(pre-join)
 - `/topic/room/{roomId}` 구독 거부:
-  - 현재 다른 방에 참가 중인 사용자
+  - 현재 해당 방 멤버가 아닌 사용자(미참가/다른 방 참가)
 - 사용자 큐는 허용 목록만 구독 가능:
   - `/user/queue/errors`
   - `/user/queue/pong`
@@ -149,11 +136,14 @@
    - 생성 응답에서 `roomId` 추출
    - `/ws` 연결 후 `/user/queue/errors`, `/user/queue/pong`, `/topic/room/{roomId}` 구독
 4. 방 참가 통합 실행
-   - availability 확인
+   - `POST /api/v1/rooms/{roomId}/join` 실행
    - `/user/queue/errors`, `/user/queue/pong`, `/topic/room/{roomId}` 구독
    - `SEND /app/room/join` (구독 중인 room topic으로 `PLAYER_JOIN` 수신)
-5. `READY/UNREADY`, `LEAVE + DISCONNECT` 테스트
-6. `PING 전송`으로 pong 응답 확인
+5. 게임 시작 및 로딩 완료 전송
+   - `SEND /app/room/start`로 `GAME_START` 수신
+   - `GAME_START` 수신 후 자동 구독된 game topic에서 `SEND /app/game/load`
+6. `READY/UNREADY`, `정답 제출`, `LEAVE + DISCONNECT` 테스트
+7. `PING 전송`으로 pong 응답 확인
 
 정확한 payload, 에러 코드, 이벤트 계약은 `docs/STOMP_MESSAGE_SPEC.md`를 기준으로 확인하세요.
 
