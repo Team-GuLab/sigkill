@@ -76,6 +76,7 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
         });
 
         publishMessage("/app/room/join", { roomId });
+        publishMessage("/app/room/snapshot", { roomId });
       } catch (error) {
         console.error("Connection failed:", error);
         navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });

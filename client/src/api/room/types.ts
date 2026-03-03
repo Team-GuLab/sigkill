@@ -18,6 +18,10 @@ export interface RoomItem {
   canJoin: boolean;
 }
 
+export interface WaitingRoom extends Omit<RoomItem, "playerCount" | "canJoin"> {
+  hostId: number;
+}
+
 // 방 생성 시 필요한 데이터
 export interface CreateRoomParams {
   roomTitle: RoomItem["roomTitle"];
@@ -25,8 +29,7 @@ export interface CreateRoomParams {
 
 // 방 생성 응답 데이터
 export interface CreateRoomResponse {
-  room: Omit<RoomItem, "playerCount" | "canJoin">;
-  players: Player[];
+  room: WaitingRoom;
 }
 
 export interface Player {
@@ -37,10 +40,16 @@ export interface Player {
 }
 
 // 웹소켓 메시지 타입들
+export interface RoomSnapshotMessage {
+  type: "ROOM_SNAPSHOT";
+  room: WaitingRoom;
+  players: Player[];
+}
+
 export interface PlayerJoinMessage {
   type: "PLAYER_JOIN";
   room: Omit<RoomItem, "playerCount" | "canJoin">;
-  players: Player[];
+  player: Player;
 }
 
 export interface PlayerLeaveMessage {
@@ -82,11 +91,10 @@ export interface GameStartMessage {
 
 // 모든 웹소켓 메시지 타입
 export type RoomWebSocketMessage =
+  | RoomSnapshotMessage
   | PlayerJoinMessage
   | PlayerLeaveMessage
   | PlayerReadyMessage
   | PlayerUnreadyMessage
   | HostChangedMessage
   | GameStartMessage;
-
-export type PlayerJoinResponse = PlayerJoinMessage;

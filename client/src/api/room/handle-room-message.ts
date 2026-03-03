@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import type { RoomWebSocketMessage } from "./types";
 import { useRoomStore } from "@/store/room-store";
+import { useUserStore } from "@/store/user-store";
 
 /**
  * 대기방 관련 stomp 메시지 핸들러
@@ -12,7 +13,16 @@ export const handleRoomMessage = (
   myUserId: number,
 ) => {
   switch (message.type) {
+    case "ROOM_SNAPSHOT": {
+      const { setRoomInfo, setPlayers, reset } = useRoomStore.getState();
+      reset();
+      setRoomInfo(message.room);
+      setPlayers(message.players);
+      break;
+    }
+
     case "PLAYER_JOIN": {
+      const { user } = useUserStore.getState();
       const { roomInfo, players, setRoomInfo, setPlayers } =
         useRoomStore.getState();
 
@@ -21,13 +31,15 @@ export const handleRoomMessage = (
         setRoomInfo(message.room);
       }
 
-      const newPlayer = message.players.find(
-        p => !players.some(existing => existing.userId === p.userId),
-      );
-      if (newPlayer && players.length > 0) {
-        toast.info(`${newPlayer.nickname}님이 입장했습니다.`);
+      if (message.player.userId !== user?.userId) {
+        toast.info(`${message.player.nickname}님이 입장했습니다.`);
+        const alreadyExists = players.some(
+          p => p.userId === message.player.userId,
+        );
+        if (!alreadyExists) {
+          setPlayers([...players, message.player]);
+        }
       }
-      setPlayers(message.players);
       break;
     }
 
@@ -74,7 +86,8 @@ export const handleRoomMessage = (
       toast.info(`방장이 ${message.newHost.nickname}님으로 변경되었습니다.`);
       setPlayers(
         players.map(p => {
-          if (p.userId === message.newHost.userId) return { ...p, role: "HOST" };
+          if (p.userId === message.newHost.userId)
+            return { ...p, role: "HOST" };
           if (p.userId === message.oldHost.userId)
             return { ...p, role: "GUEST" };
           return p;
