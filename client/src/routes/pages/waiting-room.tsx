@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate, useParams, useLocation } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import PlayerList from "@/components/room/player-list";
 import { Button } from "@/ui/button";
 import { ROUTE_PATHS } from "@/routes/paths";
@@ -15,17 +15,12 @@ import { useRoomInfo, usePlayers } from "@/store/room-store";
 export default function WaitingRoom() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const user = useUser();
   const myUserId = user!.userId;
 
-  // room-item로부터 전달된 joinTxId(방 입장 예약 트랜잭션 ID, 일종의 토큰)
-  const joinTxId = (location.state as { joinTxId?: string } | null)?.joinTxId;
-
   const { isPending: isRoomSocketPending, isGameStarting } = useRoomSocket({
     roomId,
-    joinTxId,
     myUserId,
   });
 

@@ -72,7 +72,7 @@ The WebSocket client is a singleton in `src/app/config/web-socket-client.ts`. Al
 
 Domain-specific subscriptions (e.g. `subscribeRoom`, `subscribeError`) wrap `subscribeManager`. Message parsing logic lives in `handle-*-message.ts` files.
 
-The `useRoomSocket` hook manages connection lifecycle for the waiting room: it connects on mount, subscribes, sends `/app/room/confirm-join`, and disconnects + resets the room store on unmount.
+The `useRoomSocket` hook manages connection lifecycle for the waiting room: it connects on mount, subscribes, sends `/app/room/join`, and disconnects + resets the room store on unmount.
 
 ### State Management
 
