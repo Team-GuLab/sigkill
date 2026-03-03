@@ -48,8 +48,7 @@ public class RoomWebSocketController {
 
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
 
-        log.debug("방 참가 브로드캐스트 완료 - roomId: {}, players: {}",
-                request.roomId(), playerJoinEvent.players().size());
+        log.debug("방 참가 알림 브로드캐스트 완료 - roomId: {}", request.roomId());
     }
 
     @MessageMapping("/room/leave")

@@ -6,7 +6,7 @@ import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
 import com.gulab.sigkillserver.domain.game.service.GameFlowOrchestrator;
-import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
+import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
@@ -51,10 +51,8 @@ public class TestController {
     private final RoomService roomService;
 
     /**
-     * 임의 유저 20명 생성 + 5/6, 6/6, 2/6, 3/6 상태의 방 4개 생성
-     * - 테스트 방 A(5/6): 참가자 전원 READY
-     * - 테스트 방 B/C: 참가자 전원 NOT_READY
-     * - 테스트 방 D(3/6): INGAME 상태
+     * 임의 유저 20명 생성 + 5/6, 6/6, 2/6, 3/6 상태의 방 4개 생성 - 테스트 방 A(5/6): 참가자 전원 READY - 테스트 방 B/C: 참가자 전원 NOT_READY - 테스트 방
+     * D(3/6): INGAME 상태
      */
     @PostMapping("/seed-rooms")
     public BaseResponse<TestSeedResponse> seedRooms() {
@@ -184,8 +182,8 @@ public class TestController {
         }
 
         LoginResponse host = users.get(startIndex);
-        RoomCreateResponse roomCreateResponse = roomService.createRoom(roomTitle, capacity, host.userId());
-        String roomId = roomCreateResponse.room().roomId();
+        RoomInfoResponse roomInfoResponse = roomService.createRoom(roomTitle, capacity, host.userId());
+        String roomId = roomInfoResponse.roomId();
 
         for (int i = 1; i < targetOccupancy; i++) {
             LoginResponse guest = users.get(startIndex + i);

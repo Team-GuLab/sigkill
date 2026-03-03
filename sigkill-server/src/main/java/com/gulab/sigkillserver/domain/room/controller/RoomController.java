@@ -3,6 +3,7 @@ package com.gulab.sigkillserver.domain.room.controller;
 import com.gulab.sigkillserver.common.BaseResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.request.RoomCreateRequest;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
+import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -45,25 +46,23 @@ public class RoomController {
      * 방 생성
      */
     @PostMapping("/rooms")
-    public BaseResponse<RoomCreateResponse> createRoom(
+    public BaseResponse<RoomInfoResponse> createRoom(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody RoomCreateRequest request
     ) {
-        RoomCreateResponse response = roomService.createRoom(request.roomTitle(), request.capacity(), userId);
+        RoomInfoResponse response = roomService.createRoom(request.roomTitle(), request.capacity(), userId);
         return BaseResponse.onSuccess(response);
     }
 
     /**
-     * 방 참가 가능 여부 확인
-     *
-     * @deprecated use POST /api/v1/rooms/{roomId}/join
+     * 방 참가
      */
     @PostMapping("/rooms/{roomId}/join")
-    public BaseResponse<ReserveJoinResponse> reserveJoin(
+    public BaseResponse<RoomInfoResponse> join(
             @AuthenticationPrincipal Long userId,
             @PathVariable String roomId
     ) {
-        ReserveJoinResponse response = roomService.reserveJoin(roomId, userId);
+        RoomInfoResponse response = roomService.joinRoom(roomId, userId);
         return BaseResponse.onSuccess(response);
     }
 }

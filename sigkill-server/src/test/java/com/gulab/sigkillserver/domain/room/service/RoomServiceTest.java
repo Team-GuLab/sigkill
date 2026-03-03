@@ -26,9 +26,11 @@ import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
+import com.gulab.sigkillserver.domain.room.dto.shared.PlayerRole;
+import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomResponseType;
-import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerRole;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomSnapshotEvent;
 import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
@@ -424,15 +426,11 @@ class RoomServiceTest {
             assertThat(playerRepository.existsByRoomIdAndUserId(room.getRoomId(), host.getUserId())).isTrue();
 
             // 응답 DTO 확인
-            assertThat(response.room().roomId()).isEqualTo(room.getRoomId());
-            assertThat(response.room().roomTitle()).isEqualTo("방1");
-            assertThat(response.room().hostId()).isEqualTo(host.getUserId());
-            assertThat(response.room().capacity()).isEqualTo(6);
-            assertThat(response.room().status()).isEqualTo(RoomStatus.WAITING);
-            assertThat(response.players()).hasSize(1);
-            assertThat(response.players().getFirst().userId()).isEqualTo(host.getUserId());
-            assertThat(response.players().getFirst().status()).isEqualTo(ReadyStatus.NOT_READY);
-            assertThat(response.players().getFirst().role()).isEqualTo(PlayerRole.HOST);
+            assertThat(response.roomId()).isEqualTo(room.getRoomId());
+            assertThat(response.roomTitle()).isEqualTo("방1");
+            assertThat(response.hostId()).isEqualTo(host.getUserId());
+            assertThat(response.capacity()).isEqualTo(6);
+            assertThat(response.status()).isEqualTo(RoomStatus.WAITING);
         }
 
         @Test
@@ -446,8 +444,7 @@ class RoomServiceTest {
             // then
             Room room = roomRepository.findAll().getFirst();
             assertThat(room.getCapacity()).isEqualTo(6);
-            assertThat(response.room().capacity()).isEqualTo(6);
-            assertThat(response.players()).hasSize(1);
+            assertThat(response.capacity()).isEqualTo(6);
         }
 
         @Test
@@ -461,7 +458,7 @@ class RoomServiceTest {
             // then
             Room room = roomRepository.findAll().getFirst();
             assertThat(room.getRoomTitle()).isEqualTo("공백 포함 제목");
-            assertThat(response.room().roomTitle()).isEqualTo("공백 포함 제목");
+            assertThat(response.roomTitle()).isEqualTo("공백 포함 제목");
         }
 
         @Test
@@ -596,32 +593,14 @@ class RoomServiceTest {
             createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
 
             // when
-            PlayerJoinEvent result = roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
+            RoomInfoResponse result = roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
 
-            // then: 반환값(공개 API 계약) 검증
+            // then
             assertThat(result).isNotNull();
-            assertThat(result.type()).isEqualTo(RoomResponseType.PLAYER_JOIN);
-
-            // 방 정보 검증
-            assertThat(result.room().roomId()).isEqualTo(TEST_ROOM_ID);
-            assertThat(result.room().roomTitle()).isEqualTo(TEST_ROOM_TITLE);
-            assertThat(result.room().hostId()).isEqualTo(host.getUserId());
-
-            // 플레이어 목록 검증
-            assertThat(result.players()).hasSize(2);
-            assertThat(result.players())
-                    .extracting("userId")
-                    .containsExactlyInAnyOrder(host.getUserId(), guest.getUserId());
-            assertThat(result.players().stream()
-                    .filter(playerInfo -> playerInfo.userId().equals(host.getUserId()))
-                    .findFirst()
-                    .orElseThrow()
-                    .role()).isEqualTo(PlayerRole.HOST);
-            assertThat(result.players().stream()
-                    .filter(playerInfo -> playerInfo.userId().equals(guest.getUserId()))
-                    .findFirst()
-                    .orElseThrow()
-                    .role()).isEqualTo(PlayerRole.GUEST);
+            assertThat(result.roomId()).isEqualTo(TEST_ROOM_ID);
+            assertThat(result.roomTitle()).isEqualTo(TEST_ROOM_TITLE);
+            assertThat(result.hostId()).isEqualTo(host.getUserId());
+            assertThat(playerRepository.existsByRoomIdAndUserId(TEST_ROOM_ID, guest.getUserId())).isTrue();
         }
 
         @Test

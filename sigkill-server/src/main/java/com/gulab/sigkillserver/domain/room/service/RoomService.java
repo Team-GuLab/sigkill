@@ -30,18 +30,16 @@ import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
-import com.gulab.sigkillserver.domain.room.dto.rest.response.ReserveJoinResponse;
-import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomAvailabilityResponse;
-import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomCreateResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomResponse;
+import com.gulab.sigkillserver.domain.room.dto.shared.PlayerInfo;
+import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
-import com.gulab.sigkillserver.domain.room.dto.stomp.shared.PlayerInfo;
-import com.gulab.sigkillserver.domain.room.model.PendingJoin;
+import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomSnapshotEvent;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
@@ -149,7 +147,7 @@ public class RoomService {
     /**
      * 방 생성
      */
-    public RoomCreateResponse createRoom(String roomTitle, Integer capacity, Long userId) {
+    public RoomInfoResponse createRoom(String roomTitle, Integer capacity, Long userId) {
         roomTitle = roomTitle.strip();
         int resolvedCapacity = capacity != null ? capacity : DEFAULT_CAPACITY;
         validateRoomCreateRequest(roomTitle, resolvedCapacity);
@@ -169,7 +167,7 @@ public class RoomService {
                 playerRepository.create(hostPlayer);
 
                 log.info("room.create success - roomId={}, hostId={}, capacity={}", roomId, userId, resolvedCapacity);
-                return RoomCreateResponse.of(room, hostPlayer);
+                return RoomInfoResponse.of(room);
             } catch (CustomException e) {
                 if (ROOM_ID_ALREADY_EXISTS.name().equals(e.getErrorCode().getCode())) {
                     log.debug("Room ID 중복 발생, 재시도 중 (attempt: {}): {}", i + 1, e.getMessage());
@@ -220,21 +218,30 @@ public class RoomService {
     /**
      * 플레이어 방 참가
      */
-    public PlayerJoinEvent joinRoom(String roomId, Long userId) {
+    public RoomInfoResponse joinRoom(String roomId, Long userId) {
         validateRoomId(roomId);
         User user = getUserOrThrow(userId);
 
+        RoomInfoResponse roomInfoResponse = roomLockManager.executeWithLock(roomId, () -> {
+            Room room = getRoomOrThrow(roomId);
+            validateCanJoinRoom(userId, room);
+            Player player = Player.create(userId, roomId, user.getNickname());
+            playerRepository.create(player);
+            return RoomInfoResponse.of(room);
+        });
+
+        log.info("room.join success - roomId={}, userId={}", roomId, userId);
+        return roomInfoResponse;
+    }
+
+    /**
+     * 플레이어 방 참가 정보 알림
+     */
+    public PlayerJoinEvent joinEvent(String roomId, Long userId) {
         Room room = getRoomOrThrow(roomId);
-
-        validateCanJoinRoom(userId, room);
-
-        Player player = Player.create(userId, roomId, user.getNickname());
-        playerRepository.create(player);
-
-        PlayerJoinEvent playerJoinEvent = buildPlayerJoinEvent(room);
-        log.info("room.join success - roomId={}, userId={}, players={}", roomId, userId,
-                playerJoinEvent.players().size());
-        return playerJoinEvent;
+        Player player = getPlayerInRoomOrThrow(userId, roomId);
+        log.info("room.confirmJoin success - roomId={}, userId={}", roomId, userId);
+        return PlayerJoinEvent.of(room, PlayerInfo.of(player, room.getHostId()));
     }
 
     private void validateCanJoinRoom(Long userId, Room room) {
@@ -249,11 +256,19 @@ public class RoomService {
         }
     }
 
-    private PlayerJoinEvent buildPlayerJoinEvent(Room room) {
-        List<PlayerInfo> playerInfos = playerRepository.findAllByRoomId(room.getRoomId()).stream()
-                .map(player -> PlayerInfo.of(player, room.getHostId()))
+    /**
+     * 방 내부 스냅샷 조회
+     */
+    public RoomSnapshotEvent snapshot(String roomId, Long userId) {
+        Room room = getRoomOrThrow(roomId);
+        getPlayerInRoomOrThrow(userId, roomId);
+        return RoomSnapshotEvent.of(RoomInfoResponse.of(room), buildPlayerInfoList(room));
+    }
+
+    private List<PlayerInfo> buildPlayerInfoList(Room room) {
+        return playerRepository.findAllByRoomId(room.getRoomId()).stream()
+                .map(p -> PlayerInfo.of(p, room.getHostId()))
                 .toList();
-        return PlayerJoinEvent.of(room, playerInfos);
     }
 
     /**
