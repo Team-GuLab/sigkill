@@ -207,7 +207,7 @@ class RoomServiceTest {
             createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
             playerRepository.create(Player.create(guest1.getUserId(), TEST_ROOM_ID, guest1.getNickname()));
             playerRepository.create(Player.create(guest2.getUserId(), TEST_ROOM_ID, guest2.getNickname()));
-            roomService.readyPlayer(TEST_ROOM_ID, guest1.getUserId()); // guest2는 NOT_READY
+            roomService.readyPlayer(TEST_ROOM_ID, guest1.getUserId()); // guest2는 UNREADY
 
             // when then
             assertThrowsCustomExceptionWithCode(
@@ -904,9 +904,9 @@ class RoomServiceTest {
 
             // then
             Player newHost = playerRepository.findById(guest.getUserId()).orElseThrow();
-            assertThat(newHost.getReadyStatus()).isEqualTo(ReadyStatus.NOT_READY);
+            assertThat(newHost.getReadyStatus()).isEqualTo(ReadyStatus.UNREADY);
             assertThat(result.hostChangedEvent()).isNotNull();
-            assertThat(result.hostChangedEvent().newHost().status()).isEqualTo(ReadyStatus.NOT_READY);
+            assertThat(result.hostChangedEvent().newHost().status()).isEqualTo(ReadyStatus.UNREADY);
         }
 
         @Test
