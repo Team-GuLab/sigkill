@@ -52,25 +52,13 @@
 
 ```json
 {
-  "room": {
-    "roomId": "5340",
-    "roomTitle": "새 퀴즈방",
-    "hostId": 69,
-    "capacity": 6,
-    "status": "WAITING"
-  },
-  "players": [
-    {
-      "userId": 69,
-      "nickname": "미소짓는 구렁이",
-      "status": "NOT_READY"
-    }
-  ]
+  "roomId": "5340",
+  "roomTitle": "새 퀴즈방",
+  "hostId": 69,
+  "capacity": 6,
+  "status": "WAITING"
 }
 ```
-
-- `GET /api/v1/rooms/{roomId}/availability`
-  - 방 입장 가능 여부 확인
 
 ## STOMP 기능
 
@@ -124,9 +112,8 @@
 
 - `/topic/room/{roomId}` 구독 허용:
   - 현재 해당 방 멤버
-  - 현재 어떤 방에도 속하지 않은 사용자(pre-join)
 - `/topic/room/{roomId}` 구독 거부:
-  - 현재 다른 방에 참가 중인 사용자
+  - 현재 해당 방 멤버가 아닌 사용자(미참가/다른 방 참가)
 - 사용자 큐는 허용 목록만 구독 가능:
   - `/user/queue/errors`
   - `/user/queue/pong`

@@ -65,7 +65,6 @@ import org.springframework.stereotype.Service;
 public class RoomService {
 
     private static final String HOST_CHANGED_REASON_HOST_LEFT = "HOST_LEFT";
-    private static final long PENDING_JOIN_TTL_MILLIS = 5_000L;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final PlayerRepository playerRepository;
@@ -238,9 +237,10 @@ public class RoomService {
      * 플레이어 방 참가 정보 알림
      */
     public PlayerJoinEvent joinEvent(String roomId, Long userId) {
+        validateRoomId(roomId);
         Room room = getRoomOrThrow(roomId);
         Player player = getPlayerInRoomOrThrow(userId, roomId);
-        log.info("room.confirmJoin success - roomId={}, userId={}", roomId, userId);
+        log.info("room.joinEvent success - roomId={}, userId={}", roomId, userId);
         return PlayerJoinEvent.of(room, PlayerInfo.of(player, room.getHostId()));
     }
 
@@ -258,6 +258,7 @@ public class RoomService {
      * 방 내부 스냅샷 조회
      */
     public RoomSnapshotEvent snapshot(String roomId, Long userId) {
+        validateRoomId(roomId);
         Room room = getRoomOrThrow(roomId);
         getPlayerInRoomOrThrow(userId, roomId);
         return RoomSnapshotEvent.of(RoomInfoResponse.of(room), buildPlayerInfoList(room));
