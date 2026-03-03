@@ -4,6 +4,7 @@ import type {
   CreateRoomParams,
   CreateRoomResponse,
   RoomListDto,
+  WaitingRoom,
 } from "./types";
 import type { AxiosResponse } from "axios";
 import { MAX_CAPACITY } from "@/constants/room";
@@ -43,18 +44,10 @@ export const createRoom = async ({
   return response.data.result;
 };
 
-export const checkRoomAvailability = async <
-  T = { roomId: string; canJoin: boolean },
->(
-  roomId: string,
-): Promise<T> => {
-  try {
-    const response = await axiosInstance.get<APIResponse<T>>(
-      `/api/v1/rooms/${roomId}/availability`,
-    );
+export const joinRoom = async <T = WaitingRoom>(roomId: string): Promise<T> => {
+  const response = await axiosInstance.post<APIResponse<T>>(
+    `/api/v1/rooms/${roomId}/join`,
+  );
 
-    return response.data.result;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.result;
 };

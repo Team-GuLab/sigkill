@@ -1,4 +1,3 @@
-import { checkRoomAvailability } from "@/api/room";
 import type { RoomItem } from "@/api/room/types";
 import { Item, ItemContent, ItemTitle, ItemActions } from "@/ui/item";
 import { Badge } from "@/ui/badge";
@@ -7,6 +6,7 @@ import { AppError } from "@/api/axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { ROUTE_GENERATORS } from "@/routes/paths";
+import { joinRoom } from "@/api/room";
 
 // 방 목록 내 단건 방
 interface RoomItemProps extends RoomItem {}
@@ -23,7 +23,7 @@ export default function RoomItem({
 
   const handleRoomItemClick = async () => {
     try {
-      await checkRoomAvailability(roomId);
+      await joinRoom(roomId);
 
       navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId), { replace: true });
     } catch (error) {
