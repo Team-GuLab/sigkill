@@ -75,6 +75,18 @@ class StompHandlerTest {
     }
 
     @Test
+    void room_topic_방_미참가_사용자_구독은_거부한다() {
+        // given
+        when(playerRepository.findById(1L)).thenReturn(Optional.empty());
+        Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/room/1001");
+
+        // when // then
+        assertThatThrownBy(() -> stompHandler.preSend(message, messageChannel))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("구독 권한");
+    }
+
+    @Test
     void 사용자_큐_허용_목적지는_구독할_수_있다() {
         // given
         Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/user/queue/pong");
