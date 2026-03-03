@@ -51,7 +51,7 @@ public class TestController {
     private final RoomService roomService;
 
     /**
-     * 임의 유저 20명 생성 + 5/6, 6/6, 2/6, 3/6 상태의 방 4개 생성 - 테스트 방 A(5/6): 참가자 전원 READY - 테스트 방 B/C: 참가자 전원 NOT_READY - 테스트 방
+     * 임의 유저 20명 생성 + 5/6, 6/6, 2/6, 3/6 상태의 방 4개 생성 - 테스트 방 A(5/6): 참가자 전원 READY - 테스트 방 B/C: 참가자 전원 UNREADY - 테스트 방
      * D(3/6): INGAME 상태
      */
     @PostMapping("/seed-rooms")

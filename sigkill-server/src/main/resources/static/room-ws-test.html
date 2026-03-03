@@ -202,7 +202,7 @@
         <div class="card">
             <div class="card-head">
                 <h2>3. 방 생성 (REST + WS 후속 처리)</h2>
-                <span class="endpoint">POST /api/v1/rooms + WS connect + SUBSCRIBE</span>
+                <span class="endpoint">POST /api/v1/rooms + WS connect + SUBSCRIBE /topic/room/{roomId} + SEND /app/room/snapshot</span>
             </div>
             <div class="hint">
                 실행 순서:<br/>
@@ -211,10 +211,11 @@
                 3) <code>/ws</code> 연결<br/>
                 4) <code>/user/queue/errors</code>, <code>/user/queue/pong</code> 구독<br/>
                 5) <code>/topic/room/{roomId}</code> 구독<br/>
-                6) 생성된 <code>roomId</code>를 아래 참가/준비/시작/나가기 입력창에 자동 반영
+                6) <code>/app/room/snapshot</code> 전송<br/>
+                7) 생성된 <code>roomId</code>를 아래 참가/준비/시작/나가기 입력창에 자동 반영
             </div>
             <div class="hint">
-                생성 직후에는 이미 host가 방에 들어가 있으므로 <code>/app/room/confirm-join</code> 전송은 필요 없습니다.
+                생성 직후 host는 이미 입장 상태이며, snapshot 요청으로 현재 방 상태를 바로 확인할 수 있습니다.
             </div>
             <div class="grid-2">
                 <div>
@@ -242,18 +243,19 @@
         <div class="card">
             <div class="card-head">
                 <h2>4. 방 참가 (통합 실행)</h2>
-                <span class="endpoint">POST reserveJoin + WS connect + SUBSCRIBE + SEND /app/room/confirm-join</span>
+                <span class="endpoint">POST /api/v1/rooms/{roomId}/join + WS connect + SUBSCRIBE /topic/room/{roomId} + SEND /app/room/join + /app/room/snapshot</span>
             </div>
             <div class="hint">
                 실행 순서:<br/>
-                1) <code>POST /api/v1/rooms/{roomId}/join</code>로 참가 예약(<code>joinTxId</code>) 생성<br/>
+                1) <code>POST /api/v1/rooms/{roomId}/join</code>로 참가 확정<br/>
                 2) <code>/ws</code> 연결<br/>
                 3) <code>/user/queue/errors</code>, <code>/user/queue/pong</code> 구독<br/>
                 4) <code>/topic/room/{roomId}</code> 구독<br/>
-                5) <code>/app/room/confirm-join</code> 전송 (<code>roomId + joinTxId</code>)
+                5) <code>/app/room/join</code> 전송 (<code>roomId</code>)<br/>
+                6) <code>/app/room/snapshot</code> 전송 (<code>roomId</code>)
             </div>
             <div class="hint">
-                표시: reserveJoin REST 요청/응답, confirm-join SEND JSON.
+                표시: join REST 요청/응답, join/snapshot SEND JSON.
                 join 결과는 우측 Room/Error 이벤트 패널에서 확인하세요.
             </div>
             <div class="grid-3">
@@ -273,13 +275,13 @@
             <div class="actions">
                 <button id="joinFlowBtn">실행</button>
             </div>
-            <label>REST 요청 (reserveJoin)</label>
+            <label>REST 요청 (join)</label>
             <pre class="panel" id="joinRequest">-</pre>
             <div style="height:8px;"></div>
-            <label>REST 응답 (reserveJoin)</label>
+            <label>REST 응답 (join)</label>
             <pre class="panel" id="joinResponse">-</pre>
             <div style="height:8px;"></div>
-            <label>SEND (/app/room/confirm-join)</label>
+            <label>SEND (/app/room/join, /app/room/snapshot)</label>
             <pre class="panel" id="joinSend">-</pre>
         </div>
 

@@ -335,12 +335,14 @@
         const errorSubscribeResult = subscribeErrorQueueOnce();
         const pongSubscribeResult = subscribePongQueueOnce();
         const roomSubscribeResult = subscribeRoomTopic(createdRoomId);
+        const roomSnapshotSendResult = sendRoomCommand("snapshot", createdRoomId);
 
         setPanel(createWsResultEl, {
             wsConnected: connectResult,
             errorSubscription: errorSubscribeResult,
             pongSubscription: pongSubscribeResult,
             roomSubscription: roomSubscribeResult,
+            roomSnapshotSend: roomSnapshotSendResult,
             autoFilledRoomId: createdRoomId
         });
 
@@ -524,41 +526,36 @@
     async function executeJoinFlow() {
         normalizeRoomIdAcrossSections(joinRoomIdInput);
         const roomId = getValueOrThrow(joinRoomIdInput, "roomId");
-        const reserveJoinPath = "/api/v1/rooms/" + encodeURIComponent(roomId) + "/join";
+        const joinPath = "/api/v1/rooms/" + encodeURIComponent(roomId) + "/join";
 
         setPanel(joinRequestEl, {
             method: "POST",
-            path: reserveJoinPath
+            path: joinPath
         });
         setPanel(joinSendEl, "-");
 
-        const reserveJoinResponse = await fetchJson(reserveJoinPath, {
+        const joinResponse = await fetchJson(joinPath, {
             method: "POST",
             credentials: "include"
         });
-        setPanel(joinResponseEl, getResponseBodyForPanel(reserveJoinResponse));
+        setPanel(joinResponseEl, getResponseBodyForPanel(joinResponse));
 
-        if (!reserveJoinResponse.ok) {
-            throw new Error("방 참가 예약 실패: HTTP " + reserveJoinResponse.status);
-        }
-
-        const joinTxId = reserveJoinResponse.body &&
-            reserveJoinResponse.body.result &&
-            reserveJoinResponse.body.result.joinTxId;
-        if (!joinTxId) {
-            throw new Error("joinTxId를 찾을 수 없습니다.");
+        if (!joinResponse.ok) {
+            throw new Error("방 참가 실패: HTTP " + joinResponse.status);
         }
 
         await connectStompIfNeeded();
         subscribeErrorQueueOnce();
         subscribePongQueueOnce();
         subscribeRoomTopic(roomId);
-        const sendResult = sendRoomCommandWithPayload("confirm-join", {
-            roomId: roomId,
-            joinTxId: joinTxId
+
+        const roomJoinSendResult = sendRoomCommand("join", roomId);
+        const roomSnapshotSendResult = sendRoomCommand("snapshot", roomId);
+        setPanel(joinSendEl, {
+            roomJoinSend: roomJoinSendResult,
+            roomSnapshotSend: roomSnapshotSendResult
         });
-        setPanel(joinSendEl, sendResult);
-        log("4) 방 참가 통합 실행 완료 (confirm-join)");
+        log("4) 방 참가 통합 실행 완료 (rest join + ws join + ws snapshot)");
     }
 
     async function executePing() {

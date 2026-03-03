@@ -4,11 +4,11 @@
 
 ## 1. 범위
 
-- 현재 구현/계약 범위: Room 도메인 이벤트 (`join`, `leave`, `ready`, `unready`), Game 도메인 이벤트 (`game/start`, `quiz/start`, `submit`,
-  `quiz/end`, `game/end`), 연결 상태 확인 이벤트 (`ping`)
+- 현재 구현/계약 범위: Room 도메인 이벤트 (`join`, `snapshot`, `leave`, `ready`, `unready`), Game 도메인 이벤트 (`game/start`, `quiz/start`,
+  `submit`, `quiz/end`, `game/end`), 연결 상태 확인 이벤트 (`ping`)
 - 마이그레이션 노트:
-    - REST `GET /api/v1/rooms/{roomId}/availability`는 Deprecated 예정
-    - 방 입장은 `POST /api/v1/rooms/{roomId}/join`(reserve) + STOMP confirm 흐름 권장
+    - REST `GET /api/v1/rooms/{roomId}/availability` 삭제
+    - 방 입장은 `POST /api/v1/rooms/{roomId}/join`에서 확인+확정으로 완료
 
 ## 2. 연결 및 목적지 규칙
 
@@ -29,8 +29,7 @@
 - 구독 인가 규칙:
     - `/topic/room/{roomId}`는 다음 조건에서 구독 가능
         - 현재 해당 방 멤버인 사용자
-        - 해당 `roomId`에 대해 유효한 입장 예약(`PENDING`)이 있는 사용자
-        - 위 두 조건을 만족하지 않으면 구독 불가
+        - 위 조건을 만족하지 않으면 구독 불가
     - `/topic/game/{gameId}`는 다음 조건에서 구독 가능
         - 해당 `gameId`가 속한 방의 현재 멤버인 사용자
         - 위 조건을 만족하지 않으면 구독 불가
@@ -49,18 +48,17 @@
 - 타입: `RoomIdCommand`
 - 제약: `roomId`는 공백 불가(`@NotBlank`)
 
-### 4.2 RoomJoinCommand Request (join confirm)
+### 4.2 RoomIdCommand Request (join/snapshot)
 
 ```json
 {
-  "roomId": "1234",
-  "joinTxId": "f56e13a5-ef35-4b43-8997-886f2ec54870"
+  "roomId": "1234"
 }
 ```
 
-- 타입: `RoomJoinCommand`
-- 제약: `roomId`, `joinTxId`는 공백 불가(`@NotBlank`)
-- 사용 경로: `SEND /app/room/confirm-join`
+- 타입: `RoomIdCommand`
+- 제약: `roomId`는 공백 불가(`@NotBlank`)
+- 사용 경로: `SEND /app/room/join`, `SEND /app/room/snapshot`
 
 ### 4.3 Shared Response
 
@@ -122,13 +120,13 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 
 ## 5. Room 이벤트 계약
 
-### 5.1 플레이어 입장 (레거시, Deprecated 예정)
+### 5.1 플레이어 입장 알림
 
 - SEND: `/app/room/join`
 - SUBSCRIBE: `/topic/room/{roomId}`
 - Response type: `PLAYER_JOIN`
 - 요청 payload는 `RoomIdCommand`
-- 현재 구현은 즉시 입장(legacy) 동작이며, 향후 제거 예정
+- 선행 조건: REST `POST /api/v1/rooms/{roomId}/join`이 먼저 성공해야 함
 
 ```json
 {
@@ -136,17 +134,39 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 }
 ```
 
-### 5.1.1 플레이어 입장 확정 (권장)
-
-- SEND: `/app/room/confirm-join`
-- SUBSCRIBE: `/topic/room/{roomId}`
-- Response type: `PLAYER_JOIN`
-- 요청 payload는 `RoomJoinCommand`를 사용하며, `joinTxId`는 `POST /api/v1/rooms/{roomId}/join` 응답 값을 사용한다.
-- 클라이언트가 confirm 전에 연결을 종료하면 해당 `PENDING` 예약은 서버에서 롤백(삭제)된다.
+응답 예시:
 
 ```json
 {
   "type": "PLAYER_JOIN",
+  "room": {
+    "roomId": "1234",
+    "roomTitle": "재미있는 퀴즈방",
+    "hostId": 1,
+    "capacity": 6,
+    "status": "WAITING"
+  },
+  "player": {
+    "userId": 2,
+    "nickname": "참가자",
+    "status": "NOT_READY",
+    "role": "GUEST"
+  }
+}
+```
+
+### 5.1.1 방 스냅샷 조회
+
+- SEND: `/app/room/snapshot`
+- SUBSCRIBE: `/topic/room/{roomId}`
+- Response type: `ROOM_SNAPSHOT`
+- 요청 payload는 `RoomIdCommand`
+
+응답 예시:
+
+```json
+{
+  "type": "ROOM_SNAPSHOT",
   "room": {
     "roomId": "1234",
     "roomTitle": "재미있는 퀴즈방",
@@ -164,16 +184,12 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
     {
       "userId": 2,
       "nickname": "참가자",
-      "status": "NOT_READY",
+      "status": "READY",
       "role": "GUEST"
     }
   ]
 }
 ```
-
-설명:
-
-- 현재 구현은 입장 시 변경분만이 아니라 방/플레이어 전체 스냅샷을 브로드캐스트한다.
 
 ### 5.2 플레이어 퇴장
 
