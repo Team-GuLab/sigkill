@@ -251,9 +251,7 @@ public class RoomService {
         if (isRoomFull(room)) {
             throw new CustomException(ROOM_FULL);
         }
-        if (playerRepository.findById(userId).isPresent()) {
-            throw new CustomException(USER_ALREADY_IN_ROOM);
-        }
+        validateUserNotInRoom(userId);
     }
 
     /**
