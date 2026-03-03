@@ -2,8 +2,8 @@ package com.gulab.sigkillserver.domain.room.controller;
 
 import com.gulab.sigkillserver.common.BaseResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.request.RoomCreateRequest;
+import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomEnvelopeResponse;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.RoomListResponse;
-import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -60,11 +60,13 @@ public class RoomController {
             description = "새 대기방을 생성합니다. 제목은 공백 제외 최대 20자이며, 정원은 2~10명 범위입니다."
     )
     @PostMapping("/rooms")
-    public BaseResponse<RoomInfoResponse> createRoom(
+    public BaseResponse<RoomEnvelopeResponse> createRoom(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
             @Valid @RequestBody RoomCreateRequest request
     ) {
-        RoomInfoResponse response = roomService.createRoom(request.roomTitle(), request.capacity(), userId);
+        RoomEnvelopeResponse response = RoomEnvelopeResponse.of(
+                roomService.createRoom(request.roomTitle(), request.capacity(), userId)
+        );
         return BaseResponse.onSuccess(response);
     }
 
@@ -76,12 +78,12 @@ public class RoomController {
             description = "방 번호로 대기방에 입장합니다. 게임 진행 중이거나 정원이 가득 찬 방은 입장할 수 없습니다."
     )
     @PostMapping("/rooms/{roomId}/join")
-    public BaseResponse<RoomInfoResponse> join(
+    public BaseResponse<RoomEnvelopeResponse> join(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
             @Parameter(description = "4자리 방 번호", example = "1234")
             @PathVariable String roomId
     ) {
-        RoomInfoResponse response = roomService.joinRoom(roomId, userId);
+        RoomEnvelopeResponse response = RoomEnvelopeResponse.of(roomService.joinRoom(roomId, userId));
         return BaseResponse.onSuccess(response);
     }
 }
