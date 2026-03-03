@@ -9,6 +9,10 @@ public record RoomSnapshotEvent(
         RoomInfoResponse room,
         List<PlayerInfo> players
 ) {
+    public RoomSnapshotEvent {
+        players = List.copyOf(players);
+    }
+
     public static RoomSnapshotEvent of(RoomInfoResponse room, List<PlayerInfo> players) {
         return new RoomSnapshotEvent(
                 RoomResponseType.ROOM_SNAPSHOT,
