@@ -184,7 +184,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
     {
       "userId": 2,
       "nickname": "참가자",
-      "status": "READY",
+      "status": "NOT_READY",
       "role": "GUEST"
     }
   ]
