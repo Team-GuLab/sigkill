@@ -8,6 +8,7 @@
     const loadRoomsBtn = document.getElementById("loadRoomsBtn");
     const createRoomFlowBtn = document.getElementById("createRoomFlowBtn");
     const joinFlowBtn = document.getElementById("joinFlowBtn");
+    const snapshotBtn = document.getElementById("snapshotBtn");
     const readyBtn = document.getElementById("readyBtn");
     const unreadyBtn = document.getElementById("unreadyBtn");
     const startBtn = document.getElementById("startBtn");
@@ -24,6 +25,7 @@
     const createRoomCapacityInput = document.getElementById("createRoomCapacity");
 
     const joinRoomIdInput = document.getElementById("joinRoomId");
+    const snapshotRoomIdInput = document.getElementById("snapshotRoomId");
     const readyRoomIdInput = document.getElementById("readyRoomId");
     const startRoomIdInput = document.getElementById("startRoomId");
     const startQuizRoomIdInput = document.getElementById("startQuizRoomId");
@@ -36,6 +38,7 @@
     const roomTopicPreviewInput = document.getElementById("roomTopicPreview");
     const gameTopicPreviewInput = document.getElementById("gameTopicPreview");
     const errorTopicPreviewInput = document.getElementById("errorTopicPreview");
+    const snapshotPayloadPreviewInput = document.getElementById("snapshotPayloadPreview");
     const readyPayloadPreviewInput = document.getElementById("readyPayloadPreview");
     const startPayloadPreviewInput = document.getElementById("startPayloadPreview");
     const quizStartDestinationInput = document.getElementById("quizStartDestination");
@@ -52,6 +55,7 @@
     const createRequestEl = document.getElementById("createRequest");
     const createResponseEl = document.getElementById("createResponse");
     const createWsResultEl = document.getElementById("createWsResult");
+    const snapshotResponseEl = document.getElementById("snapshotResponse");
     const readyResponseEl = document.getElementById("readyResponse");
     const startResponseEl = document.getElementById("startResponse");
     const quizStartResponseEl = document.getElementById("quizStartResponse");
@@ -171,6 +175,9 @@
         if (sourceInput !== joinRoomIdInput) {
             joinRoomIdInput.value = roomId;
         }
+        if (sourceInput !== snapshotRoomIdInput) {
+            snapshotRoomIdInput.value = roomId;
+        }
         if (sourceInput !== readyRoomIdInput) {
             readyRoomIdInput.value = roomId;
         }
@@ -197,6 +204,11 @@
 
         const joinRoomId = joinRoomIdInput.value.trim();
         roomTopicPreviewInput.value = joinRoomId ? "/topic/room/" + joinRoomId : "/topic/room/{roomId}";
+
+        const snapshotRoomId = snapshotRoomIdInput.value.trim();
+        snapshotPayloadPreviewInput.value = snapshotRoomId
+            ? JSON.stringify({roomId: snapshotRoomId})
+            : "{\"roomId\":\"{roomId}\"}";
 
         const readyRoomId = readyRoomIdInput.value.trim();
         readyPayloadPreviewInput.value = readyRoomId ? JSON.stringify({roomId: readyRoomId}) : "{\"roomId\":\"{roomId}\"}";
@@ -291,6 +303,7 @@
 
     function syncRoomIdToAllInputs(roomId) {
         joinRoomIdInput.value = roomId;
+        snapshotRoomIdInput.value = roomId;
         readyRoomIdInput.value = roomId;
         startRoomIdInput.value = roomId;
         startQuizRoomIdInput.value = roomId;
@@ -587,12 +600,29 @@
         log("PING 전송 완료");
     }
 
+    async function executeSnapshot() {
+        const roomId = getValueOrThrow(snapshotRoomIdInput, "roomId");
+        normalizeRoomIdAcrossSections(snapshotRoomIdInput);
+
+        await connectStompIfNeeded();
+        subscribeErrorQueueOnce();
+        subscribePongQueueOnce();
+        const roomSubscribeResult = subscribeRoomTopic(roomId);
+        const sendResult = sendRoomCommand("snapshot", roomId);
+
+        setPanel(snapshotResponseEl, {
+            ...sendResult,
+            roomSubscription: roomSubscribeResult
+        });
+        log("5) SNAPSHOT 전송 완료");
+    }
+
     function executeReadyLike(command) {
         const roomId = getValueOrThrow(readyRoomIdInput, "roomId");
         normalizeRoomIdAcrossSections(readyRoomIdInput);
         const sendResult = sendRoomCommand(command, roomId);
         setPanel(readyResponseEl, sendResult);
-        log("5) " + command.toUpperCase() + " 전송 완료");
+        log("6) " + command.toUpperCase() + " 전송 완료");
     }
 
     function executeStartGame() {
@@ -600,7 +630,7 @@
         normalizeRoomIdAcrossSections(startRoomIdInput);
         const sendResult = sendRoomCommand("start", roomId);
         setPanel(startResponseEl, sendResult);
-        log("6) START 전송 완료");
+        log("7) START 전송 완료");
     }
 
     async function executeGameLoad() {
@@ -619,7 +649,7 @@
             ...sendResult,
             gameSubscription: gameSubscribeResult
         });
-        log("7) GAME_LOAD 전송 완료");
+        log("8) GAME_LOAD 전송 완료");
     }
 
     async function executeSubmitChoice() {
@@ -647,7 +677,7 @@
             ...sendResult,
             gameSubscription: gameSubscribeResult
         });
-        log("8) 정답 제출 전송 완료");
+        log("9) 정답 제출 전송 완료");
     }
 
     function disconnectStomp() {
@@ -687,9 +717,9 @@
             setPanel(leaveResponseEl, sendResult);
             await new Promise((resolve) => setTimeout(resolve, 150));
             disconnectStomp();
-            log("9) LEAVE 전송 + WS 연결 해제 완료");
+            log("10) LEAVE 전송 + WS 연결 해제 완료");
         } else {
-            log("9) WS 미연결 상태로 연결해제 단계만 스킵");
+            log("10) WS 미연결 상태로 연결해제 단계만 스킵");
         }
     }
 
@@ -705,6 +735,7 @@
 
     serverBaseInput.addEventListener("input", refreshComputedFields);
     joinRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(joinRoomIdInput));
+    snapshotRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(snapshotRoomIdInput));
     readyRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(readyRoomIdInput));
     startRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startRoomIdInput));
     startQuizRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startQuizRoomIdInput));
@@ -718,6 +749,7 @@
     bindAsync(loadRoomsBtn, executeLoadRooms);
     bindAsync(createRoomFlowBtn, executeCreateRoomFlow);
     bindAsync(joinFlowBtn, executeJoinFlow);
+    bindAsync(snapshotBtn, executeSnapshot);
     bindAsync(readyBtn, async () => executeReadyLike("ready"));
     bindAsync(unreadyBtn, async () => executeReadyLike("unready"));
     bindAsync(startBtn, async () => executeStartGame());

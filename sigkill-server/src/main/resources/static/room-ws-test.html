@@ -287,7 +287,29 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>5. 방 준비 / 해제</h2>
+                <h2>5. 방 스냅샷</h2>
+                <span class="endpoint">SEND /app/room/snapshot</span>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="snapshotRoomId">roomId</label>
+                    <input id="snapshotRoomId" placeholder="예: 1001" type="text"/>
+                </div>
+                <div>
+                    <label for="snapshotPayloadPreview">payload</label>
+                    <input id="snapshotPayloadPreview" readonly type="text"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="snapshotBtn">SNAPSHOT 실행</button>
+            </div>
+            <div class="hint">표시: SEND JSON (Room 이벤트는 우측 패널에서 확인)</div>
+            <pre class="panel" id="snapshotResponse">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>6. 방 준비 / 해제</h2>
                 <span class="endpoint">SEND /app/room/ready | /app/room/unready</span>
             </div>
             <div class="grid-2">
@@ -310,7 +332,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>6. 게임 시작</h2>
+                <h2>7. 게임 시작</h2>
                 <span class="endpoint">SEND /app/room/start</span>
             </div>
             <div class="grid-2">
@@ -332,7 +354,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>7. Game 토픽 구독 + LOAD 전송</h2>
+                <h2>8. Game 토픽 구독 + LOAD 전송</h2>
                 <span class="endpoint">AUTO SUBSCRIBE /topic/game/{gameId} + SEND /app/game/load</span>
             </div>
             <div class="hint">
@@ -385,7 +407,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>8. 정답 제출</h2>
+                <h2>9. 정답 제출</h2>
                 <span class="endpoint">SEND /app/game/submit</span>
             </div>
             <div class="hint">
@@ -421,7 +443,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>9. 방 나가기 + WS 연결 해제</h2>
+                <h2>10. 방 나가기 + WS 연결 해제</h2>
                 <span class="endpoint">SEND /app/room/leave + DISCONNECT</span>
             </div>
             <div class="grid-2">
@@ -443,7 +465,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>10. Ping / Pong 확인</h2>
+                <h2>11. Ping / Pong 확인</h2>
                 <span class="endpoint">SEND /app/ping | SUBSCRIBE /user/queue/pong</span>
             </div>
             <div class="actions">
