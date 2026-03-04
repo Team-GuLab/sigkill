@@ -50,8 +50,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -147,7 +147,7 @@ public class RoomService {
     /**
      * 방 생성
      */
-    public RoomInfoResponse createRoom(String roomTitle, Integer capacity, Long userId) {
+    public synchronized RoomInfoResponse createRoom(String roomTitle, Integer capacity, Long userId) {
         roomTitle = roomTitle.strip();
         int resolvedCapacity = capacity != null ? capacity : DEFAULT_CAPACITY;
         validateRoomCreateRequest(roomTitle, resolvedCapacity);
