@@ -11,6 +11,7 @@ const PAGE_SIZE = 6;
 // 방 목록의 방 다건
 export default function Rooms() {
   const [currentPage, setCurrentPage] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
 
   const { data, refetch } = useRooms({
     page: currentPage,
@@ -22,6 +23,7 @@ export default function Rooms() {
   };
 
   const handleRefresh = () => {
+    setIsSpinning(true);
     refetch();
   };
 
@@ -42,7 +44,14 @@ export default function Rooms() {
           title="방이 없습니다"
           description="현재 생성된 방이 없습니다. 새로운 방을 만들어보세요."
           buttonText="새로고침"
-          buttonIcon={<RefreshCcwIcon />}
+          buttonIcon={
+            <span
+              className={isSpinning ? "animate-[spin_0.6s_linear]" : ""}
+              onAnimationEnd={() => setIsSpinning(false)}
+            >
+              <RefreshCcwIcon />
+            </span>
+          }
           onButtonClick={handleRefresh}
         />
       )}

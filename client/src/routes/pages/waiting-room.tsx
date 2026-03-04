@@ -1,8 +1,6 @@
 import { useMemo } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useParams } from "react-router";
 import PlayerList from "@/components/room/player-list";
-import { Button } from "@/ui/button";
-import { ROUTE_PATHS } from "@/routes/paths";
 import { MAX_CAPACITY } from "@/constants/room";
 import { useUser } from "@/store/user-store";
 import GameStartButton from "@/components/room/game-start-button";
@@ -11,10 +9,10 @@ import { useRoomSocket } from "@/hooks/room/use-room-socket";
 import { WaitingRoomSkeleton } from "@/components/room/waiting-room-skeleton";
 import { GameStartOverlay } from "@/components/room/game-start-overlay";
 import { useRoomInfo, usePlayers } from "@/store/room-store";
+import LeaveButton from "@/components/room/leave-button";
 
 export default function WaitingRoom() {
   const { roomId } = useParams<{ roomId: string }>();
-  const navigate = useNavigate();
 
   const user = useUser();
   const myUserId = user!.userId;
@@ -75,15 +73,7 @@ export default function WaitingRoom() {
         {/* 버튼 */}
         <div className="bg-background sticky bottom-0 flex-none">
           <div className="flex h-10 items-center gap-2">
-            <Button
-              variant="gray"
-              className="text-md h-full w-28"
-              onClick={() => {
-                navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
-              }}
-            >
-              나가기
-            </Button>
+            <LeaveButton roomId={roomId || ""} />
             {isHost ? (
               <GameStartButton
                 roomId={roomId}

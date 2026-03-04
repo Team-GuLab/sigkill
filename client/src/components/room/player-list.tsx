@@ -1,5 +1,6 @@
 import type { Player } from "@/api/room/types";
 import { MAX_CAPACITY } from "@/constants/room";
+import { useUser } from "@/store/user-store";
 import { Avatar, AvatarBadge, AvatarFallback } from "@/ui/avatar";
 import { Badge } from "@/ui/badge";
 import { Crown, User } from "lucide-react";
@@ -25,6 +26,7 @@ export default function PlayerList({
   players,
   capacity = MAX_CAPACITY,
 }: PlayerListProps) {
+  const user = useUser();
   // userId -> slotIndex 매핑 (플레이어를 특정 슬롯에 고정)
   const [playerSlotMapping, setPlayerSlotMapping] = useState<
     Map<number, number>
@@ -93,6 +95,7 @@ export default function PlayerList({
     >
       {playerSlots.map(slot => {
         const player = slot.player;
+        const isMe = user?.userId === player?.userId;
 
         // 빈 슬롯
         if (!player) {
@@ -117,11 +120,13 @@ export default function PlayerList({
         return (
           <div
             key={`slot-${slot.slotIndex}-${player.userId}`}
-            className="flex items-center justify-between rounded-lg border bg-white px-3 py-2 shadow-2xs"
+            className={`flex items-center justify-between rounded-lg border px-3 py-2 shadow-2xs ${isMe ? "bg-primary/10" : "bg-white"}`}
           >
             <div className="flex items-center gap-3">
               <Avatar className="overflow-visible">
-                <AvatarFallback className="bg-accent text-primary border font-semibold">
+                <AvatarFallback
+                  className={`bg-accent text-primary border ${isMe ? "font-bold" : "font-semibold"}`}
+                >
                   {player.nickname.charAt(0).toUpperCase()}
                 </AvatarFallback>
                 {player.role === "HOST" && (

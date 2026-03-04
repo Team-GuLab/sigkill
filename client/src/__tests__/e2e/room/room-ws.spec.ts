@@ -11,7 +11,6 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
       .getByRole("button", { name: "나가기" })
       .click({ timeout: 3000 })
       .catch(() => {});
-    await contextB?.close();
   });
 
   test.describe("플레이어 입장", () => {
@@ -22,6 +21,8 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
       ({ contextB, pageB } = await setupRoom(page, browser));
 
       await expectToBeVisibleInToast(page, /.*님이 입장했습니다./);
+
+      await contextB.close();
     });
   });
 
@@ -35,6 +36,8 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
       await pageB.getByRole("button", { name: "나가기" }).click();
 
       await expectToBeVisibleInToast(page, /.*님이 퇴장했습니다./);
+
+      await contextB.close();
     });
   });
 
@@ -48,6 +51,8 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
       await page.getByRole("button", { name: "나가기" }).click();
 
       await expectToBeVisibleInToast(pageB, /방장이 .*님으로 변경되었습니다./);
+
+      await contextB.close();
     });
   });
 
@@ -61,6 +66,8 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
       await pageB.getByRole("button", { name: "준비" }).click();
 
       await expectToBeVisibleInToast(page, /.*님이 준비했습니다./);
+
+      await contextB.close();
     });
   });
 
@@ -75,6 +82,8 @@ test.describe("대기방 관련 웹소켓(STOMP) 이벤트 처리", () => {
       await pageB.getByRole("button", { name: "준비 취소" }).click();
 
       await expectToBeVisibleInToast(page, /.*님이 준비 취소했습니다./);
+
+      await contextB.close();
     });
   });
 });

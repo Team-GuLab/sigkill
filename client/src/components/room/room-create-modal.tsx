@@ -15,7 +15,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ROUTE_GENERATORS } from "@/routes/paths";
 import { useNavigate } from "react-router";
-import { useSetRoomInfo, useSetPlayers } from "@/store/room-store";
+import { useSetRoomInfo } from "@/store/room-store";
 
 interface RoomCreateModalProps {
   open: boolean;
@@ -26,12 +26,11 @@ export function RoomCreateModal({ open, onOpenChange }: RoomCreateModalProps) {
   const [title, setTitle] = useState("");
   const navigate = useNavigate();
   const setRoomInfo = useSetRoomInfo();
-  const setPlayers = useSetPlayers();
+
   const { mutate: createRoom, isPending: isCreatingRoom } = useCreateRoom({
-    onSuccess: ({ room, players }) => {
+    onSuccess: ({ room }) => {
       toast.success("방이 성공적으로 생성되었습니다!");
       setRoomInfo(room);
-      setPlayers(players);
       onOpenChange(false);
       navigate(ROUTE_GENERATORS.WAITING_ROOM(room.roomId), { replace: true });
     },
