@@ -28,6 +28,7 @@ import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
+import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
@@ -470,14 +471,27 @@ class ConsistencyRulesIntegrationTest {
             List<Long> gamePlayerUserIds = gamePlayerRepository.getByGameId(gameStartEvent.gameId()).stream()
                     .map(GamePlayer::getUserId)
                     .toList();
+            List<Long> snapshotUserIds = gameStartEvent.payload().players().stream()
+                    .map(QuizEndPlayerInfo::userId)
+                    .toList();
             List<Long> roomUserIds = playerRepository.findAllByRoomId(roomId).stream()
                     .map(Player::getUserId)
                     .toList();
 
-            assertThat(gamePlayerUserIds).containsExactlyInAnyOrderElementsOf(roomUserIds);
-            assertThat(gameStartEvent.payload().players())
-                    .extracting(QuizEndPlayerInfo::userId)
-                    .containsExactlyInAnyOrderElementsOf(roomUserIds);
+            assertThat(gamePlayerUserIds).containsExactlyInAnyOrderElementsOf(snapshotUserIds);
+
+            if (snapshotUserIds.contains(leavingGuestUserId)) {
+                assertThat(snapshotUserIds)
+                        .containsExactlyInAnyOrder(hostUserId, leavingGuestUserId, stayingGuestUserId);
+                assertThat(roomUserIds)
+                        .containsExactlyInAnyOrder(hostUserId, stayingGuestUserId)
+                        .doesNotContain(leavingGuestUserId);
+            } else {
+                assertThat(snapshotUserIds).containsExactlyInAnyOrderElementsOf(roomUserIds);
+                assertThat(roomUserIds)
+                        .containsExactlyInAnyOrder(hostUserId, stayingGuestUserId)
+                        .doesNotContain(leavingGuestUserId);
+            }
         }
 
         @Test
@@ -495,30 +509,42 @@ class ConsistencyRulesIntegrationTest {
             roomService.readyPlayer(roomId, guest2UserId);
 
             AtomicReference<GameStartEvent> gameStartEventRef = new AtomicReference<>();
+            AtomicReference<LeaveRoomResult> leaveRoomResultRef = new AtomicReference<>();
 
             // when
             List<Throwable> errors = runConcurrently(
-                    () -> roomService.leaveRoom(roomId, hostUserId),
+                    () -> leaveRoomResultRef.set(roomService.leaveRoom(roomId, hostUserId)),
                     () -> gameStartEventRef.set(roomService.startGame(roomId, hostUserId))
             );
 
             // then
-            assertThat(errors).isEmpty();
-
             Room room = roomRepository.findById(roomId).orElseThrow();
             List<Player> players = playerRepository.findAllByRoomId(roomId);
             List<Long> remainingUserIds = players.stream()
                     .map(Player::getUserId)
                     .toList();
             GameStartEvent gameStartEvent = gameStartEventRef.get();
+            LeaveRoomResult leaveRoomResult = leaveRoomResultRef.get();
 
             assertThat(remainingUserIds).hasSize(2);
             assertThat(remainingUserIds).doesNotContain(hostUserId);
             assertThat(remainingUserIds).contains(room.getHostId());
             assertThat(room.getHostId()).isNotEqualTo(hostUserId);
-            assertThat(gamePlayerRepository.getByGameId(gameStartEvent.gameId()))
-                    .extracting(GamePlayer::getUserId)
-                    .containsExactlyInAnyOrderElementsOf(remainingUserIds);
+            assertThat(leaveRoomResult).isNotNull();
+            assertThat(leaveRoomResult.hasHostChangedEvent()).isTrue();
+
+            if (gameStartEvent == null) {
+                assertThat(errors).hasSize(1);
+                assertThat(errors.get(0)).isInstanceOf(CustomException.class);
+                assertThat(((CustomException) errors.get(0)).getErrorCode().getCode())
+                        .isEqualTo(PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
+                assertThat(room.isInGame()).isFalse();
+            } else {
+                assertThat(errors).isEmpty();
+                assertThat(gamePlayerRepository.getByGameId(gameStartEvent.gameId()))
+                        .extracting(GamePlayer::getUserId)
+                        .containsExactlyInAnyOrder(hostUserId, guest1UserId, guest2UserId);
+            }
         }
 
         @Test
