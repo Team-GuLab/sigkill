@@ -377,32 +377,33 @@ public class RoomService {
      * 플레이어 준비 취소
      */
     public PlayerUnreadyEvent unreadyPlayer(String roomId, Long userId) {
-        Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-        validatePlayerNotHost(player, room);
-        validateRoomNotInGame(room);
-
-        player.unready();
-
+        PlayerUnreadyEvent playerUnreadyEvent = roomLockManager.executeWithLock(roomId, () -> {
+            Room room = getRoomOrThrow(roomId);
+            Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            validatePlayerNotHost(player, room);
+            validateRoomNotInGame(room);
+            player.unready();
+            return PlayerUnreadyEvent.of(player, room.getHostId());
+        });
         log.info("room.unready success - roomId={}, userId={}", roomId, userId);
-        return PlayerUnreadyEvent.of(player, room.getHostId());
+        return playerUnreadyEvent;
     }
 
     /**
      * 게임 시작
      */
     public GameStartEvent startGame(String roomId, Long userId) {
-        Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-        validateRoomNotInGame(room);
-        validatePlayerHost(player, room);
-        validatePlayerCountOverMinimum(room);
-
-        if (!isAllGuestsReady(room)) {
-            throw new CustomException(PLAYERS_NOT_READY);
-        }
-
-        return gameService.startGame(room);
+        return roomLockManager.executeWithLock(roomId, () -> {
+            Room room = getRoomOrThrow(roomId);
+            Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            validateRoomNotInGame(room);
+            validatePlayerHost(player, room);
+            validatePlayerCountOverMinimum(room);
+            if (!isAllGuestsReady(room)) {
+                throw new CustomException(PLAYERS_NOT_READY);
+            }
+            return gameService.startGame(room);
+        });
     }
 
     private void validatePlayerCountOverMinimum(Room room) {
