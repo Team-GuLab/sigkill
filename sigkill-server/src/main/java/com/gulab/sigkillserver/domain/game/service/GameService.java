@@ -40,6 +40,7 @@ import com.gulab.sigkillserver.domain.game.repository.GameRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
+import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
@@ -72,126 +73,137 @@ public class GameService {
     private final QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
     private final GamePlayerRepository gamePlayerRepository;
     private final GameEventBuilder gameEventBuilder;
+    private final RoomLockManager roomLockManager;
 
     /**
      * 게임 시작. RoomService 에서 호출
      */
     public GameStartEvent startGame(Room room) {
-        // 검증
-        validateGameNotInProgress(room);
+        return roomLockManager.executeWithLock(room.getRoomId(), () -> {
+            Room lockedRoom = getRoomOrThrow(room.getRoomId());
 
-        // 퀴즈 정보 가져오기
-        List<Long> quizIds = quizRepository.findByCategoryId(
-                        GameConstants.DEFAULT_CATEGORY_ID,
-                        GameConstants.QUIZ_COUNT)
-                .stream()
-                .map(Quiz::quizId)
-                .toList();
+            // 검증
+            validateGameNotInProgress(lockedRoom);
 
-        // Game 객체 생성
-        Game game = Game.create(room.getRoomId(), quizIds);
-        game = gameRepository.save(game);
+            // 퀴즈 정보 가져오기
+            List<Long> quizIds = quizRepository.findByCategoryId(
+                            GameConstants.DEFAULT_CATEGORY_ID,
+                            GameConstants.QUIZ_COUNT)
+                    .stream()
+                    .map(Quiz::quizId)
+                    .toList();
 
-        // Player 객체 생성
-        List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
-        List<GamePlayer> gamePlayers = new ArrayList<>();
-        for (Player p : players) {
-            GamePlayer gp = GamePlayer.create(p.getUserId(), game.getGameId(), p.getNickname());
-            gamePlayerRepository.save(gp);
-            gamePlayers.add(gp);
-        }
+            // Game 객체 생성
+            Game game = Game.create(lockedRoom.getRoomId(), quizIds);
+            game = gameRepository.save(game);
 
-        // 게임 시작
-        room.startGame();
+            // Player 객체 생성
+            List<Player> players = playerRepository.findAllByRoomId(lockedRoom.getRoomId());
+            for (Player p : players) {
+                GamePlayer gp = GamePlayer.create(p.getUserId(), game.getGameId(), p.getNickname());
+                gamePlayerRepository.save(gp);
+            }
 
-        return gameEventBuilder.toGameStartEvent(room, game, players);
+            // 게임 시작
+            lockedRoom.startGame();
+
+            return gameEventBuilder.toGameStartEvent(lockedRoom, game, players);
+        });
     }
 
     /**
      * 게임 로드. 클라이언트에서 호출
      */
     public GameLoadEvent loadGame(Long userId, Long gameId) {
-        // 검증
         Game game = getGameOrThrow(gameId);
-        String roomId = game.getRoomId();
-        getPlayerInRoomOrThrow(userId, roomId);
-        Room room = getRoomOrThrow(roomId);
-        validateGameInProgress(room, game);
+        return roomLockManager.executeWithLock(game.getRoomId(), () -> {
+            // 검증
+            Game latestGame = getGameOrThrow(gameId);
+            String roomId = latestGame.getRoomId();
+            getPlayerInRoomOrThrow(userId, roomId);
+            Room room = getRoomOrThrow(roomId);
+            validateGameInProgress(room, latestGame);
 
-        List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
-        gamePlayers.stream().filter(gp -> userId.equals(gp.getUserId()))
-                .findFirst()
-                .orElseThrow(() -> new CustomException(GAME_PLAYER_NOT_FOUND))
-                .markAsLoaded();
+            List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
+            gamePlayers.stream().filter(gp -> userId.equals(gp.getUserId()))
+                    .findFirst()
+                    .orElseThrow(() -> new CustomException(GAME_PLAYER_NOT_FOUND))
+                    .markAsLoaded();
 
-        // 게임 정보 반환
-        return gameEventBuilder.toGameLoadEvent(room, game, gamePlayers);
+            // 게임 정보 반환
+            return gameEventBuilder.toGameLoadEvent(room, latestGame, gamePlayers);
+        });
     }
 
     /**
      * 게임 중 다음 퀴즈 시작. 클라이언트에서 호출
      */
     public QuizStartEvent startQuiz(Long userId, String roomId, Long gameId) {
-        // 검증
-        getPlayerInRoomOrThrow(userId, roomId);
-        Room room = getRoomOrThrow(roomId);
-        Game game = getGameOrThrow(gameId);
-        validateGameInProgress(room, game);
+        return roomLockManager.executeWithLock(roomId, () -> {
+            // 검증
+            getPlayerInRoomOrThrow(userId, roomId);
+            Room room = getRoomOrThrow(roomId);
+            Game game = getGameOrThrow(gameId);
+            validateGameInProgress(room, game);
 
-        if (game.getCurrentQuizIndex() >= game.getTotalQuizCount() - 1) {
-            throw new CustomException(QUIZ_INDEX_OUT_OF_BOUNDS);
-        }
+            if (game.getCurrentQuizIndex() >= game.getTotalQuizCount() - 1) {
+                throw new CustomException(QUIZ_INDEX_OUT_OF_BOUNDS);
+            }
 
-        // 퀴즈 시작
-        long quizStartTime = Instant.now().toEpochMilli();
-        long quizId = game.startNextQuiz(quizStartTime);
-        Quiz quiz = getQuizOrThrow(quizId);
+            // 퀴즈 시작
+            long quizStartTime = Instant.now().toEpochMilli();
+            long quizId = game.startNextQuiz(quizStartTime);
+            Quiz quiz = getQuizOrThrow(quizId);
 
-        // 퀴즈 정보 불러오기 및 퀴즈 선택지 ID - 번호 매핑 정보 생성
-        List<QuizChoice> shuffled = new ArrayList<>(quiz.choices());
-        Collections.shuffle(shuffled);
-        Map<Integer, Long> numberToChoiceId = new LinkedHashMap<>();
-        List<QuizChoiceInfo> quizChoiceInfos = new ArrayList<>();
+            // 퀴즈 정보 불러오기 및 퀴즈 선택지 ID - 번호 매핑 정보 생성
+            List<QuizChoice> shuffled = new ArrayList<>(quiz.choices());
+            Collections.shuffle(shuffled);
+            Map<Integer, Long> numberToChoiceId = new LinkedHashMap<>();
+            List<QuizChoiceInfo> quizChoiceInfos = new ArrayList<>();
 
-        for (int i = 0; i < shuffled.size(); i++) {
-            int number = i + 1;
-            QuizChoice c = shuffled.get(i);
-            numberToChoiceId.put(number, c.choiceId());
-            quizChoiceInfos.add(new QuizChoiceInfo(number, c.text()));
-        }
+            for (int i = 0; i < shuffled.size(); i++) {
+                int number = i + 1;
+                QuizChoice c = shuffled.get(i);
+                numberToChoiceId.put(number, c.choiceId());
+                quizChoiceInfos.add(new QuizChoiceInfo(number, c.text()));
+            }
 
-        // 퀴즈 선택지 ID - 번호 매핑 정보 저장
-        quizChoiceNumberMappingRepository.save(
-                QuizChoiceNumberMapping.create(gameId, quizId, numberToChoiceId)
-        );
+            // 퀴즈 선택지 ID - 번호 매핑 정보 저장
+            quizChoiceNumberMappingRepository.save(
+                    QuizChoiceNumberMapping.create(gameId, quizId, numberToChoiceId)
+            );
 
-        return gameEventBuilder.toQuizStartEvent(room, game, quiz, quizStartTime, quizChoiceInfos);
+            return gameEventBuilder.toQuizStartEvent(room, game, quiz, quizStartTime, quizChoiceInfos);
+        });
     }
 
     /**
      * 퀴즈에 대한 선택지 제출. 클라이언트에서 호출
      */
     public ChoiceSubmitEvent submitChoice(Long userId, Long gameId, Long quizId, Integer choiceNumber) {
-        // 시간 측정
-        long submitTime = Instant.now().toEpochMilli();
-
-        // 검증
         Game game = getGameOrThrow(gameId);
-        String roomId = game.getRoomId();
-        Player player = getPlayerInRoomOrThrow(userId, roomId);
-        Room room = getRoomOrThrow(roomId);
-        validateGameInProgress(room, game);
-        validateSubmitChoiceIsForCurrentQuiz(game, quizId);
-        validateDeadline(game, submitTime);
+        return roomLockManager.executeWithLock(game.getRoomId(), () -> {
+            // 시간 측정
+            long submitTime = Instant.now().toEpochMilli();
 
-        // 선택지 번호 -> 선택지 ID 변환
-        long choiceId = getChoiceIdFromNumber(gameId, quizId, choiceNumber);
-        Quiz quiz = getQuizOrThrow(quizId);
+            // 검증
+            Game latestGame = getGameOrThrow(gameId);
+            String roomId = latestGame.getRoomId();
+            Player player = getPlayerInRoomOrThrow(userId, roomId);
+            Room room = getRoomOrThrow(roomId);
+            validateGameInProgress(room, latestGame);
+            validateSubmitChoiceIsForCurrentQuiz(latestGame, quizId);
+            validateDeadline(latestGame, submitTime);
 
-        // 선택 정보 덮어쓰기
-        SelectedChoice selectedChoice = SelectedChoice.create(gameId, quizId, userId, choiceId, submitTime);
-        selectedChoiceRepository.save(selectedChoice);
-        return gameEventBuilder.toChoiceSubmitEvent(room, game, quiz, player, choiceNumber, submitTime);
+            // 선택지 번호 -> 선택지 ID 변환
+            long choiceId = getChoiceIdFromNumber(gameId, quizId, choiceNumber);
+            Quiz quiz = getQuizOrThrow(quizId);
+
+            // 선택 정보 덮어쓰기
+            SelectedChoice selectedChoice = SelectedChoice.create(gameId, quizId, userId, choiceId, submitTime);
+            selectedChoiceRepository.save(selectedChoice);
+            return gameEventBuilder.toChoiceSubmitEvent(room, latestGame, quiz, player, choiceNumber, submitTime);
+        });
     }
 
     private void validateDeadline(Game game, long submitTime) {
@@ -241,103 +253,105 @@ public class GameService {
      * 퀴즈 종료. 서버 에서 호출
      */
     public EndQuizOrGameEvent endQuiz(Long userId, String roomId, Long gameId, Long quizId) {
-        // 검증
-        Player player = getPlayerInRoomOrThrow(userId, roomId);
-        Room room = getRoomOrThrow(roomId);
-        Game game = getGameOrThrow(gameId);
-        validateGameInProgress(room, game);
-        validateSubmitChoiceIsForCurrentQuiz(game, quizId);
-        Quiz quiz = getQuizOrThrow(quizId);
+        return roomLockManager.executeWithLock(roomId, () -> {
+            // 검증
+            Player player = getPlayerInRoomOrThrow(userId, roomId);
+            Room room = getRoomOrThrow(roomId);
+            Game game = getGameOrThrow(gameId);
+            validateGameInProgress(room, game);
+            validateSubmitChoiceIsForCurrentQuiz(game, quizId);
+            Quiz quiz = getQuizOrThrow(quizId);
 
-        // 정답 번호 가져오기
-        long correctChoiceId = quiz.correctChoiceId();
-        int correctChoiceNumber = getChoiceNumberFromId(gameId, quizId, quiz.correctChoiceId());
+            // 정답 번호 가져오기
+            long correctChoiceId = quiz.correctChoiceId();
+            int correctChoiceNumber = getChoiceNumberFromId(gameId, quizId, quiz.correctChoiceId());
 
-        // 선택 정보 가져오기
-        List<SelectedChoice> selectedChoices = selectedChoiceRepository.findByGameIdAndQuizId(gameId, quizId);
-        Map<Long, SelectedChoice> userIdToSelectedChoice = selectedChoices.stream()
-                .collect(Collectors.toMap(
-                        SelectedChoice::userId,
-                        Function.identity()
-                ));
+            // 선택 정보 가져오기
+            List<SelectedChoice> selectedChoices = selectedChoiceRepository.findByGameIdAndQuizId(gameId, quizId);
+            Map<Long, SelectedChoice> userIdToSelectedChoice = selectedChoices.stream()
+                    .collect(Collectors.toMap(
+                            SelectedChoice::userId,
+                            Function.identity()
+                    ));
 
-        // GamePlayer 객체 가져오기
-        List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
+            // GamePlayer 객체 가져오기
+            List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
 
-        List<QuizEndPlayerInfo> quizAnswerInfoList = new ArrayList<>();
+            List<QuizEndPlayerInfo> quizAnswerInfoList = new ArrayList<>();
 
-        // 정답 판별, 점수 계산
-        for (GamePlayer gp : gamePlayers) {
-            SelectedChoice selectedChoice = userIdToSelectedChoice.get(gp.getUserId());
-            QuizResult quizResult = resolveQuizResult(gp, selectedChoice, correctChoiceId);
+            // 정답 판별, 점수 계산
+            for (GamePlayer gp : gamePlayers) {
+                SelectedChoice selectedChoice = userIdToSelectedChoice.get(gp.getUserId());
+                QuizResult quizResult = resolveQuizResult(gp, selectedChoice, correctChoiceId);
 
-            switch (quizResult) {
-                case CORRECT -> gp.addScore(1);
-                case WRONG, NO_SUBMISSION -> gp.kill();
-                case SKIPPED_DEAD -> {}
+                switch (quizResult) {
+                    case CORRECT -> gp.addScore(1);
+                    case WRONG, NO_SUBMISSION -> gp.kill();
+                    case SKIPPED_DEAD -> {}
+                }
+
+                quizAnswerInfoList.add(gameEventBuilder.toQuizEndPlayerInfo(gp, quizResult));
             }
 
-            quizAnswerInfoList.add(gameEventBuilder.toQuizEndPlayerInfo(gp, quizResult));
-        }
+            long quizEndedAt = Instant.now().toEpochMilli();
+            var quizEndEvent = gameEventBuilder.toQuizEndEvent(
+                    room,
+                    game,
+                    quiz,
+                    quizAnswerInfoList,
+                    correctChoiceNumber,
+                    quizEndedAt
+            );
 
-        // 각 플레이어 상태 업데이트
+            // 게임 종료 판별
+            int livePlayerCount = (int) gamePlayers.stream()
+                    .filter(GamePlayer::isAlive)
+                    .count();
+            boolean isQuizExhausted = game.getCurrentQuizIndex() >= game.getTotalQuizCount() - 1;
+            GameEndEvent gameEndEvent = null;
+            if (livePlayerCount <= 1 || isQuizExhausted) {
+                gameEndEvent = endGame(player.getUserId(), room.getRoomId(), game.getGameId());
+            }
 
-        long quizEndedAt = Instant.now().toEpochMilli();
-        var quizEndEvent = gameEventBuilder.toQuizEndEvent(
-                room,
-                game,
-                quiz,
-                quizAnswerInfoList,
-                correctChoiceNumber,
-                quizEndedAt
-        );
+            // 선지 제출 정보 삭제
+            selectedChoiceRepository.deleteByGameIdAndQuizId(gameId, quizId);
+            quizChoiceNumberMappingRepository.deleteByGameIdAndQuizId(gameId, quizId);
 
-        // 게임 종료 판별
-        int livePlayerCount = (int) gamePlayers.stream()
-                .filter(GamePlayer::isAlive)
-                .count();
-        boolean isQuizExhausted = game.getCurrentQuizIndex() >= game.getTotalQuizCount() - 1;
-        GameEndEvent gameEndEvent = null;
-        if (livePlayerCount <= 1 || isQuizExhausted) {
-            gameEndEvent = endGame(player.getUserId(), room.getRoomId(), game.getGameId());
-        }
-
-        // 선지 제출 정보 삭제
-        selectedChoiceRepository.deleteByGameIdAndQuizId(gameId, quizId);
-        quizChoiceNumberMappingRepository.deleteByGameIdAndQuizId(gameId, quizId);
-
-        // 결과 반환
-        return new EndQuizOrGameEvent(quizEndEvent, gameEndEvent);
+            // 결과 반환
+            return new EndQuizOrGameEvent(quizEndEvent, gameEndEvent);
+        });
     }
 
     /**
      * 게임 종료. 서버 에서 호출
      */
     public GameEndEvent endGame(Long userId, String roomId, Long gameId) {
-        // 검증
-        getPlayerInRoomOrThrow(userId, roomId);
-        Room room = getRoomOrThrow(roomId);
-        Game game = getGameOrThrow(gameId);
-        validateGameInProgress(room, game);
+        return roomLockManager.executeWithLock(roomId, () -> {
+            // 검증
+            getPlayerInRoomOrThrow(userId, roomId);
+            Room room = getRoomOrThrow(roomId);
+            Game game = getGameOrThrow(gameId);
+            validateGameInProgress(room, game);
 
-        // 게임 결과 확인
-        List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
-        GameEndReason reason = determineGameEndReason(gamePlayers, game);
-        List<GameRankingInfo> rankings = gameEventBuilder.buildRankings(gamePlayers);
-        long occurredAt = Instant.now().toEpochMilli();
-        GameEndEvent gameEndEvent = gameEventBuilder.toGameEndEvent(room, game, reason, rankings, occurredAt);
+            // 게임 결과 확인
+            List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
+            GameEndReason reason = determineGameEndReason(gamePlayers, game);
+            List<GameRankingInfo> rankings = gameEventBuilder.buildRankings(gamePlayers);
+            long occurredAt = Instant.now().toEpochMilli();
+            GameEndEvent gameEndEvent = gameEventBuilder.toGameEndEvent(room, game, reason, rankings, occurredAt);
 
-        // 데이터 정리 - 게임플레이어, 게임, 퀴즈 선택지 매핑, 제출한 선지 정보 등
-        room.endGame();
-        selectedChoiceRepository.deleteByGameId(gameId);
-        quizChoiceNumberMappingRepository.deleteByGameId(gameId);
-        gamePlayerRepository.deleteByGameId(gameId);
-        gameRepository.deleteById(gameId);
+            // 데이터 정리 - 게임플레이어, 게임, 퀴즈 선택지 매핑, 제출한 선지 정보 등
+            room.endGame();
+            selectedChoiceRepository.deleteByGameId(gameId);
+            quizChoiceNumberMappingRepository.deleteByGameId(gameId);
+            gamePlayerRepository.deleteByGameId(gameId);
+            gameRepository.deleteById(gameId);
 
-        // player 모두 준비 해제
-        playerRepository.findAllByRoomId(roomId).forEach(Player::unready);
+            // player 모두 준비 해제
+            playerRepository.findAllByRoomId(roomId).forEach(Player::unready);
 
-        return gameEndEvent;
+            return gameEndEvent;
+        });
     }
 
     private GameEndReason determineGameEndReason(List<GamePlayer> gamePlayers, Game game) {
