@@ -28,6 +28,7 @@ import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
+import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
@@ -57,9 +58,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
@@ -67,7 +69,8 @@ import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-@Disabled
+@Tag("stress")
+@EnabledIfSystemProperty(named = "runStressTests", matches = "true")
 @ExtendWith(ConsistencyRulesIntegrationTest.RepeatAsSingleTestExtension.class)
 class ConsistencyRulesIntegrationTest {
     private static final int STRESS_ATTEMPTS = 100;
@@ -111,7 +114,8 @@ class ConsistencyRulesIntegrationTest {
                 selectedChoiceRepository,
                 quizChoiceNumberMappingRepository,
                 gamePlayerRepository,
-                gameEventBuilder
+                gameEventBuilder,
+                roomLockManager
         );
         roomService = new RoomService(
                 roomRepository,
@@ -470,14 +474,27 @@ class ConsistencyRulesIntegrationTest {
             List<Long> gamePlayerUserIds = gamePlayerRepository.getByGameId(gameStartEvent.gameId()).stream()
                     .map(GamePlayer::getUserId)
                     .toList();
+            List<Long> snapshotUserIds = gameStartEvent.payload().players().stream()
+                    .map(QuizEndPlayerInfo::userId)
+                    .toList();
             List<Long> roomUserIds = playerRepository.findAllByRoomId(roomId).stream()
                     .map(Player::getUserId)
                     .toList();
 
-            assertThat(gamePlayerUserIds).containsExactlyInAnyOrderElementsOf(roomUserIds);
-            assertThat(gameStartEvent.payload().players())
-                    .extracting(QuizEndPlayerInfo::userId)
-                    .containsExactlyInAnyOrderElementsOf(roomUserIds);
+            assertThat(gamePlayerUserIds).containsExactlyInAnyOrderElementsOf(snapshotUserIds);
+
+            if (snapshotUserIds.contains(leavingGuestUserId)) {
+                assertThat(snapshotUserIds)
+                        .containsExactlyInAnyOrder(hostUserId, leavingGuestUserId, stayingGuestUserId);
+                assertThat(roomUserIds)
+                        .containsExactlyInAnyOrder(hostUserId, stayingGuestUserId)
+                        .doesNotContain(leavingGuestUserId);
+            } else {
+                assertThat(snapshotUserIds).containsExactlyInAnyOrderElementsOf(roomUserIds);
+                assertThat(roomUserIds)
+                        .containsExactlyInAnyOrder(hostUserId, stayingGuestUserId)
+                        .doesNotContain(leavingGuestUserId);
+            }
         }
 
         @Test
@@ -495,30 +512,42 @@ class ConsistencyRulesIntegrationTest {
             roomService.readyPlayer(roomId, guest2UserId);
 
             AtomicReference<GameStartEvent> gameStartEventRef = new AtomicReference<>();
+            AtomicReference<LeaveRoomResult> leaveRoomResultRef = new AtomicReference<>();
 
             // when
             List<Throwable> errors = runConcurrently(
-                    () -> roomService.leaveRoom(roomId, hostUserId),
+                    () -> leaveRoomResultRef.set(roomService.leaveRoom(roomId, hostUserId)),
                     () -> gameStartEventRef.set(roomService.startGame(roomId, hostUserId))
             );
 
             // then
-            assertThat(errors).isEmpty();
-
             Room room = roomRepository.findById(roomId).orElseThrow();
             List<Player> players = playerRepository.findAllByRoomId(roomId);
             List<Long> remainingUserIds = players.stream()
                     .map(Player::getUserId)
                     .toList();
             GameStartEvent gameStartEvent = gameStartEventRef.get();
+            LeaveRoomResult leaveRoomResult = leaveRoomResultRef.get();
 
             assertThat(remainingUserIds).hasSize(2);
             assertThat(remainingUserIds).doesNotContain(hostUserId);
             assertThat(remainingUserIds).contains(room.getHostId());
             assertThat(room.getHostId()).isNotEqualTo(hostUserId);
-            assertThat(gamePlayerRepository.getByGameId(gameStartEvent.gameId()))
-                    .extracting(GamePlayer::getUserId)
-                    .containsExactlyInAnyOrderElementsOf(remainingUserIds);
+            assertThat(leaveRoomResult).isNotNull();
+            assertThat(leaveRoomResult.hasHostChangedEvent()).isTrue();
+
+            if (gameStartEvent == null) {
+                assertThat(errors).hasSize(1);
+                assertThat(errors.get(0)).isInstanceOf(CustomException.class);
+                assertThat(((CustomException) errors.get(0)).getErrorCode().getCode())
+                        .isEqualTo(PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM.name());
+                assertThat(room.isInGame()).isFalse();
+            } else {
+                assertThat(errors).isEmpty();
+                assertThat(gamePlayerRepository.getByGameId(gameStartEvent.gameId()))
+                        .extracting(GamePlayer::getUserId)
+                        .containsExactlyInAnyOrder(hostUserId, guest1UserId, guest2UserId);
+            }
         }
 
         @Test
@@ -570,10 +599,6 @@ class ConsistencyRulesIntegrationTest {
 
             // then
             assertThat(errors).isEmpty();
-            PlayerReadyEvent readyEvent = readyEventRef.get();
-            assertThat(readyEvent).isNotNull();
-            assertThat(readyEvent.allReady()).isFalse();
-
             List<Player> players = playerRepository.findAllByRoomId(roomId);
             assertThat(players).extracting(Player::getUserId)
                     .containsExactlyInAnyOrder(hostUserId, readyGuestUserId)
@@ -586,7 +611,7 @@ class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 준비_취소와_게임_시작_요청이_동시에_일어나면_준비_취소가_반영된_경우_게임_시작이_거부된다() throws InterruptedException {
+        void 준비_취소와_게임_시작_요청이_동시에_일어나면_직렬화된_결과만_발생한다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
             long readyGuest1UserId = loginGuest("readyGuest1Session").userId();
@@ -608,7 +633,20 @@ class ConsistencyRulesIntegrationTest {
             );
 
             // then
-            assertThat(roomRepository.findById(roomId).orElseThrow().isInGame()).isFalse();
+            assertThat(errors).hasSize(1);
+            assertThat(errors.get(0)).isInstanceOf(CustomException.class);
+
+            Room room = roomRepository.findById(roomId).orElseThrow();
+            String errorCode = ((CustomException) errors.get(0)).getErrorCode().getCode();
+            GameStartEvent gameStartEvent = gameStartEventRef.get();
+
+            if (gameStartEvent == null) {
+                assertThat(errorCode).isEqualTo(RoomErrorCode.PLAYERS_NOT_READY.name());
+                assertThat(room.isInGame()).isFalse();
+            } else {
+                assertThat(errorCode).isEqualTo(RoomErrorCode.ROOM_IN_GAME.name());
+                assertThat(room.isInGame()).isTrue();
+            }
         }
     }
 

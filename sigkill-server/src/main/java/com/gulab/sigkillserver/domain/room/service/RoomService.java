@@ -51,6 +51,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -146,7 +147,7 @@ public class RoomService {
     /**
      * 방 생성
      */
-    public RoomInfoResponse createRoom(String roomTitle, Integer capacity, Long userId) {
+    public synchronized RoomInfoResponse createRoom(String roomTitle, Integer capacity, Long userId) {
         roomTitle = roomTitle.strip();
         int resolvedCapacity = capacity != null ? capacity : DEFAULT_CAPACITY;
         validateRoomCreateRequest(roomTitle, resolvedCapacity);
@@ -274,27 +275,38 @@ public class RoomService {
      * 플레이어 방 퇴장
      */
     public LeaveRoomResult leaveRoom(String roomId, Long userId) {
-        Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, room.getHostId());
+        validateRoomId(roomId);
+        AtomicBoolean roomDeleted = new AtomicBoolean(false);
+        LeaveRoomResult leaveRoomResult = roomLockManager.executeWithLock(roomId, () -> {
+            Room room = getRoomOrThrow(roomId);
+            Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, room.getHostId());
 
-        if (getPlayerCountInRoom(roomId) <= 1) {
-            roomRepository.deleteById(roomId);
+            if (getPlayerCountInRoom(roomId) <= 1) {
+                roomRepository.deleteById(roomId);
+                playerRepository.deleteById(userId);
+                roomDeleted.set(true);
+                return LeaveRoomResult.of(playerLeftEvent);
+            }
+
             playerRepository.deleteById(userId);
-            log.info("room.leave success - roomId={}, userId={}, roomDeleted=true", roomId, userId);
+
+            if (room.getHostId().equals(userId)) {
+                HostChangedEvent hostChangedEvent = changeHost(room, player);
+                return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
+            }
+
             return LeaveRoomResult.of(playerLeftEvent);
-        }
+        });
 
-        playerRepository.deleteById(userId);
-
-        if (room.getHostId().equals(userId)) {
-            HostChangedEvent hostChangedEvent = changeHost(room, player);
+        if (roomDeleted.get()) {
+            log.info("room.leave success - roomId={}, userId={}, roomDeleted=true", roomId, userId);
+        } else if (leaveRoomResult.hasHostChangedEvent()) {
             log.info("room.leave success - roomId={}, userId={}, hostChanged=true", roomId, userId);
-            return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
+        } else {
+            log.info("room.leave success - roomId={}, userId={}, hostChanged=false", roomId, userId);
         }
-
-        log.info("room.leave success - roomId={}, userId={}, hostChanged=false", roomId, userId);
-        return LeaveRoomResult.of(playerLeftEvent);
+        return leaveRoomResult;
     }
 
     /**
@@ -313,17 +325,22 @@ public class RoomService {
      * 플레이어 준비 완료
      */
     public PlayerReadyEvent readyPlayer(String roomId, Long userId) {
-        Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-        validatePlayerNotHost(player, room);
-        validateRoomNotInGame(room);
+        validateRoomId(roomId);
+        PlayerReadyEvent playerReadyEvent = roomLockManager.executeWithLock(roomId, () -> {
+            Room room = getRoomOrThrow(roomId);
+            Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            validatePlayerNotHost(player, room);
+            validateRoomNotInGame(room);
 
-        player.ready();
+            player.ready();
 
-        boolean isAllReady = isAllGuestsReady(room);
+            boolean isAllReady = isAllGuestsReady(room);
+            return PlayerReadyEvent.of(player, room.getHostId(), isAllReady);
+        });
+        log.info("room.ready success - roomId={}, userId={}, allReady={}", roomId, userId,
+                playerReadyEvent.allReady());
 
-        log.info("room.ready success - roomId={}, userId={}, allReady={}", roomId, userId, isAllReady);
-        return PlayerReadyEvent.of(player, room.getHostId(), isAllReady);
+        return playerReadyEvent;
     }
 
     private void validateRoomNotInGame(Room room) {
@@ -362,32 +379,35 @@ public class RoomService {
      * 플레이어 준비 취소
      */
     public PlayerUnreadyEvent unreadyPlayer(String roomId, Long userId) {
-        Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-        validatePlayerNotHost(player, room);
-        validateRoomNotInGame(room);
-
-        player.unready();
-
+        validateRoomId(roomId);
+        PlayerUnreadyEvent playerUnreadyEvent = roomLockManager.executeWithLock(roomId, () -> {
+            Room room = getRoomOrThrow(roomId);
+            Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            validatePlayerNotHost(player, room);
+            validateRoomNotInGame(room);
+            player.unready();
+            return PlayerUnreadyEvent.of(player, room.getHostId());
+        });
         log.info("room.unready success - roomId={}, userId={}", roomId, userId);
-        return PlayerUnreadyEvent.of(player, room.getHostId());
+        return playerUnreadyEvent;
     }
 
     /**
      * 게임 시작
      */
     public GameStartEvent startGame(String roomId, Long userId) {
-        Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-        validateRoomNotInGame(room);
-        validatePlayerHost(player, room);
-        validatePlayerCountOverMinimum(room);
-
-        if (!isAllGuestsReady(room)) {
-            throw new CustomException(PLAYERS_NOT_READY);
-        }
-
-        return gameService.startGame(room);
+        validateRoomId(roomId);
+        return roomLockManager.executeWithLock(roomId, () -> {
+            Room room = getRoomOrThrow(roomId);
+            Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            validateRoomNotInGame(room);
+            validatePlayerHost(player, room);
+            validatePlayerCountOverMinimum(room);
+            if (!isAllGuestsReady(room)) {
+                throw new CustomException(PLAYERS_NOT_READY);
+            }
+            return gameService.startGame(room);
+        });
     }
 
     private void validatePlayerCountOverMinimum(Room room) {

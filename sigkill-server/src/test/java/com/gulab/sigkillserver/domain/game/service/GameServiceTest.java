@@ -36,6 +36,7 @@ import com.gulab.sigkillserver.domain.game.repository.QuizMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
+import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
@@ -70,6 +71,7 @@ class GameServiceTest {
     private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
     private GamePlayerRepository gamePlayerRepository;
     private GameEventBuilder gameEventBuilder;
+    private RoomLockManager roomLockManager;
     private GameService gameService;
 
     @BeforeEach
@@ -84,6 +86,7 @@ class GameServiceTest {
         quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
         gamePlayerRepository = new GamePlayerMemoryRepository();
         gameEventBuilder = new GameEventBuilder();
+        roomLockManager = new RoomLockManager();
 
         gameService = new GameService(
                 userRepository,
@@ -94,7 +97,8 @@ class GameServiceTest {
                 selectedChoiceRepository,
                 quizChoiceNumberMappingRepository,
                 gamePlayerRepository,
-                gameEventBuilder
+                gameEventBuilder,
+                roomLockManager
         );
     }
 
@@ -128,7 +132,7 @@ class GameServiceTest {
         @Test
         void 메모리_저장소_기반으로_GAME_START를_생성하고_게임을_저장한다() {
             // given
-            Room room = Room.create("1234", "테스트 방", 1L, 6);
+            Room room = saveRoom("1234");
             User user1 = saveUser("start-game-session-1", "start-game-user-1");
             User user2 = saveUser("start-game-session-2", "start-game-user-2");
             playerRepository.create(Player.create(user1.getUserId(), room.getRoomId(), user1.getNickname()));
@@ -161,7 +165,7 @@ class GameServiceTest {
         @Test
         void 이미_게임이_시작된_방에서_startGame을_호출하면_ROOM_ALREADY_STARTED_예외가_발생한다() {
             // given
-            Room room = Room.create("1234", "테스트 방", 1L, 6);
+            Room room = saveRoom("1234");
             room.startGame();
 
             // when then
@@ -314,6 +318,23 @@ class GameServiceTest {
                     .containsExactlyInAnyOrderElementsOf(
                             quiz.choices().stream().map(choice -> choice.choiceId()).toList()
                     );
+        }
+
+        @Test
+        void roomId가_4자리_정수가_아니면_퀴즈를_시작하지_못한다() {
+            // given
+            User user = saveUser("start-quiz-invalid-room-id-session", "start-quiz-invalid-room-id-user");
+            Room room = saveRoom("1235");
+            room.startGame();
+            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            Game game = saveGameWithQuizIds(room.getRoomId(), 3);
+
+            // when
+            Throwable thrown = catchThrowable(
+                    () -> gameService.startQuiz(user.getUserId(), "invalid", game.getGameId()));
+
+            // then
+            assertCustomErrorCode(thrown, RoomErrorCode.ROOM_NUMBER_ERROR.name());
         }
 
         @Test
@@ -842,6 +863,23 @@ class GameServiceTest {
         }
 
         @Test
+        void roomId가_4자리_정수가_아니면_퀴즈를_종료하지_못한다() {
+            // given
+            EndQuizFixture fixture = prepareEndQuizFixture("2244");
+
+            // when
+            Runnable call = () -> gameService.endQuiz(
+                    fixture.host().getUserId(),
+                    "invalid",
+                    fixture.game().getGameId(),
+                    fixture.quiz().quizId()
+            );
+
+            // then
+            assertThrowsCustomExceptionWithCode(call, RoomErrorCode.ROOM_NUMBER_ERROR.name());
+        }
+
+        @Test
         void 게임이_종료된_방에서_퀴즈를_종료하지_못한다() {
             // given
             EndQuizFixture fixture = prepareEndQuizFixture("2334");
@@ -1069,6 +1107,29 @@ class GameServiceTest {
 
             // then
             assertThrowsCustomExceptionWithCode(call, RoomErrorCode.ROOM_NOT_STARTED.name());
+        }
+
+        @Test
+        void roomId가_4자리_정수가_아니면_게임을_종료하지_못한다() {
+            // given
+            User host = saveUser("end-game-invalid-room-id-host-session", "end-game-invalid-room-id-host");
+            User second = saveUser("end-game-invalid-room-id-second-session", "end-game-invalid-room-id-second");
+            Room room = Room.create("2644", "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            gameService.startGame(room);
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+
+            // when
+            Runnable call = () -> gameService.endGame(
+                    host.getUserId(),
+                    "invalid",
+                    game.getGameId()
+            );
+
+            // then
+            assertThrowsCustomExceptionWithCode(call, RoomErrorCode.ROOM_NUMBER_ERROR.name());
         }
 
         @Test
