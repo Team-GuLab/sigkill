@@ -23,8 +23,7 @@ export const handleRoomMessage = (
 
     case "PLAYER_JOIN": {
       const { user } = useUserStore.getState();
-      const { roomInfo, players, setRoomInfo, setPlayers } =
-        useRoomStore.getState();
+      const { roomInfo, setRoomInfo } = useRoomStore.getState();
 
       if (!roomInfo) {
         toast.success(`방 "${message.room.roomTitle}"에 입장했습니다!`);
@@ -33,12 +32,6 @@ export const handleRoomMessage = (
 
       if (message.player.userId !== user?.userId) {
         toast.info(`${message.player.nickname}님이 입장했습니다.`);
-        const alreadyExists = players.some(
-          p => p.userId === message.player.userId,
-        );
-        if (!alreadyExists) {
-          setPlayers([...players, message.player]);
-        }
       }
       break;
     }
