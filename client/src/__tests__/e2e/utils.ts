@@ -65,5 +65,11 @@ export async function setupRoom(
   });
   await pageB.getByText(roomTitle).first().click();
 
+  // 사용자 B가 대기방에 완전히 입장했음을 보장
+  await expect(pageB).toHaveURL(/\/waiting-room\//);
+  await expect(pageB.getByRole("heading", { name: roomTitle })).toBeVisible({
+    timeout: 10000,
+  });
+
   return { contextB, pageB, roomTitle };
 }
