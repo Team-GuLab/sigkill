@@ -59,7 +59,9 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
@@ -67,7 +69,8 @@ import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-//@Disabled
+@Tag("stress")
+@EnabledIfSystemProperty(named = "runStressTests", matches = "true")
 @ExtendWith(ConsistencyRulesIntegrationTest.RepeatAsSingleTestExtension.class)
 class ConsistencyRulesIntegrationTest {
     private static final int STRESS_ATTEMPTS = 100;
