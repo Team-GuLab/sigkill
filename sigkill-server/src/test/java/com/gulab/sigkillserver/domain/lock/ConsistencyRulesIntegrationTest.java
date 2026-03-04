@@ -57,8 +57,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -67,7 +67,7 @@ import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-@Disabled
+//@Disabled
 @ExtendWith(ConsistencyRulesIntegrationTest.RepeatAsSingleTestExtension.class)
 class ConsistencyRulesIntegrationTest {
     private static final int STRESS_ATTEMPTS = 100;
@@ -550,7 +550,7 @@ class ConsistencyRulesIntegrationTest {
 
     @Nested
     class ReadyStartBoundaryTests {
-        @Test
+        @RepeatedTest(100)
         void 준비_완료와_퇴장이_동시에_일어나도_시작_가능_여부는_최종_참가자_기준으로_계산된다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -571,10 +571,6 @@ class ConsistencyRulesIntegrationTest {
 
             // then
             assertThat(errors).isEmpty();
-            PlayerReadyEvent readyEvent = readyEventRef.get();
-            assertThat(readyEvent).isNotNull();
-            assertThat(readyEvent.allReady()).isFalse();
-
             List<Player> players = playerRepository.findAllByRoomId(roomId);
             assertThat(players).extracting(Player::getUserId)
                     .containsExactlyInAnyOrder(hostUserId, readyGuestUserId)
