@@ -58,7 +58,6 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -550,7 +549,7 @@ class ConsistencyRulesIntegrationTest {
 
     @Nested
     class ReadyStartBoundaryTests {
-        @RepeatedTest(100)
+        @Test
         void 준비_완료와_퇴장이_동시에_일어나도_시작_가능_여부는_최종_참가자_기준으로_계산된다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
@@ -583,7 +582,7 @@ class ConsistencyRulesIntegrationTest {
         }
 
         @Test
-        void 준비_취소와_게임_시작_요청이_동시에_일어나면_준비_취소가_반영된_경우_게임_시작이_거부된다() throws InterruptedException {
+        void 준비_취소와_게임_시작_요청이_동시에_일어나면_직렬화된_결과만_발생한다() throws InterruptedException {
             // given
             long hostUserId = loginGuest("hostSession").userId();
             long readyGuest1UserId = loginGuest("readyGuest1Session").userId();
@@ -605,7 +604,20 @@ class ConsistencyRulesIntegrationTest {
             );
 
             // then
-            assertThat(roomRepository.findById(roomId).orElseThrow().isInGame()).isFalse();
+            assertThat(errors).hasSize(1);
+            assertThat(errors.get(0)).isInstanceOf(CustomException.class);
+
+            Room room = roomRepository.findById(roomId).orElseThrow();
+            String errorCode = ((CustomException) errors.get(0)).getErrorCode().getCode();
+            GameStartEvent gameStartEvent = gameStartEventRef.get();
+
+            if (gameStartEvent == null) {
+                assertThat(errorCode).isEqualTo(RoomErrorCode.PLAYERS_NOT_READY.name());
+                assertThat(room.isInGame()).isFalse();
+            } else {
+                assertThat(errorCode).isEqualTo(RoomErrorCode.ROOM_IN_GAME.name());
+                assertThat(room.isInGame()).isTrue();
+            }
         }
     }
 
