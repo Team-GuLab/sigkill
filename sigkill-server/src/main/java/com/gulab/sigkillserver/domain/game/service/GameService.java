@@ -9,10 +9,13 @@ import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_C
 import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_CHOICE_NUMBER_MAPPING_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_INDEX_OUT_OF_BOUNDS;
 import static com.gulab.sigkillserver.domain.game.exception.QuizErrorCode.QUIZ_NOT_FOUND;
+import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_ROOM_NUMBER;
+import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_ROOM_NUMBER;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_ALREADY_STARTED;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_STARTED;
 import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_NOT_FOUND;
 
@@ -139,6 +142,7 @@ public class GameService {
      * 게임 중 다음 퀴즈 시작. 클라이언트에서 호출
      */
     public QuizStartEvent startQuiz(Long userId, String roomId, Long gameId) {
+        validateRoomId(roomId);
         return roomLockManager.executeWithLock(roomId, () -> {
             // 검증
             getPlayerInRoomOrThrow(userId, roomId);
@@ -253,6 +257,7 @@ public class GameService {
      * 퀴즈 종료. 서버 에서 호출
      */
     public EndQuizOrGameEvent endQuiz(Long userId, String roomId, Long gameId, Long quizId) {
+        validateRoomId(roomId);
         return roomLockManager.executeWithLock(roomId, () -> {
             // 검증
             Player player = getPlayerInRoomOrThrow(userId, roomId);
@@ -326,6 +331,7 @@ public class GameService {
      * 게임 종료. 서버 에서 호출
      */
     public GameEndEvent endGame(Long userId, String roomId, Long gameId) {
+        validateRoomId(roomId);
         return roomLockManager.executeWithLock(roomId, () -> {
             // 검증
             getPlayerInRoomOrThrow(userId, roomId);
@@ -370,6 +376,18 @@ public class GameService {
             return GameEndReason.QUIZ_EXHAUSTED;
         }
         throw new CustomException(GAME_IN_PROGRESS);
+    }
+
+    private void validateRoomId(String roomId) {
+        int roomIdInt;
+        try {
+            roomIdInt = Integer.parseInt(roomId);
+        } catch (NumberFormatException e) {
+            throw new CustomException(ROOM_NUMBER_ERROR);
+        }
+        if (roomIdInt < MIN_ROOM_NUMBER || roomIdInt > MAX_ROOM_NUMBER) {
+            throw new CustomException(ROOM_NUMBER_ERROR);
+        }
     }
 
     private Player getPlayerInRoomOrThrow(Long userId, String roomId) {
