@@ -36,6 +36,7 @@ import com.gulab.sigkillserver.domain.game.repository.QuizMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizRepository;
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceRepository;
+import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode;
 import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
@@ -70,6 +71,7 @@ class GameServiceTest {
     private QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
     private GamePlayerRepository gamePlayerRepository;
     private GameEventBuilder gameEventBuilder;
+    private RoomLockManager roomLockManager;
     private GameService gameService;
 
     @BeforeEach
@@ -84,6 +86,7 @@ class GameServiceTest {
         quizChoiceNumberMappingRepository = new QuizChoiceNumberMappingMemoryRepository();
         gamePlayerRepository = new GamePlayerMemoryRepository();
         gameEventBuilder = new GameEventBuilder();
+        roomLockManager = new RoomLockManager();
 
         gameService = new GameService(
                 userRepository,
@@ -94,7 +97,8 @@ class GameServiceTest {
                 selectedChoiceRepository,
                 quizChoiceNumberMappingRepository,
                 gamePlayerRepository,
-                gameEventBuilder
+                gameEventBuilder,
+                roomLockManager
         );
     }
 
@@ -128,7 +132,7 @@ class GameServiceTest {
         @Test
         void 메모리_저장소_기반으로_GAME_START를_생성하고_게임을_저장한다() {
             // given
-            Room room = Room.create("1234", "테스트 방", 1L, 6);
+            Room room = saveRoom("1234");
             User user1 = saveUser("start-game-session-1", "start-game-user-1");
             User user2 = saveUser("start-game-session-2", "start-game-user-2");
             playerRepository.create(Player.create(user1.getUserId(), room.getRoomId(), user1.getNickname()));
@@ -161,7 +165,7 @@ class GameServiceTest {
         @Test
         void 이미_게임이_시작된_방에서_startGame을_호출하면_ROOM_ALREADY_STARTED_예외가_발생한다() {
             // given
-            Room room = Room.create("1234", "테스트 방", 1L, 6);
+            Room room = saveRoom("1234");
             room.startGame();
 
             // when then

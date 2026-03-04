@@ -111,7 +111,8 @@ class ConsistencyRulesIntegrationTest {
                 selectedChoiceRepository,
                 quizChoiceNumberMappingRepository,
                 gamePlayerRepository,
-                gameEventBuilder
+                gameEventBuilder,
+                roomLockManager
         );
         roomService = new RoomService(
                 roomRepository,

@@ -99,7 +99,8 @@ class RoomServiceTest {
                 selectedChoiceRepository,
                 quizChoiceNumberMappingRepository,
                 gamePlayerRepository,
-                gameEventBuilder
+                gameEventBuilder,
+                roomLockManager
         );
         roomService = new RoomService(
                 roomRepository,
