@@ -275,6 +275,7 @@ public class RoomService {
      * 플레이어 방 퇴장
      */
     public LeaveRoomResult leaveRoom(String roomId, Long userId) {
+        validateRoomId(roomId);
         AtomicBoolean roomDeleted = new AtomicBoolean(false);
         LeaveRoomResult leaveRoomResult = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
@@ -324,6 +325,7 @@ public class RoomService {
      * 플레이어 준비 완료
      */
     public PlayerReadyEvent readyPlayer(String roomId, Long userId) {
+        validateRoomId(roomId);
         PlayerReadyEvent playerReadyEvent = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
