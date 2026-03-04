@@ -50,6 +50,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -274,7 +275,8 @@ public class RoomService {
      * 플레이어 방 퇴장
      */
     public LeaveRoomResult leaveRoom(String roomId, Long userId) {
-        return roomLockManager.executeWithLock(roomId, () -> {
+        AtomicBoolean roomDeleted = new AtomicBoolean(false);
+        LeaveRoomResult leaveRoomResult = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
             PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, room.getHostId());
@@ -282,7 +284,7 @@ public class RoomService {
             if (getPlayerCountInRoom(roomId) <= 1) {
                 roomRepository.deleteById(roomId);
                 playerRepository.deleteById(userId);
-                log.info("room.leave success - roomId={}, userId={}, roomDeleted=true", roomId, userId);
+                roomDeleted.set(true);
                 return LeaveRoomResult.of(playerLeftEvent);
             }
 
@@ -290,13 +292,20 @@ public class RoomService {
 
             if (room.getHostId().equals(userId)) {
                 HostChangedEvent hostChangedEvent = changeHost(room, player);
-                log.info("room.leave success - roomId={}, userId={}, hostChanged=true", roomId, userId);
                 return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
             }
 
-            log.info("room.leave success - roomId={}, userId={}, hostChanged=false", roomId, userId);
             return LeaveRoomResult.of(playerLeftEvent);
         });
+
+        if (roomDeleted.get()) {
+            log.info("room.leave success - roomId={}, userId={}, roomDeleted=true", roomId, userId);
+        } else if (leaveRoomResult.hasHostChangedEvent()) {
+            log.info("room.leave success - roomId={}, userId={}, hostChanged=true", roomId, userId);
+        } else {
+            log.info("room.leave success - roomId={}, userId={}, hostChanged=false", roomId, userId);
+        }
+        return leaveRoomResult;
     }
 
     /**
