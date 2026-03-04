@@ -230,6 +230,18 @@ class RoomServiceTest {
                     RoomErrorCode.ROOM_IN_GAME.name());
             assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
+
+        @Test
+        void roomId가_4자리_정수가_아니면_게임_시작_요청시_예외를_발생한다() {
+            // given
+            User host = createAndSaveUser("start-game-invalid-room-id-host-session", "호스트유저");
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.startGame("invalid", host.getUserId()),
+                    RoomErrorCode.ROOM_NUMBER_ERROR.name());
+            assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
+        }
     }
 
     @Nested
@@ -1111,6 +1123,17 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.unreadyPlayer(TEST_ROOM_ID, guest.getUserId()),
                     RoomErrorCode.ROOM_NOT_FOUND.name());
+        }
+
+        @Test
+        void roomId가_4자리_정수가_아니면_준비_취소할_수_없다() {
+            // given
+            User guest = createAndSaveUser("unready-invalid-room-id-guest-session", "게스트유저");
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.unreadyPlayer("invalid", guest.getUserId()),
+                    RoomErrorCode.ROOM_NUMBER_ERROR.name());
         }
 
         @Test

@@ -377,6 +377,7 @@ public class RoomService {
      * 플레이어 준비 취소
      */
     public PlayerUnreadyEvent unreadyPlayer(String roomId, Long userId) {
+        validateRoomId(roomId);
         PlayerUnreadyEvent playerUnreadyEvent = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
@@ -393,6 +394,7 @@ public class RoomService {
      * 게임 시작
      */
     public GameStartEvent startGame(String roomId, Long userId) {
+        validateRoomId(roomId);
         return roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
