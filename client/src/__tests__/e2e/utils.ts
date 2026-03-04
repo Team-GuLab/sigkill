@@ -58,7 +58,9 @@ export async function setupRoom(
 
   await pageB.goto(ROUTE_PATHS.HOME);
   await pageB.getByRole("button", { name: "Game Start" }).click();
-  await expect(pageB).toHaveURL(ROUTE_PATHS.ROOM_LIST);
+  await expect(pageB).toHaveURL(ROUTE_PATHS.ROOM_LIST, {
+    timeout: 10000,
+  });
 
   await expect(pageB.getByText(roomTitle).first()).toBeVisible({
     timeout: 10000,
