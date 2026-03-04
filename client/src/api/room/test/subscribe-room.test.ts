@@ -52,7 +52,12 @@ describe("대기방 웹소켓 구독 테스트", () => {
         capacity: 10,
         status: "WAITING",
       },
-      players: [],
+      player: {
+        userId: 1,
+        nickname: "테스트 유저",
+        status: "READY",
+        role: "HOST",
+      },
     };
 
     // Act
