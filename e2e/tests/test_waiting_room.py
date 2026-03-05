@@ -28,10 +28,12 @@ def test_방을_생성한다(make_page):
     page1 = make_page()
     base_page = HomePage(page1)
     rooms_page = RoomsPage(page1)
+    wating_page = WaitingRoomPage(page1)
     base_page.navigate()
     base_page.click_game_start()
     title = _get_random_title()
     rooms_page.create_room(title)
+    expect(wating_page.room_name_heading).to_be_visible()
 
 
 def test_방에_참가한다(make_page):
