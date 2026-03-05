@@ -22,6 +22,7 @@ condaenv.*.requirements.txt
 test-results/
 playwright-report/
 playwright/.cache/
+.playwright-mcp
 
 # macOS
 .DS_Store
