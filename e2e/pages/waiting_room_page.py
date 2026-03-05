@@ -36,9 +36,18 @@ class WaitingRoomPage(BasePage):
         )
 
     @property
+    def participant_list(self) -> Locator:
+        """참가자 목록 컨테이너 (heading의 형제 요소로 스코프 한정)"""
+        return self.participants_heading.locator("xpath=following-sibling::*[1]")
+
+    @property
     def empty_slots(self) -> Locator:
         """빈 자리 슬롯"""
         return self.page.get_by_text("빈 자리")
+
+    def participant_by_name(self, name: str) -> Locator:
+        """참가자 목록 내에서 닉네임으로 참가자 찾기 (토스트 알림과 혼동 방지)"""
+        return self.participant_list.get_by_text(name, exact=True)
 
     @property
     def leave_button(self) -> Locator:
