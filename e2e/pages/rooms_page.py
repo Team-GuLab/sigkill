@@ -103,6 +103,17 @@ class RoomsPage(BasePage):
         """유저 정보 영역"""
         return self.page.get_by_text("User ID:", exact=False)
 
+    @property
+    def user_nickname(self) -> Locator:
+        """닉네임 텍스트 (User ID: 바로 위 형제 요소)"""
+        return self.page.get_by_text("User ID:", exact=False).locator(
+            "xpath=preceding-sibling::*[1]"
+        )
+
+    def get_nickname(self) -> str:
+        """현재 로그인한 사용자의 닉네임 반환"""
+        return self.user_nickname.inner_text()
+
     # --- 액션 ---
 
     def goto(self) -> None:
