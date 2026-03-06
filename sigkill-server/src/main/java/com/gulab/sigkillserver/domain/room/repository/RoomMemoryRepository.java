@@ -4,7 +4,6 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_I
 
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.room.model.Room;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,15 +32,6 @@ public class RoomMemoryRepository implements RoomRepository {
     @Override
     public List<Room> findAll() {
         return new java.util.ArrayList<>(store.values());
-    }
-
-    @Override
-    public List<Room> findAll(Comparator<Room> comparator, int offset, int limit) {
-        return store.values().stream()
-                .sorted(comparator)
-                .skip(offset)
-                .limit(limit)
-                .toList();
     }
 
     @Override
