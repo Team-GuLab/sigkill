@@ -10,3 +10,13 @@
 rooms_page.create_room(title)
 expect(WaitingRoomPage(page).room_name_heading).to_be_visible()  # 필수
 ```
+
+## 게임 시작 후 화면 확인
+
+게임 시작 직후에는 문제 화면 또는 종료 화면으로 전환될 수 있으므로, `GamePage.wait_until_loaded()`로 먼저 화면 전환을 동기화한다.
+
+```python
+game_page = GamePage(page)
+waiting_page.click_start()
+game_page.wait_until_loaded()
+```
