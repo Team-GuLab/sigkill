@@ -1,9 +1,10 @@
 import pytest
+from typing import Generator, Any
 from playwright.sync_api import Browser, BrowserContext, Page
 
 
 @pytest.fixture
-def page(context: BrowserContext) -> Page:
+def page(context: BrowserContext) -> Generator[Page, Any, None]:
     """기본 page 픽스처 오버라이드 - WebSocket 연결 정리 보장"""
     page = context.new_page()
     yield page
