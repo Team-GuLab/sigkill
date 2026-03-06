@@ -14,6 +14,18 @@ class GamePage(BasePage):
     # --- 로케이터 ---
 
     @property
+    def top_notice_text(self) -> Locator:
+        """상단 배너의 안내/문항 문구"""
+        return self.question_progress_text.locator("xpath=ancestor::section[1]").get_by_text(
+            re.compile(r"\S+")
+        ).last
+
+    @property
+    def game_starting_notice_text(self) -> Locator:
+        """게임 시작 직전 안내 문구"""
+        return self.page.get_by_text("곧 게임이 시작됩니다.")
+
+    @property
     def question_progress_text(self) -> Locator:
         """'1/5' 형태의 문제 진행도 텍스트"""
         return self.page.get_by_text(re.compile(r"^\d+/\d+$")).first
@@ -57,11 +69,15 @@ class GamePage(BasePage):
     # --- 액션 ---
 
     def wait_until_loaded(self, timeout: int = 10_000) -> None:
-        """게임 진행 또는 종료 화면이 보일 때까지 대기"""
+        """상단 배너 문구가 보일 때까지 대기"""
         visible_state = (
-            self.question_progress_text.or_(self.game_end_notice).or_(self.result_heading)
+            self.top_notice_text.or_(self.game_end_notice).or_(self.result_heading)
         )
         expect(visible_state.first).to_be_visible(timeout=timeout)
+
+    def wait_until_starting_notice_visible(self, timeout: int = 10_000) -> None:
+        """게임 시작 직전 안내 문구가 보일 때까지 대기"""
+        expect(self.game_starting_notice_text).to_be_visible(timeout=timeout)
 
     def click_answer(self, choice_number: int) -> None:
         """답안 번호를 선택"""
@@ -82,4 +98,3 @@ class GamePage(BasePage):
     def is_answer_disabled(self, choice_number: int) -> bool:
         """특정 답안 버튼 비활성화 여부"""
         return self.answer_button(choice_number).is_disabled()
-

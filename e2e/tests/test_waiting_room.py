@@ -1,8 +1,8 @@
-import re
 import uuid
 
 from playwright.sync_api import Page, expect
 
+from pages.game_page import GamePage
 from pages.rooms_page import RoomsPage
 from pages.home_page import HomePage
 from pages.waiting_room_page import WaitingRoomPage
@@ -62,3 +62,36 @@ def test_방에_참가한다(make_page):
 
     expect(waiting_page1.participant_by_name(name2)).to_be_visible()
     expect(waiting_page1.empty_slots).to_have_count(4)
+
+
+def test_게임을_시작한다(make_page):
+    page1 = make_page()
+    page2 = make_page()
+    base_page1 = HomePage(page1)
+    rooms_page1 = RoomsPage(page1)
+    waiting_page1 = WaitingRoomPage(page1)
+    game_page1 = GamePage(page1)
+    base_page1.navigate()
+    base_page1.click_game_start()
+
+    base_page2 = HomePage(page2)
+    rooms_page2 = RoomsPage(page2)
+    waiting_page2 = WaitingRoomPage(page2)
+    game_page2 = GamePage(page2)
+
+    base_page2.navigate()
+    base_page2.click_game_start()
+
+    title = _get_random_title()
+    rooms_page1.create_room(title)
+    expect(waiting_page1.room_name_heading).to_be_visible()
+
+    rooms_page2.click_room_by_name(title)
+    expect(waiting_page2.room_name_heading).to_be_visible()
+    waiting_page2.click_ready()
+    waiting_page1.click_start()
+
+    game_page1.wait_until_loaded()
+    game_page2.wait_until_loaded()
+    expect(game_page1.answer_buttons).to_have_count(4)
+    expect(game_page2.answer_buttons).to_have_count(4)
