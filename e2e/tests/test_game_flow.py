@@ -8,8 +8,6 @@ from pages.rooms_page import RoomsPage
 from pages.home_page import HomePage
 from pages.waiting_room_page import WaitingRoomPage
 
-ROOM_TITLE = "멀티플레이어 테스트 방"
-
 
 def _get_random_title():
     return f"테스트방_{uuid.uuid4().hex[:6]}"  # '테스트방_a3f9c1'
@@ -29,12 +27,12 @@ def test_방을_생성한다(make_page):
     page1 = make_page()
     base_page = HomePage(page1)
     rooms_page = RoomsPage(page1)
-    wating_page = WaitingRoomPage(page1)
+    waiting_page = WaitingRoomPage(page1)
     base_page.navigate()
     base_page.click_game_start()
     title = _get_random_title()
     rooms_page.create_room(title)
-    expect(wating_page.room_name_heading).to_be_visible()
+    expect(waiting_page.room_name_heading).to_be_visible()
 
 
 def test_방에_참가한다(make_page):
