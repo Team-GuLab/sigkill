@@ -11,8 +11,9 @@ class GameResultPage(BasePage):
 
     @property
     def modal(self) -> Locator:
-        """결과 모달 루트(main.fixed.inset-0.z-50)"""
-        return self.page.locator("main.fixed.inset-0.z-50").first
+        """'경기 결과' 헤딩을 포함하는 결과 모달 루트"""
+        result_heading = self.page.get_by_role("heading", name="경기 결과", level=2)
+        return self.page.locator("main").filter(has=result_heading).first
 
     @property
     def heading(self) -> Locator:

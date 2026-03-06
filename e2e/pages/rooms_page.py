@@ -85,12 +85,12 @@ class RoomsPage(BasePage):
     @property
     def prev_page_button(self) -> Locator:
         """이전 페이지 버튼"""
-        return self.pagination.get_by_role("generic", name="Go to previous page")
+        return self.pagination.get_by_role("link", name="Go to previous page")
 
     @property
     def next_page_button(self) -> Locator:
         """다음 페이지 버튼"""
-        return self.pagination.get_by_role("generic", name="Go to next page")
+        return self.pagination.get_by_role("link", name="Go to next page")
 
     def page_number_button(self, number: int) -> Locator:
         """특정 페이지 번호 버튼"""
