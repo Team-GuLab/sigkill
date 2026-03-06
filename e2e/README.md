@@ -13,7 +13,7 @@ e2e/
 │  ├─ game_page.py
 │  └─ game_result_page.py
 ├─ tests/
-│  └─ test_waiting_room.py # 주요 E2E 시나리오
+│  └─ test_game_flow.py # 주요 E2E 시나리오
 ├─ conftest.py             # pytest fixture(page, make_page)
 ├─ requirements.txt
 ├─ environment.yml
@@ -67,5 +67,6 @@ pytest -k "게임을_진행하고_결과를_확인한다"
 
 ## 6) 환경/동작 참고사항
 
-- 현재 기본 대상 URL은 `pages/base_page.py`의 `BASE_URL` (`https://sigkill-quiz.kr`) 입니다.
+- 기본 대상 URL은 `https://sigkill-quiz.kr` 이며, `E2E_BASE_URL` 환경변수로 오버라이드할 수 있습니다.
+- 예시: `E2E_BASE_URL=https://staging.sigkill-quiz.kr pytest -q`
 - 결과 화면 검증처럼 시간이 걸리는 시나리오는 timeout을 충분히 크게 설정해야 합니다.
