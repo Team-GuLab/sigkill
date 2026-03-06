@@ -20,3 +20,13 @@ game_page = GamePage(page)
 waiting_page.click_start()
 game_page.wait_until_loaded()
 ```
+
+## 결과 화면 확인
+
+게임 진행 완료까지 대기 시간이 길 수 있으므로(문항 타이머 누적), 결과 모달은 `GameResultPage`로 확인하고 넉넉한 timeout을 사용한다.
+
+```python
+game_page.click_answer(1)  # 플레이어 1만 제출
+result_page = GameResultPage(page)
+result_page.wait_until_visible(timeout=90_000)
+```
