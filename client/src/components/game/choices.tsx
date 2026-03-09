@@ -41,7 +41,7 @@ export default function Choices() {
     if (!quizEndAnswer) {
       return selectedChoiceNumber === number
         ? "border-primary bg-primary hover:bg-primary h-12 border-2 text-sm font-medium text-white hover:text-white"
-        : "h-12 border-2 border-slate-300 bg-slate-50 text-sm font-medium text-slate-700 hover:border-purple-500 hover:bg-purple-50";
+        : "h-12 border-2 border-slate-300 bg-slate-50 text-sm font-medium text-slate-700 hover:border-primary-500 hover:bg-primary-50";
     }
 
     if (number === quizEndAnswer.correctChoiceNumber) {
@@ -59,7 +59,7 @@ export default function Choices() {
         <Button
           key={choice.number}
           variant="outline"
-          className={`relative ${getChoiceClassName(choice.number)}`}
+          className={`hover:text-secondary relative ${getChoiceClassName(choice.number)}`}
           disabled={!!quizEndAnswer || isCurrentPlayerDead}
           onClick={() => handleChoiceClick(choice.number)}
         >

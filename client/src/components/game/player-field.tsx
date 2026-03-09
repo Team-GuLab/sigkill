@@ -42,7 +42,7 @@ export default function PlayerField() {
             </div>
             <PlayerInGame player={player} quizResult={quizResult} />
             <p
-              className={`mt-2 max-w-14 text-xs font-medium ${player.userId === user?.userId && "font-semibold underline underline-offset-3"}`}
+              className={`mt-2 max-w-14 text-center text-xs font-medium break-keep whitespace-pre-wrap ${player.userId === user?.userId && "font-semibold underline underline-offset-3"}`}
             >
               {player.nickname}
             </p>
