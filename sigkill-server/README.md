@@ -194,7 +194,7 @@ docker compose up --build
   - OOM: `-XX:+HeapDumpOnOutOfMemoryError`, `-XX:HeapDumpPath=/app/logs`, `-XX:+ExitOnOutOfMemoryError`
   - 권장 컨테이너 제한(개발 서버 4GB, 추후 RDB/Redis 공존 고려): `--memory=1536m --memory-swap=1536m`
 
-테스트용으로 앱과 Redis를 같이 띄울 때는 [`docker-compose.yml`](/Users/lsh/develop/sigkill/sigkill-server/docker-compose.yml) 사용을 기준으로 합니다.
+테스트용으로 앱과 Redis를 같이 띄울 때는 [`docker-compose.yml`](./docker-compose.yml) 사용을 기준으로 합니다.
 
 ```bash
 ./gradlew clean build
@@ -222,9 +222,9 @@ docker run -d --name sigkill-server -p 8080:8080 \
 
 ## 자동배포(GitHub Actions) 메모리 제한
 
-- 자동배포는 상위 저장소의 [`deploy-sigkill-server-develop.yml`](/Users/lsh/develop/sigkill/.github/workflows/deploy-sigkill-server-develop.yml)에서 `docker compose`로 앱과 Redis를 함께 배포합니다.
+- 자동배포는 상위 저장소의 [`deploy-sigkill-server-develop.yml`](../.github/workflows/deploy-sigkill-server-develop.yml)에서 `docker compose`로 앱과 Redis를 함께 배포합니다.
 - 파일: `.github/workflows/deploy-sigkill-server-develop.yml`
-- 원격 서버에서는 [`docker-compose.deploy.yml`](/Users/lsh/develop/sigkill/sigkill-server/deploy/docker-compose.deploy.yml)을 업로드한 뒤 `docker compose up -d --remove-orphans`로 재기동합니다.
+- 원격 서버에서는 [`docker-compose.deploy.yml`](./deploy/docker-compose.deploy.yml)을 업로드한 뒤 `docker compose up -d --remove-orphans`로 재기동합니다.
 - 배포 대상 서비스:
   - `sigkill-server`
   - `sigkill-redis`
