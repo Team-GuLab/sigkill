@@ -165,7 +165,7 @@
 
 ### Game
 
-- Key: `game:{roomId}`
+- Key: `game:{gameId}`
 - Fields:
     - `gameId` (BIGINT)
     - `roomId` (STRING)
