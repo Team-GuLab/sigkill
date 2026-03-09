@@ -5,7 +5,6 @@ import {
   useGameQuizEndPlayerResults,
 } from "@/store/game-store";
 import PlayerInGame from "./player-in-game";
-import SpeechBubble from "./speech-bubble";
 import { useUser } from "@/store/user-store";
 
 export default function PlayerField() {
@@ -35,12 +34,11 @@ export default function PlayerField() {
 
         return (
           <div key={player.userId} className="flex flex-col items-center">
-            <div
-              className={`mb-3 ${choiceNumber === undefined && "invisible"}`}
-            >
-              <SpeechBubble choiceNumber={choiceNumber ?? 0} />
-            </div>
-            <PlayerInGame player={player} quizResult={quizResult} />
+            <PlayerInGame
+              player={player}
+              quizResult={quizResult}
+              submittedChoice={choiceNumber}
+            />
             <p
               className={`mt-2 max-w-14 text-center text-xs font-medium break-keep whitespace-pre-wrap ${player.userId === user?.userId && "font-semibold underline underline-offset-3"}`}
             >

@@ -22,7 +22,7 @@ export default function EnterPage() {
 
   return (
     <div className="bg-background text-foreground relative flex min-h-screen flex-col items-center justify-center">
-      <header className="animate-in fade-in slide-in-from-bottom-4 mb-20 flex flex-col items-center gap-4 duration-1000">
+      <header className="animate-in fade-in slide-in-from-bottom-4 flex flex-col items-center gap-4 duration-1000">
         <h1 className="text-primary text-6xl font-extrabold tracking-tight">
           SIGKILL
         </h1>
@@ -38,7 +38,7 @@ export default function EnterPage() {
       <div className="absolute bottom-20 left-1/2 -translate-x-1/2 transform">
         <Button
           onClick={handleEnter}
-          className="w-fit-content h-12 rounded-xl px-12"
+          className="h-12 w-full min-w-fit rounded-lg px-12"
         >
           <span className="mr-2">Game Start</span>
           <svg

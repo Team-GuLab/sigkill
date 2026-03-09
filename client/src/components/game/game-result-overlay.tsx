@@ -158,13 +158,15 @@ export default function GameResultOverlay() {
 
       {/* 확인 버튼 */}
       <div className="relative z-10 flex w-full justify-end p-4">
-        <Button
-          size="lg"
-          className="text-md w-full tracking-widest"
-          onClick={handleClickConfirm}
-        >
-          확인
-        </Button>
+        <div className="flex-end flex w-full max-w-60">
+          <Button
+            size="lg"
+            className="text-md w-full tracking-widest"
+            onClick={handleClickConfirm}
+          >
+            확인
+          </Button>
+        </div>
       </div>
     </main>
   );
