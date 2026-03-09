@@ -15,6 +15,28 @@
 ./gradlew bootRun
 ```
 
+Redis 세션을 사용하므로 Redis가 먼저 떠 있어야 합니다.
+
+```bash
+docker run -d --name sigkill-redis -p 6379:6379 redis:7-alpine
+./gradlew bootRun
+```
+
+Redis 접속 정보는 환경변수로 덮어쓸 수 있습니다.
+
+```bash
+SPRING_DATA_REDIS_HOST=localhost
+SPRING_DATA_REDIS_PORT=6379
+SPRING_DATA_REDIS_PASSWORD=
+```
+
+앱과 Redis를 함께 컨테이너로 띄우려면 아래를 사용합니다.
+
+```bash
+./gradlew clean build
+docker compose up --build
+```
+
 ### 테스트
 
 ```bash
@@ -40,7 +62,7 @@
 ### 인증
 
 - `POST /api/v1/users/guest-login`
-  - 세션 기반 게스트 로그인
+  - Redis 기반 HTTP 세션 게스트 로그인
 
 ### 방 관리
 
@@ -73,6 +95,7 @@
 - Endpoint: `/ws`
 - App Prefix: `/app`
 - Broker Prefix: `/topic`, `/queue`
+- 인증 기준 쿠키: `JSESSIONID`
 
 ### Room 명령
 
@@ -96,6 +119,14 @@
 - `PLAYER_UNREADY`
 - `PONG`
 - `ERROR` (예외 응답 type)
+
+## Redis 세션 운영 메모
+
+- HTTP 세션은 Redis에 저장되므로 non-sticky 환경에서도 인증 세션 자체는 공유됩니다.
+- WebSocket/STOMP 연결도 동일한 `JSESSIONID`를 기준으로 인증됩니다.
+- 현재 `User`, `Room`, `Player`, `Game` 저장소는 여전히 WAS 로컬 메모리입니다.
+- 따라서 다른 WAS로 라우팅되면 인증은 복원돼도 `USER_NOT_FOUND`, 방/게임 상태 불일치가 발생할 수 있습니다.
+- 이 제한은 도메인 저장소를 외부 저장소로 이전하기 전까지 유지됩니다.
 
 ## 최근 추가된 실시간 안정성 기능
 
@@ -163,12 +194,25 @@
   - OOM: `-XX:+HeapDumpOnOutOfMemoryError`, `-XX:HeapDumpPath=/app/logs`, `-XX:+ExitOnOutOfMemoryError`
   - 권장 컨테이너 제한(개발 서버 4GB, 추후 RDB/Redis 공존 고려): `--memory=1536m --memory-swap=1536m`
 
+테스트용으로 앱과 Redis를 같이 띄울 때는 [`docker-compose.yml`](/Users/lsh/develop/sigkill/sigkill-server/docker-compose.yml) 사용을 기준으로 합니다.
+
+```bash
+./gradlew clean build
+docker compose up --build
+```
+
+Redis는 비밀번호 없이 `redis:7-alpine`로 올라오고, 앱 컨테이너는 내부 DNS 이름 `redis:6379`로 접속합니다.
+
+단일 앱 컨테이너만 수동 실행하려면 여전히 아래처럼 별도 Redis를 준비한 뒤 `docker run`을 사용할 수 있습니다.
+
 ```bash
 docker build -t sigkill-server .
 
 docker run -d --name sigkill-server -p 8080:8080 \
   --memory=1536m --memory-swap=1536m \
   -e TZ=Asia/Seoul \
+  -e SPRING_DATA_REDIS_HOST=host.docker.internal \
+  -e SPRING_DATA_REDIS_PORT=6379 \
   -e LOGGING_FILE_NAME=/var/log/sigkill/app.log \
   -e JAVA_TOOL_OPTIONS="-Duser.timezone=Asia/Seoul -Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ParallelRefProcEnabled -XX:+UseStringDeduplication -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -XX:+ExitOnOutOfMemoryError" \
   -v "$(pwd)/logs:/app/logs" \
@@ -178,19 +222,9 @@ docker run -d --name sigkill-server -p 8080:8080 \
 
 ## 자동배포(GitHub Actions) 메모리 제한
 
-- 자동배포 시에도 컨테이너 메모리 제한을 동일하게 적용합니다.
+- 자동배포는 상위 저장소의 [`deploy-sigkill-server-develop.yml`](/Users/lsh/develop/sigkill/.github/workflows/deploy-sigkill-server-develop.yml)에서 `docker compose`로 앱과 Redis를 함께 배포합니다.
 - 파일: `.github/workflows/deploy-sigkill-server-develop.yml`
-- `docker run` 옵션:
-  - `--memory=1536m`
-  - `--memory-swap=1536m`
-
-```bash
-docker run -d \
-  --name sigkill-server \
-  --restart unless-stopped \
-  -p 8080:8080 \
-  --memory=1536m \
-  --memory-swap=1536m \
-  -e SPRING_PROFILES_ACTIVE=dev \
-  "${APP_IMAGE}"
-```
+- 원격 서버에서는 [`docker-compose.deploy.yml`](/Users/lsh/develop/sigkill/sigkill-server/deploy/docker-compose.deploy.yml)을 업로드한 뒤 `docker compose up -d --remove-orphans`로 재기동합니다.
+- 배포 대상 서비스:
+  - `sigkill-server`
+  - `sigkill-redis`
