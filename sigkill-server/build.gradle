@@ -28,11 +28,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.session:spring-session-data-redis'
+
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13'
     implementation 'org.apache.commons:commons-lang3:3.18.0' // springdoc 취약점 대응 버전
 
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     testImplementation 'org.springframework.security:spring-security-test'
 
     compileOnly 'org.projectlombok:lombok'
