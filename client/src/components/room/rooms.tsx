@@ -4,7 +4,7 @@ import RoomItem from "@/components/room/room-item";
 import RoomListPagination from "./room-list-pagination";
 import { ItemGroup } from "@/ui/item";
 import { EmptyData } from "@/components/common/empty-data";
-import { RefreshCcwIcon } from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 
 const PAGE_SIZE = 6;
 
@@ -49,7 +49,7 @@ export default function Rooms() {
               className={isSpinning ? "animate-[spin_0.6s_linear]" : ""}
               onAnimationEnd={() => setIsSpinning(false)}
             >
-              <RefreshCcwIcon />
+              <RefreshCwIcon />
             </span>
           }
           onButtonClick={handleRefresh}

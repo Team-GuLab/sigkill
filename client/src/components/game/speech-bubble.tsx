@@ -4,12 +4,17 @@ interface SpeechBubbleProps {
 
 export default function SpeechBubble({ choiceNumber }: SpeechBubbleProps) {
   return (
-    <div className="flex flex-col items-center drop-shadow">
-      <div className="rounded-md bg-white px-3 py-1 text-sm font-bold text-gray-800">
+    // transform-origin을 bottom으로 설정 → 손잡이 끝을 기준으로 스윙 등장
+    <div
+      className="animate-sign-pop flex flex-col items-center drop-shadow-md"
+      style={{ transformOrigin: "bottom center" }}
+    >
+      {/* 원형 팻말 */}
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-bold text-gray-800">
         {choiceNumber}
       </div>
-      {/* 아래쪽 꼬리 */}
-      <div className="h-0 w-0 border-t-8 border-r-6 border-l-6 border-t-white border-r-transparent border-l-transparent" />
+      {/* 손잡이 */}
+      <div className="h-3 w-2.5 rounded-b-sm bg-white" />
     </div>
   );
 }

@@ -33,7 +33,7 @@ export default function GameRoom() {
   }
 
   return (
-    <div className="flex h-full flex-col pt-8">
+    <div className="flex h-full flex-col pt-2">
       <GameResultOverlay />
       {/* 퀴즈 출제 배너 */}
       <section className="mx-auto flex w-full flex-col gap-2">

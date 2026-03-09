@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import type { RoomWebSocketMessage } from "./types";
 import { useRoomStore } from "@/store/room-store";
 import { useUserStore } from "@/store/user-store";
+import { ROUTE_PATHS } from "@/routes/paths";
 
 /**
  * 대기방 관련 stomp 메시지 핸들러
@@ -12,6 +13,12 @@ export const handleRoomMessage = (
   message: RoomWebSocketMessage,
   myUserId: number,
 ) => {
+  // 게임 진행 중에는 대기방 토스트를 표시하지 않음
+  // (게임 시작 후 방 구독이 남아있어 메시지가 계속 수신될 수 있음)
+  const isInGame = window.location.pathname.startsWith(
+    ROUTE_PATHS.GAME_ROOM.split("/")[0],
+  );
+
   switch (message.type) {
     case "ROOM_SNAPSHOT": {
       const { setRoomInfo, setPlayers, reset } = useRoomStore.getState();
@@ -26,11 +33,12 @@ export const handleRoomMessage = (
       const { roomInfo, setRoomInfo } = useRoomStore.getState();
 
       if (!roomInfo) {
-        toast.success(`방 "${message.room.roomTitle}"에 입장했습니다!`);
+        if (!isInGame)
+          toast.success(`방 "${message.room.roomTitle}"에 입장했습니다!`);
         setRoomInfo(message.room);
       }
 
-      if (message.player.userId !== user?.userId) {
+      if (!isInGame && message.player.userId !== user?.userId) {
         toast.info(`${message.player.nickname}님이 입장했습니다.`);
       }
       break;
@@ -39,7 +47,7 @@ export const handleRoomMessage = (
     case "PLAYER_LEFT": {
       const { players, setPlayers } = useRoomStore.getState();
       const leftPlayer = message.player;
-      toast.info(`${leftPlayer.nickname}님이 퇴장했습니다.`);
+      if (!isInGame) toast.info(`${leftPlayer.nickname}님이 퇴장했습니다.`);
       setPlayers(players.filter(p => p.userId !== leftPlayer.userId));
       break;
     }
@@ -52,7 +60,7 @@ export const handleRoomMessage = (
           p.userId === readyPlayer?.userId ? { ...p, status: "READY" } : p,
         ),
       );
-      if (myUserId !== readyPlayer?.userId) {
+      if (!isInGame && myUserId !== readyPlayer?.userId) {
         toast.info(`${readyPlayer?.nickname}님이 준비했습니다.`);
       }
       break;
@@ -68,7 +76,7 @@ export const handleRoomMessage = (
             : p,
         ),
       );
-      if (myUserId !== unreadyPlayer?.userId) {
+      if (!isInGame && myUserId !== unreadyPlayer?.userId) {
         toast.info(`${unreadyPlayer?.nickname}님이 준비 취소했습니다.`);
       }
       break;
@@ -76,7 +84,8 @@ export const handleRoomMessage = (
 
     case "HOST_CHANGED": {
       const { players, setPlayers } = useRoomStore.getState();
-      toast.info(`방장이 ${message.newHost.nickname}님으로 변경되었습니다.`);
+      if (!isInGame)
+        toast.info(`방장이 ${message.newHost.nickname}님으로 변경되었습니다.`);
       setPlayers(
         players.map(p => {
           if (p.userId === message.newHost.userId)

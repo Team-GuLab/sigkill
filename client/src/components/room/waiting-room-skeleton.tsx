@@ -3,7 +3,7 @@ import { MAX_CAPACITY } from "@/constants/room";
 
 export const WaitingRoomSkeleton = () => {
   return (
-    <div className="scrollbar-hide flex h-[calc(100vh-8rem)] flex-col p-2 pt-6">
+    <div className="scrollbar-hide flex h-[calc(100vh-8rem)] flex-col">
       {/* 방제목 및 방ID 스켈레톤 */}
       <div className="mb-4 flex-none">
         <div className="flex items-center gap-2">

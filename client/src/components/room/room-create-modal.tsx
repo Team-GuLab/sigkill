@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogClose,
 } from "@/ui/dialog";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
@@ -16,6 +17,7 @@ import { toast } from "sonner";
 import { ROUTE_GENERATORS } from "@/routes/paths";
 import { useNavigate } from "react-router";
 import { useSetRoomInfo } from "@/store/room-store";
+import { X } from "lucide-react";
 
 interface RoomCreateModalProps {
   open: boolean;
@@ -46,8 +48,13 @@ export function RoomCreateModal({ open, onOpenChange }: RoomCreateModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false}>
-        <DialogHeader>
+        <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle>방 생성</DialogTitle>
+          <DialogClose asChild>
+            <button className="rounded-sm opacity-70 transition-opacity hover:opacity-100">
+              <X className="h-4 w-4 text-black" />
+            </button>
+          </DialogClose>
         </DialogHeader>
 
         <Field>
@@ -57,17 +64,11 @@ export function RoomCreateModal({ open, onOpenChange }: RoomCreateModalProps) {
             placeholder="방 제목을 입력하세요"
             required
             onChange={e => setTitle(e.target.value)}
+            autoComplete="off"
           />
         </Field>
 
-        <DialogFooter className="flex w-full flex-row gap-2 sm:flex-row sm:justify-stretch">
-          <Button
-            variant="outline"
-            className="flex-1 bg-transparent"
-            onClick={() => onOpenChange(false)}
-          >
-            닫기
-          </Button>
+        <DialogFooter className="flex w-full flex-col gap-2 sm:flex-row sm:justify-stretch">
           <Button
             className="flex-1"
             disabled={!title || isCreatingRoom}

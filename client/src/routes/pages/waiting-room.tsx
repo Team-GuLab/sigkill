@@ -47,14 +47,13 @@ export default function WaitingRoom() {
   return (
     <>
       {isGameStarting && <GameStartOverlay />}
-      <div className="scrollbar-hide flex h-[calc(100vh-8rem)] flex-col p-2 pt-6">
+      <div className="scrollbar-hide flex h-[calc(100vh-8rem)] flex-col">
         <div className="mb-4 flex-none">
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <h1 className="text-lg font-semibold">
                 {roomInfo?.roomTitle || "대기방"}
               </h1>
-              <p className="text-sm text-gray-500">Room ID: {roomId}</p>
             </div>
           </div>
         </div>

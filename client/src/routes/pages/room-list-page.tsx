@@ -8,7 +8,6 @@ import { useQueryErrorResetBoundary } from "@tanstack/react-query";
 import { AppError } from "@/api/axios";
 import Rooms from "@/components/room/rooms";
 import ErrorFallback from "@/components/common/error-fallback";
-import Profile from "@/widgets/profile";
 
 export default function RoomListPage() {
   const [showModal, setShowModal] = useState(false);
@@ -38,10 +37,10 @@ export default function RoomListPage() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <header className="mb-6 flex items-center justify-between px-2">
+      <header className="mb-6 flex items-center justify-between">
         <h1 className="text-foreground text-lg font-bold">방 목록</h1>
       </header>
-      <div className="flex-1 overflow-y-auto px-2">
+      <div className="flex-1 overflow-y-auto">
         <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
           <Suspense
             fallback={
@@ -55,7 +54,7 @@ export default function RoomListPage() {
         </ErrorBoundary>
       </div>
 
-      <div className="my-2 flex justify-end px-2">
+      <div className="mt-4 flex justify-end">
         <Button
           className="text-md h-10 min-w-28 cursor-pointer rounded-lg"
           onClick={handleButtonClick}
@@ -63,9 +62,6 @@ export default function RoomListPage() {
           방 생성
         </Button>
       </div>
-
-      {/* 하단 사용자 프로필 영역 */}
-      <Profile />
 
       {showModal &&
         createPortal(
