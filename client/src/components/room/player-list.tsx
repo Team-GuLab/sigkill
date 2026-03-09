@@ -102,7 +102,7 @@ export default function PlayerList({
           return (
             <div
               key={`slot-${slot.slotIndex}`}
-              className="flex items-center justify-between rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2"
+              className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-3 py-2"
             >
               <div className="flex items-center gap-3">
                 <Avatar>
@@ -120,7 +120,7 @@ export default function PlayerList({
         return (
           <div
             key={`slot-${slot.slotIndex}-${player.userId}`}
-            className={`flex items-center justify-between rounded-lg border px-3 py-2 shadow-2xs ${isMe ? "bg-primary/10" : "bg-white"}`}
+            className={`flex items-center justify-between rounded-lg border px-3 py-2 ${isMe ? "bg-primary/10" : "bg-white"}`}
           >
             <div className="flex items-center gap-3">
               <Avatar className="overflow-visible">

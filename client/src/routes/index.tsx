@@ -11,6 +11,7 @@ import ErrorFallback from "@/components/common/error-fallback";
 import { AppError } from "@/api/axios";
 import { useGameRoomId } from "@/store/game-store";
 import { ROUTE_PATHS, ROUTE_GENERATORS } from "./paths";
+import GameLayout from "./layouts/game";
 
 function WaitingRoomRoute() {
   const navigate = useNavigate();
@@ -88,6 +89,11 @@ const router = createBrowserRouter([
         path: ROUTE_PATHS.WAITING_ROOM,
         element: <WaitingRoomRoute />,
       },
+    ],
+  },
+  {
+    element: <GameLayout />,
+    children: [
       {
         path: ROUTE_PATHS.GAME_ROOM,
         element: <GameRoomRoute />,

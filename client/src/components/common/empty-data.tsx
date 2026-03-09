@@ -27,7 +27,7 @@ export function EmptyData({
   onButtonClick,
 }: EmptyDataProps) {
   return (
-    <Empty className="border-primary h-full rounded-xl border-2 bg-transparent">
+    <Empty className="h-full rounded-xl bg-transparent">
       <EmptyHeader>
         {icon && <EmptyMedia variant="icon">{icon}</EmptyMedia>}
         <EmptyTitle>{title}</EmptyTitle>

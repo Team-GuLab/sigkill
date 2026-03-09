@@ -38,7 +38,7 @@ export default function RoomItem({
   return (
     <Item
       variant="outline"
-      className={`bg-card rounded-full shadow-sm ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+      className={`bg-card rounded-lg ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
       onClick={handleRoomItemClick}
     >
       <ItemContent className="min-w-0">
