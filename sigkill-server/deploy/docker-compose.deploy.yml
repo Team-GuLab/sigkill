@@ -1,0 +1,30 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: sigkill-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  app:
+    image: ${APP_IMAGE}
+    container_name: sigkill-server
+    restart: unless-stopped
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      LOGGING_FILE_NAME: /var/log/sigkill/app.log
+      TZ: Asia/Seoul
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/log/sigkill:/var/log/sigkill

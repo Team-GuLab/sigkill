@@ -83,7 +83,11 @@ public class RoomService {
                 .thenComparing(Room::getCreatedAt, Comparator.reverseOrder());
         // TODO: updatedAt 기준 정렬로 변경
 
-        int totalCount = (int) roomRepository.count();
+        List<Room> sortedRooms = roomRepository.findAll().stream()
+                .sorted(comparator)
+                .toList();
+
+        int totalCount = sortedRooms.size();
         int totalPages = (totalCount + size - 1) / size;
         int offset = page * size;
 
@@ -102,9 +106,9 @@ public class RoomService {
         Map<String, Long> playerCountMap = playerRepository.findAll().stream()
                 .collect(Collectors.groupingBy(Player::getRoomId, Collectors.counting()));
 
-        // Repository에서 정렬 및 페이징 처리
-        List<RoomResponse> roomResponses = roomRepository.findAll(comparator, offset, size)
-                .stream()
+        List<RoomResponse> roomResponses = sortedRooms.stream()
+                .skip(offset)
+                .limit(size)
                 .map(room -> {
                     int playerCount = playerCountMap.getOrDefault(room.getRoomId(), 0L).intValue();
                     return RoomResponse.of(room, playerCount);

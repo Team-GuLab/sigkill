@@ -370,6 +370,38 @@ class RoomServiceTest {
         }
 
         @Test
+        void 정렬된_결과를_기준으로_페이지를_자른다() {
+            // given
+            User host1 = createAndSaveUser("page-sort-session-1", "호스트1");
+            User host2 = createAndSaveUser("page-sort-session-2", "호스트2");
+            User host3 = createAndSaveUser("page-sort-session-3", "호스트3");
+            User host4 = createAndSaveUser("page-sort-session-4", "호스트4");
+
+            createAndSaveRoomWithHost("1111", "방1", 6, host1); // 입장 가능
+
+            Room fullRoom = createAndSaveRoomWithHost("2222", "방2", 2, host2); // 입장 불가 (풀)
+            User fullRoomGuest = createAndSaveUser("page-sort-full-guest", "가득찬방게스트");
+            playerRepository.create(Player.create(fullRoomGuest.getUserId(), fullRoom.getRoomId(), fullRoomGuest.getNickname()));
+
+            createAndSaveRoomWithHost("3333", "방3", 6, host3); // 입장 가능
+
+            Room inGameRoom = createAndSaveRoomWithHost("4444", "방4", 6, host4); // 입장 불가 (게임 중)
+            inGameRoom.startGame();
+
+            // when
+            RoomListResponse firstPage = roomService.fetchRooms(0, 2);
+            RoomListResponse secondPage = roomService.fetchRooms(1, 2);
+
+            // then
+            assertThat(firstPage.rooms())
+                    .extracting(RoomResponse::roomId)
+                    .containsExactly("3333", "1111");
+            assertThat(secondPage.rooms())
+                    .extracting(RoomResponse::roomId)
+                    .containsExactly("4444", "2222");
+        }
+
+        @Test
         void 페이징_변수가_유효하지_않을_경우_예외를_발생한다() {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.fetchRooms(-1, 10),
