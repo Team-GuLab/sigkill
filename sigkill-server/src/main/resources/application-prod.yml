@@ -1,0 +1,20 @@
+server:
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+        secure: true
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+app:
+  security:
+    cors-allowed-origin-patterns:
+      - https://sigkill-quiz.kr
+  web-socket:
+    allowed-origin-patterns:
+      - https://sigkill-quiz.kr

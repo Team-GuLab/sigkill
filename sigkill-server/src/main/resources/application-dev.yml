@@ -1,0 +1,35 @@
+server:
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+        secure: false
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+app:
+  security:
+    additional-permit-all-paths:
+      - /swagger-ui/**
+      - /v3/api-docs/**
+      - /room-ws-test.html
+      - /room-ws-test.js
+    cors-allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+      - https://dev.sigkill-quiz.kr
+  web-socket:
+    allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+      - https://dev.sigkill-quiz.kr
+  open-api:
+    servers:
+      - url: http://localhost:8080
+        description: Local
+      - url: https://dev.sigkill-quiz.kr
+        description: Development

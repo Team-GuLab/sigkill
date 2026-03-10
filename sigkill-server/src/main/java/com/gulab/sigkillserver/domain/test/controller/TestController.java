@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/test")
 @RequiredArgsConstructor
 @Slf4j
+@Profile("!prod")
 @Tag(name = "Test API", description = "개발/테스트용 데이터 관리 API")
 public class TestController {
 

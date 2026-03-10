@@ -1,0 +1,46 @@
+name: Require release label for main
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - labeled
+      - unlabeled
+
+permissions:
+  contents: read
+
+jobs:
+  verify-release-label:
+    name: Verify release label
+    runs-on: ubuntu-latest
+    env:
+      LABELS: ${{ join(github.event.pull_request.labels.*.name, '||') }}
+    steps:
+      - name: Require exactly one release label
+        run: |
+          set -euo pipefail
+
+          count=0
+          matched_labels=()
+
+          for label in "RELEASE: MAJOR" "RELEASE: MINOR" "RELEASE: PATCH"; do
+            if [[ "||${LABELS}||" == *"||${label}||"* ]]; then
+              count=$((count + 1))
+              matched_labels+=("${label}")
+            fi
+          done
+
+          if [ "${count}" -ne 1 ]; then
+            echo "A pull request targeting main must have exactly one release label."
+            echo "Expected one of: RELEASE: MAJOR, RELEASE: MINOR, RELEASE: PATCH"
+            echo "Matched labels: ${matched_labels[*]:-(none)}"
+            exit 1
+          fi
+
+          echo "Validated release label: ${matched_labels[0]}"
