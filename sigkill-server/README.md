@@ -220,11 +220,57 @@ docker run -d --name sigkill-server -p 8080:8080 \
   sigkill-server
 ```
 
-## 자동배포(GitHub Actions) 메모리 제한
+## 자동배포(GitHub Actions) 메모
 
-- 자동배포는 상위 저장소의 [`deploy-sigkill-server-develop.yml`](../.github/workflows/deploy-sigkill-server-develop.yml)에서 `docker compose`로 앱과 Redis를 함께 배포합니다.
-- 파일: `.github/workflows/deploy-sigkill-server-develop.yml`
-- 원격 서버에서는 [`docker-compose.deploy.yml`](./deploy/docker-compose.deploy.yml)을 업로드한 뒤 `docker compose up -d --remove-orphans`로 재기동합니다.
-- 배포 대상 서비스:
+- 워크플로 파일:
+  - dev: [`../.github/workflows/deploy-sigkill-server-develop.yml`](../.github/workflows/deploy-sigkill-server-develop.yml)
+  - prod: [`../.github/workflows/deploy-sigkill-server-main.yml`](../.github/workflows/deploy-sigkill-server-main.yml)
+- 배포용 compose 폴더:
+  - dev: [`./deploy/dev/docker-compose.yml`](./deploy/dev/docker-compose.yml)
+  - prod app: [`./deploy/prod/app/docker-compose.yml`](./deploy/prod/app/docker-compose.yml)
+- Docker 이미지 태그:
+  - 공통: `sha-<git sha>`
+  - `develop` 브랜치: `develop`
+  - `main` 브랜치: `latest`
+
+### `develop` 브랜치
+
+- 대상 인스턴스: 테스트용 dev 인스턴스
+- 업로드 파일: [`./deploy/dev/docker-compose.yml`](./deploy/dev/docker-compose.yml)
+- 배포 방식: 앱 + Redis를 같은 인스턴스에서 `docker compose up -d --remove-orphans`
+- 기동 서비스:
   - `sigkill-server`
   - `sigkill-redis`
+
+필요 GitHub Secrets:
+
+- `OCI_DEV_HOST`
+- `OCI_USER`
+- `OCI_SSH_KEY`
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+
+### `main` 브랜치
+
+- 대상 인스턴스:
+  - Spring Boot 앱: `was-1`
+  - Redis 세션: DB/Redis 서버에서 운영 중인 기존 `redis-session` 컨테이너
+- 업로드 파일: [`./deploy/prod/app/docker-compose.yml`](./deploy/prod/app/docker-compose.yml)
+- 배포 방식:
+  - 앱은 `was-1`에서 단독 기동
+  - Redis 컨테이너는 GitHub Actions가 건드리지 않고, 앱이 기존 `redis-session:6379`에 연결
+  - 앱 컨테이너는 원격 `docker login` 후 `docker compose up --pull always --remove-orphans`로 갱신
+
+필요 GitHub Secrets:
+
+- `PROD_WAS_HOST`
+- `PROD_REDIS_HOST`
+  - DB/Redis 서버의 private IP
+- `OCI_USER`
+- `OCI_SSH_KEY`
+- `REDIS_PASSWORD`
+  - 현재 운영 Redis 세션 비밀번호
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+
+prod 앱 컨테이너는 `SPRING_DATA_REDIS_HOST=<DB/Redis private IP>`, `SPRING_DATA_REDIS_PORT=6379`, `SPRING_DATA_REDIS_PASSWORD=<REDIS_PASSWORD>`로 기존 Redis 세션 인스턴스에 연결합니다.

@@ -1,6 +1,8 @@
 spring:
   application:
     name: sigkill-server
+  profiles:
+    default: dev
   session:
     redis:
       flush-mode: on_save
@@ -19,8 +21,6 @@ server:
       cookie:
         name: JSESSIONID
         http-only: true
-        same-site: none # TODO: change to strict after development
-        secure: true
         path: /
       timeout: 24h
 
@@ -37,3 +37,12 @@ management:
     health:
       probes:
         enabled: true
+
+app:
+  security:
+    permit-all-paths:
+      - /api/v1/users/guest-login
+      - /actuator/health
+      - /actuator/health/**
+      - /actuator/prometheus
+      - /ws/**
