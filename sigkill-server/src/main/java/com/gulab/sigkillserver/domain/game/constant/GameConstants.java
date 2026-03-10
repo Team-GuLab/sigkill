@@ -6,8 +6,14 @@ public class GameConstants {
      */
     public static final String DEFAULT_CATEGORY_ID = "CS";
 
+    /**
+     * 테스트 방 제목 접두사가 있는 경우 사용되는 테스트 퀴즈 카테고리 ID
+     */
     public static final String TEST_CATEGORY_ID = "TEST";
 
+    /**
+     * 테스트 방 제목 접두사
+     */
     public static final String TEST_ROOM_TITLE_PREFIX = "테스트방_";
 
     /**
