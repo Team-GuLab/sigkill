@@ -1,8 +1,6 @@
 spring:
   application:
     name: sigkill-server
-  profiles:
-    default: dev
   session:
     redis:
       flush-mode: on_save

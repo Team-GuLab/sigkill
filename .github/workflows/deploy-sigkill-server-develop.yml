@@ -111,4 +111,6 @@ jobs:
           script: |
             cd /home/${{ env.SSH_USER }}/sigkill-server-deploy
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            APP_IMAGE="${{ env.APP_IMAGE }}" docker compose -f docker-compose.yml up -d --pull always --remove-orphans
+            APP_IMAGE="${{ env.APP_IMAGE }}" \
+            SPRING_PROFILES_ACTIVE="dev" \
+            docker compose -f docker-compose.yml up -d --pull always --remove-orphans

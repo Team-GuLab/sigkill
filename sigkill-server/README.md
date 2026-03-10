@@ -198,7 +198,7 @@ docker compose up --build
 
 ```bash
 ./gradlew clean build
-docker compose up --build
+SPRING_PROFILES_ACTIVE=dev docker compose up --build
 ```
 
 Redis는 비밀번호 없이 `redis:7-alpine`로 올라오고, 앱 컨테이너는 내부 DNS 이름 `redis:6379`로 접속합니다.
@@ -211,6 +211,7 @@ docker build -t sigkill-server .
 docker run -d --name sigkill-server -p 8080:8080 \
   --memory=1536m --memory-swap=1536m \
   -e TZ=Asia/Seoul \
+  -e SPRING_PROFILES_ACTIVE=dev \
   -e SPRING_DATA_REDIS_HOST=host.docker.internal \
   -e SPRING_DATA_REDIS_PORT=6379 \
   -e LOGGING_FILE_NAME=/var/log/sigkill/app.log \
@@ -237,7 +238,7 @@ docker run -d --name sigkill-server -p 8080:8080 \
 
 - 대상 인스턴스: 테스트용 dev 인스턴스
 - 업로드 파일: [`./deploy/dev/docker-compose.yml`](./deploy/dev/docker-compose.yml)
-- 배포 방식: 앱 + Redis를 같은 인스턴스에서 `docker compose up -d --remove-orphans`
+- 배포 방식: `SPRING_PROFILES_ACTIVE=dev`를 명시한 뒤 앱 + Redis를 같은 인스턴스에서 `docker compose up -d --remove-orphans`
 - 기동 서비스:
   - `sigkill-server`
   - `sigkill-redis`
@@ -259,7 +260,7 @@ docker run -d --name sigkill-server -p 8080:8080 \
 - 배포 방식:
   - 앱은 `was-1`에서 단독 기동
   - Redis 컨테이너는 GitHub Actions가 건드리지 않고, 앱이 기존 `redis-session:6379`에 연결
-  - 앱 컨테이너는 원격 `docker login` 후 `docker compose up --pull always --remove-orphans`로 갱신
+  - 앱 컨테이너는 원격 `docker login` 후 `SPRING_PROFILES_ACTIVE=prod docker compose up --pull always --remove-orphans`로 갱신
 
 필요 GitHub Secrets:
 

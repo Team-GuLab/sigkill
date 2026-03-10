@@ -111,6 +111,7 @@ jobs:
             cd /home/${{ env.SSH_USER }}/sigkill-server-deploy
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             APP_IMAGE="${{ env.APP_IMAGE }}" \
+            SPRING_PROFILES_ACTIVE="prod" \
             SPRING_DATA_REDIS_HOST="${{ env.PROD_REDIS_HOST }}" \
             SPRING_DATA_REDIS_PORT="6379" \
             SPRING_DATA_REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}" \
