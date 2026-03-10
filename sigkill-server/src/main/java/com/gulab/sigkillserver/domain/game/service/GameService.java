@@ -90,7 +90,7 @@ public class GameService {
             validateGameNotInProgress(lockedRoom);
 
             String quizCategoryId = GameConstants.DEFAULT_CATEGORY_ID;
-            if (room.getRoomTitle().startsWith(GameConstants.TEST_ROOM_TITLE_PREFIX)) {
+            if (lockedRoom.getRoomTitle().startsWith(GameConstants.TEST_ROOM_TITLE_PREFIX)) {
                 quizCategoryId = TEST_CATEGORY_ID;
             }
 
