@@ -1,0 +1,116 @@
+name: Create release on main merge
+
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - closed
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  create-release:
+    name: Create semantic version release
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      LABELS: ${{ join(github.event.pull_request.labels.*.name, '||') }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+      REPOSITORY: ${{ github.repository }}
+    steps:
+      - name: Checkout merge commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --force --tags
+
+      - name: Resolve release bump
+        id: bump
+        run: |
+          set -euo pipefail
+
+          count=0
+          bump=""
+          release_label=""
+
+          for candidate in major minor patch; do
+            label="RELEASE: ${candidate^^}"
+            if [[ "||${LABELS}||" == *"||${label}||"* ]]; then
+              count=$((count + 1))
+              bump="${candidate}"
+              release_label="${label}"
+            fi
+          done
+
+          if [ "${count}" -ne 1 ]; then
+            echo "Merged PR must contain exactly one release label."
+            exit 1
+          fi
+
+          latest_tag="$(git tag --list 'v*' --sort=-version:refname | head -n 1)"
+          if [ -z "${latest_tag}" ]; then
+            latest_tag="v0.0.0"
+          fi
+
+          version="${latest_tag#v}"
+          IFS='.' read -r major minor patch_version <<EOF
+          ${version}
+          EOF
+
+          case "${bump}" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch_version=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch_version=0
+              ;;
+            patch)
+              patch_version=$((patch_version + 1))
+              ;;
+          esac
+
+          new_tag="v${major}.${minor}.${patch_version}"
+
+          echo "release_label=${release_label}" >> "${GITHUB_OUTPUT}"
+          echo "previous_tag=${latest_tag}" >> "${GITHUB_OUTPUT}"
+          echo "new_tag=${new_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_TAG: ${{ steps.bump.outputs.new_tag }}
+          PREVIOUS_TAG: ${{ steps.bump.outputs.previous_tag }}
+          RELEASE_LABEL: ${{ steps.bump.outputs.release_label }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "${NEW_TAG}" --repo "${REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${NEW_TAG} already exists. Skipping."
+            exit 0
+          fi
+
+          notes_file="$(mktemp)"
+          cat <<EOF > "${notes_file}"
+          Release type: ${RELEASE_LABEL}
+          Previous tag: ${PREVIOUS_TAG}
+
+          Merged pull request:
+          - #${PR_NUMBER} ${PR_TITLE}
+          EOF
+
+          gh release create "${NEW_TAG}" \
+            --repo "${REPOSITORY}" \
+            --target "${MERGE_COMMIT_SHA}" \
+            --title "${NEW_TAG}" \
+            --notes-file "${notes_file}"
