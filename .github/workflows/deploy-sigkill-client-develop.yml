@@ -76,7 +76,7 @@ jobs:
       - name: Copy build to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.OCI_HOST }}
+          host: ${{ secrets.OCI_DEV_HOST }}
           username: ${{ secrets.OCI_USER }}
           key: ${{ secrets.OCI_SSH_KEY }}
           source: dist/
@@ -86,7 +86,7 @@ jobs:
       - name: Swap static files and reload nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.OCI_HOST }}
+          host: ${{ secrets.OCI_DEV_HOST }}
           username: ${{ secrets.OCI_USER }}
           key: ${{ secrets.OCI_SSH_KEY }}
           script: |

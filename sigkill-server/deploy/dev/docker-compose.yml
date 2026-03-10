@@ -19,9 +19,10 @@ services:
       redis:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${SPRING_DATA_REDIS_PASSWORD:-}
       LOGGING_FILE_NAME: /var/log/sigkill/app.log
       TZ: Asia/Seoul
     ports:

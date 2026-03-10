@@ -1,9 +1,8 @@
-name: Deploy sigkill-server (develop)
+name: Deploy sigkill-server (dev)
 
 on:
   push:
     branches:
-      - main
       - develop
     paths:
       - sigkill-server/**
@@ -16,6 +15,10 @@ permissions:
 env:
   IMAGE_REPOSITORY: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sigkill-server
   APP_IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sigkill-server:sha-${{ github.sha }}
+  CHANNEL_TAG: develop
+  DEV_HOST: ${{ secrets.OCI_DEV_HOST }}
+  SSH_USER: ${{ secrets.OCI_USER }}
+  SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
 
 jobs:
   build-and-push:
@@ -61,7 +64,7 @@ jobs:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
             type=raw,value=sha-${{ github.sha }}
-            type=raw,value=develop
+            type=raw,value=${{ env.CHANNEL_TAG }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -74,47 +77,38 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
-    name: Deploy to OCI server
+    name: Deploy to dev instance
     runs-on: ubuntu-latest
     needs: build-and-push
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate develop deployment secrets
+        run: |
+          set -euo pipefail
+
+          [ -n "${DEV_HOST:-}" ] || { echo "OCI_DEV_HOST secret is required"; exit 1; }
+          [ -n "${SSH_USER:-}" ] || { echo "OCI_USER secret is required"; exit 1; }
+          [ -n "${SSH_KEY:-}" ] || { echo "OCI_SSH_KEY secret is required"; exit 1; }
+
       - name: Upload deploy compose file
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.OCI_HOST }}
-          username: ${{ secrets.OCI_USER }}
-          key: ${{ secrets.OCI_SSH_KEY }}
-          source: sigkill-server/deploy/docker-compose.deploy.yml
-          target: /home/${{ secrets.OCI_USER }}/sigkill-server-deploy
-          strip_components: 2
+          host: ${{ env.DEV_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
+          source: sigkill-server/deploy/dev/docker-compose.yml
+          target: /home/${{ env.SSH_USER }}/sigkill-server-deploy
+          strip_components: 3
 
-      # 1) Pull and restart the app container on OCI
-      - name: Deploy via Docker CLI
+      - name: Deploy app and Redis to dev
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.OCI_HOST }}
-          username: ${{ secrets.OCI_USER }}
-          key: ${{ secrets.OCI_SSH_KEY }}
+          host: ${{ env.DEV_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
           script: |
-            set -e
-
+            cd /home/${{ env.SSH_USER }}/sigkill-server-deploy
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-            docker pull "${{ env.APP_IMAGE }}"
-            docker pull redis:7-alpine
-
-            docker stop sigkill-server || true
-            docker rm sigkill-server || true
-            docker stop sigkill-redis || true
-            docker rm sigkill-redis || true
-
-            sudo mkdir -p /var/log/sigkill
-            mkdir -p /home/${{ secrets.OCI_USER }}/sigkill-server-deploy
-
-            cd /home/${{ secrets.OCI_USER }}/sigkill-server-deploy
-            APP_IMAGE="${{ env.APP_IMAGE }}" docker compose -f docker-compose.deploy.yml up -d --remove-orphans
-
-            docker image prune -f
+            APP_IMAGE="${{ env.APP_IMAGE }}" docker compose -f docker-compose.yml up -d --pull always --remove-orphans
