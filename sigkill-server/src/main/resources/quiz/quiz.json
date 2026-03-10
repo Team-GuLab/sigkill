@@ -138,5 +138,47 @@
       { "choiceId": 3, "text": "쿼리 최적화" },
       { "choiceId": 4, "text": "네트워크 압축" }
     ]
+  },
+  {
+    "quizId": 11,
+    "categoryId": "TEST",
+    "question": "테스트용 퀴즈 1번입니다.",
+    "explanation": "테스트용 정답은 '정답'이다.",
+    "correctChoiceId": 1,
+    "difficulty": 1,
+    "choices": [
+      { "choiceId": 1, "text": "정답" },
+      { "choiceId": 2, "text": "오답1" },
+      { "choiceId": 3, "text": "오답2" },
+      { "choiceId": 4, "text": "오답3" }
+    ]
+  },
+  {
+    "quizId": 12,
+    "categoryId": "TEST",
+    "question": "테스트용 퀴즈 2번입니다.",
+    "explanation": "테스트용 정답은 '정답'이다.",
+    "correctChoiceId": 1,
+    "difficulty": 1,
+    "choices": [
+      { "choiceId": 1, "text": "정답" },
+      { "choiceId": 2, "text": "오답1" },
+      { "choiceId": 3, "text": "오답2" },
+      { "choiceId": 4, "text": "오답3" }
+    ]
+  },
+  {
+    "quizId": 13,
+    "categoryId": "TEST",
+    "question": "테스트용 퀴즈 3번입니다.",
+    "explanation": "테스트용 정답은 '정답'이다.",
+    "correctChoiceId": 1,
+    "difficulty": 1,
+    "choices": [
+      { "choiceId": 1, "text": "정답" },
+      { "choiceId": 2, "text": "오답1" },
+      { "choiceId": 3, "text": "오답2" },
+      { "choiceId": 4, "text": "오답3" }
+    ]
   }
 ]
