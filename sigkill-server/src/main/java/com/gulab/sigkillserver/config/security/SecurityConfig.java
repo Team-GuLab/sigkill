@@ -1,7 +1,10 @@
 package com.gulab.sigkillserver.config.security;
 
+import com.gulab.sigkillserver.config.AppProfileProperties;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.LinkedHashSet;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,25 +21,21 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity // @PreAuthorize 등 메서드 레벨 보안 활성화
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final AppProfileProperties appProfileProperties;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        LinkedHashSet<String> permitAllPaths = new LinkedHashSet<>(appProfileProperties.getSecurity().getPermitAllPaths());
+        permitAllPaths.addAll(appProfileProperties.getSecurity().getAdditionalPermitAllPaths());
+
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/api/v1/users/guest-login", // 게스트 로그인
-                                "/actuator/health",
-                                "/actuator/health/**",
-                                "/actuator/prometheus",
-                                "/ws/**",
-                                "/room-ws-test.html", // TODO: 테스트용 웹소켓 페이지
-                                "/room-ws-test.js" // TODO: 테스트용 웹소켓 JS
-                        ).permitAll()
+                        .requestMatchers(permitAllPaths.toArray(String[]::new)).permitAll()
                         .requestMatchers("/api/**").hasRole("GUEST")
                         .anyRequest().denyAll()
                 )
@@ -62,7 +61,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*")); // TODO: 배포 시 허용 도메인으로 변경
+        configuration.setAllowedOriginPatterns(appProfileProperties.getSecurity().getCorsAllowedOriginPatterns());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true); // 쿠키/세션 허용

@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.config.websocket;
 
+import com.gulab.sigkillserver.config.AppProfileProperties;
 import com.gulab.sigkillserver.config.security.StompHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -20,11 +21,12 @@ public class StompConfig extends AbstractSessionWebSocketMessageBrokerConfigurer
 
     private static final long HEARTBEAT_INTERVAL_MILLIS = 10_000L;
     private final StompHandler stompHandler;
+    private final AppProfileProperties appProfileProperties;
 
     @Override
     protected void configureStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*"); // TODO: 배포 시 허용 도메인으로 변경
+                .setAllowedOriginPatterns(appProfileProperties.getWebSocket().getAllowedOriginPatterns().toArray(String[]::new));
     }
 
     @Override

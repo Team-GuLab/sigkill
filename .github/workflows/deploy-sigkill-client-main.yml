@@ -1,12 +1,12 @@
-name: Deploy sigkill-client (dev)
+name: Deploy sigkill-client (prod)
 
 on:
   push:
     branches:
-      - develop
+      - main
     paths:
       - client/**
-      - .github/workflows/deploy-sigkill-client-develop.yml
+      - .github/workflows/deploy-sigkill-client-main.yml
   workflow_dispatch:
 
 permissions:
@@ -17,11 +17,9 @@ jobs:
     name: Build client
     runs-on: ubuntu-latest
     steps:
-      # 1) Checkout source code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2) Set up the build environment
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -44,9 +42,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          [ -n "${{ secrets.VITE_WS_URL_DEV }}" ] || { echo "VITE_WS_URL_DEV secret is required"; exit 1; }
+          [ -n "${{ secrets.VITE_WS_URL_PROD }}" ] || { echo "VITE_WS_URL_PROD secret is required"; exit 1; }
 
-      # 3) Install dependencies and build
       - name: Install dependencies
         working-directory: client
         run: pnpm install --frozen-lockfile
@@ -54,10 +51,9 @@ jobs:
       - name: Build client
         working-directory: client
         env:
-          VITE_WS_URL: ${{ secrets.VITE_WS_URL_DEV }}
+          VITE_WS_URL: ${{ secrets.VITE_WS_URL_PROD }}
         run: pnpm build
 
-      # 4) Upload build artifact for deploy job
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -66,40 +62,40 @@ jobs:
           retention-days: 1
 
   deploy:
-    name: Deploy to dev server
+    name: Deploy to prod server
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Validate deploy secrets
         run: |
           set -euo pipefail
 
-          [ -n "${{ secrets.OCI_DEV_HOST }}" ] || { echo "OCI_DEV_HOST secret is required"; exit 1; }
+          [ -n "${{ secrets.PROD_WAS_HOST }}" ] || { echo "PROD_WAS_HOST secret is required"; exit 1; }
           [ -n "${{ secrets.OCI_USER }}" ] || { echo "OCI_USER secret is required"; exit 1; }
           [ -n "${{ secrets.OCI_SSH_KEY }}" ] || { echo "OCI_SSH_KEY secret is required"; exit 1; }
 
-      # 1) Download build artifact
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: client-dist
           path: dist
 
-      # 2) Copy build files to server
       - name: Copy build to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.OCI_DEV_HOST }}
+          host: ${{ secrets.PROD_WAS_HOST }}
           username: ${{ secrets.OCI_USER }}
           key: ${{ secrets.OCI_SSH_KEY }}
           source: dist/
           target: /tmp/sigkill-client/
 
-      # 3) Swap static files and reload nginx
       - name: Swap static files and reload nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.OCI_DEV_HOST }}
+          host: ${{ secrets.PROD_WAS_HOST }}
           username: ${{ secrets.OCI_USER }}
           key: ${{ secrets.OCI_SSH_KEY }}
           script: |

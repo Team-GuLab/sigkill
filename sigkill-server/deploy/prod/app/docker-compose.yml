@@ -1,0 +1,18 @@
+services:
+  app:
+    image: ${APP_IMAGE}
+    container_name: sigkill-server
+    restart: unless-stopped
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST}
+      SPRING_DATA_REDIS_PORT: ${SPRING_DATA_REDIS_PORT:-6379}
+      SPRING_DATA_REDIS_PASSWORD: ${SPRING_DATA_REDIS_PASSWORD:-}
+      LOGGING_FILE_NAME: /var/log/sigkill/app.log
+      TZ: Asia/Seoul
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/log/sigkill:/var/log/sigkill
