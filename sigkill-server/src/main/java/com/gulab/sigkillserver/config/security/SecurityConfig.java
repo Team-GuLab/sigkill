@@ -2,6 +2,7 @@ package com.gulab.sigkillserver.config.security;
 
 import com.gulab.sigkillserver.config.AppProfileProperties;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.LinkedHashSet;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -27,13 +28,14 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        String[] permitAllPaths = appProfileProperties.getSecurity().getPermitAllPaths().toArray(String[]::new);
+        LinkedHashSet<String> permitAllPaths = new LinkedHashSet<>(appProfileProperties.getSecurity().getPermitAllPaths());
+        permitAllPaths.addAll(appProfileProperties.getSecurity().getAdditionalPermitAllPaths());
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(permitAllPaths).permitAll()
+                        .requestMatchers(permitAllPaths.toArray(String[]::new)).permitAll()
                         .requestMatchers("/api/**").hasRole("GUEST")
                         .anyRequest().denyAll()
                 )

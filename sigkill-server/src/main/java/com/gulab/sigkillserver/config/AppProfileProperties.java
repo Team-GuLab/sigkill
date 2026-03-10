@@ -25,6 +25,7 @@ public class AppProfileProperties {
 
     public static class Security {
         private List<String> permitAllPaths = new ArrayList<>();
+        private List<String> additionalPermitAllPaths = new ArrayList<>();
         private List<String> corsAllowedOriginPatterns = new ArrayList<>();
 
         public List<String> getPermitAllPaths() {
@@ -33,6 +34,14 @@ public class AppProfileProperties {
 
         public void setPermitAllPaths(List<String> permitAllPaths) {
             this.permitAllPaths = permitAllPaths;
+        }
+
+        public List<String> getAdditionalPermitAllPaths() {
+            return additionalPermitAllPaths;
+        }
+
+        public void setAdditionalPermitAllPaths(List<String> additionalPermitAllPaths) {
+            this.additionalPermitAllPaths = additionalPermitAllPaths;
         }
 
         public List<String> getCorsAllowedOriginPatterns() {

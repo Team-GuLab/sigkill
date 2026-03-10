@@ -13,12 +13,7 @@ springdoc:
 
 app:
   security:
-    permit-all-paths:
-      - /api/v1/users/guest-login
-      - /actuator/health
-      - /actuator/health/**
-      - /actuator/prometheus
-      - /ws/**
+    additional-permit-all-paths:
       - /swagger-ui/**
       - /v3/api-docs/**
       - /room-ws-test.html
