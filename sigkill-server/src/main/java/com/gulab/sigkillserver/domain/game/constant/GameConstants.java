@@ -8,6 +8,8 @@ public class GameConstants {
 
     public static final String TEST_CATEGORY_ID = "TEST";
 
+    public static final String TEST_ROOM_TITLE_PREFIX = "테스트방_";
+
     /**
      * 게임 로딩 완료 후 첫 퀴즈 시작 대기 시간 (밀리초)
      */
