@@ -6,6 +6,8 @@ public class GameConstants {
      */
     public static final String DEFAULT_CATEGORY_ID = "CS";
 
+    public static final String TEST_CATEGORY_ID = "TEST";
+
     /**
      * 게임 로딩 완료 후 첫 퀴즈 시작 대기 시간 (밀리초)
      */

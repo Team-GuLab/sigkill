@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.domain.game.service;
 
+import static com.gulab.sigkillserver.domain.game.constant.GameConstants.TEST_CATEGORY_ID;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_IN_PROGRESS;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.game.exception.GameErrorCode.GAME_PLAYER_NOT_FOUND;
@@ -15,8 +16,8 @@ import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAY
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_ALREADY_STARTED;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_STARTED;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 import static com.gulab.sigkillserver.domain.user.exception.UserErrorCode.USER_NOT_FOUND;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
@@ -88,9 +89,14 @@ public class GameService {
             // 검증
             validateGameNotInProgress(lockedRoom);
 
+            String quizCategoryId = GameConstants.DEFAULT_CATEGORY_ID;
+            if (room.getRoomTitle().startsWith("테스트방_")) {
+                quizCategoryId = TEST_CATEGORY_ID;
+            }
+
             // 퀴즈 정보 가져오기
             List<Long> quizIds = quizRepository.findByCategoryId(
-                            GameConstants.DEFAULT_CATEGORY_ID,
+                            quizCategoryId,
                             GameConstants.QUIZ_COUNT)
                     .stream()
                     .map(Quiz::quizId)
