@@ -40,6 +40,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
+      - name: Validate build secrets
+        run: |
+          set -euo pipefail
+
+          [ -n "${{ secrets.VITE_WS_URL_DEV }}" ] || { echo "VITE_WS_URL_DEV secret is required"; exit 1; }
+
       # 3) Install dependencies and build
       - name: Install dependencies
         working-directory: client

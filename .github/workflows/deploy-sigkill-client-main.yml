@@ -38,6 +38,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
+      - name: Validate build secrets
+        run: |
+          set -euo pipefail
+
+          [ -n "${{ secrets.VITE_WS_URL_PROD }}" ] || { echo "VITE_WS_URL_PROD secret is required"; exit 1; }
+
       - name: Install dependencies
         working-directory: client
         run: pnpm install --frozen-lockfile
