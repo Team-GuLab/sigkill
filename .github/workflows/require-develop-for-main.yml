@@ -1,0 +1,29 @@
+name: Require develop source for main
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+
+permissions:
+  contents: read
+
+jobs:
+  verify-source-branch:
+    name: Verify PR source branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require develop as PR source
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.head_ref }}" != "develop" ]; then
+            echo "Only pull requests from develop can target main."
+            echo "Current source branch: ${{ github.head_ref }}"
+            exit 1
+          fi
