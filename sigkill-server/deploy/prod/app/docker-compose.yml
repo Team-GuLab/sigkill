@@ -16,3 +16,13 @@ services:
       - "8080:8080"
     volumes:
       - /var/log/sigkill:/var/log/sigkill
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: redis-exporter
+    environment:
+      - REDIS_ADDR=redis://:${SPRING_DATA_REDIS_PASSWORD}@${SPRING_DATA_REDIS_HOST}:${SPRING_DATA_REDIS_PORT:-6379}
+    ports:
+      - "${REDIS_EXPORTER_BIND_IP:-127.0.0.1}:9121:9121"
+    restart: unless-stopped
+    cpus: "0.05"
+    mem_limit: 64m
