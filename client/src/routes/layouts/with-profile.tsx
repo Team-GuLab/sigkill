@@ -4,7 +4,9 @@ import Profile from "@/widgets/profile";
 export default function WithProfileLayout() {
   return (
     <>
-      <Outlet />
+      <div className="h-full px-4">
+        <Outlet />
+      </div>
       <Profile />
     </>
   );

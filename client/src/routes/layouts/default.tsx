@@ -5,8 +5,8 @@ export default function DefaultLayout() {
   return (
     <>
       <Toaster position="top-center" />
-      <div className="bg-background flex h-screen justify-center">
-        <div className="flex w-[480px] flex-col overflow-hidden px-4 pt-8 pb-20">
+      <div className="flex h-screen justify-center bg-white">
+        <div className="bg-background flex w-110 flex-col overflow-hidden pt-8">
           <Outlet />
         </div>
       </div>

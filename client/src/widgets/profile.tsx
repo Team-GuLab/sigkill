@@ -8,7 +8,7 @@ export default function Profile() {
     : "?";
 
   return (
-    <div className="bg-background fixed bottom-0 left-1/2 flex w-[480px] -translate-x-1/2 items-center gap-3 border-t border-zinc-300 p-4">
+    <div className="bg-background flex w-full items-center gap-3 border-t border-zinc-300 p-4">
       <Avatar>
         <AvatarImage src="" alt={user?.nickname || "User"} />
         <AvatarFallback>{userInitial}</AvatarFallback>
