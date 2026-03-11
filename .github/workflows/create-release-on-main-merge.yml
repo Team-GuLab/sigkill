@@ -7,6 +7,10 @@ on:
     types:
       - closed
 
+concurrency:
+  group: create-release-on-main
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: read
@@ -55,7 +59,11 @@ jobs:
             exit 1
           fi
 
-          latest_tag="$(git tag --list 'v*' --sort=-version:refname | head -n 1)"
+          latest_tag="$(
+            git tag --list 'v*' --sort=-version:refname \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+              | head -n 1
+          )"
           if [ -z "${latest_tag}" ]; then
             latest_tag="v0.0.0"
           fi
@@ -94,6 +102,11 @@ jobs:
           RELEASE_LABEL: ${{ steps.bump.outputs.release_label }}
         run: |
           set -euo pipefail
+
+          if git rev-parse -q --verify "refs/tags/${NEW_TAG}" >/dev/null; then
+            echo "Tag ${NEW_TAG} already exists. Skipping."
+            exit 0
+          fi
 
           if gh release view "${NEW_TAG}" --repo "${REPOSITORY}" >/dev/null 2>&1; then
             echo "Release ${NEW_TAG} already exists. Skipping."
