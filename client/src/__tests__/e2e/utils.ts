@@ -44,7 +44,7 @@ export async function setupRoom(
 }> {
   const roomTitle = uniqueRoomTitle("SIGKILL");
 
-  await page.goto(ROUTE_PATHS.HOME);
+  await page.goto(ROUTE_PATHS.LANDING);
   await page.getByRole("button", { name: "Game Start" }).click();
   await expect(page).toHaveURL(ROUTE_PATHS.ROOM_LIST);
 
@@ -56,7 +56,7 @@ export async function setupRoom(
   const contextB = await browser.newContext();
   const pageB = await contextB.newPage();
 
-  await pageB.goto(ROUTE_PATHS.HOME);
+  await pageB.goto(ROUTE_PATHS.LANDING);
   await pageB.getByRole("button", { name: "Game Start" }).click();
   await expect(pageB).toHaveURL(ROUTE_PATHS.ROOM_LIST, {
     timeout: 10000,
