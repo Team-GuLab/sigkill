@@ -100,19 +100,25 @@ class RoomsPage(BasePage):
 
     @property
     def user_info(self) -> Locator:
-        """유저 정보 영역"""
-        return self.page.get_by_text("User ID:", exact=False)
+        """유저 정보 영역 (구형 User ID 표기 또는 신형 하단 프로필 바)"""
+        legacy_user_info = self.page.get_by_text("User ID:", exact=False)
+        profile_bar = self.page.locator(
+            "xpath=//div[contains(@class,'fixed') and contains(@class,'bottom-0') and contains(@class,'border-t')]"
+        )
+        return legacy_user_info.or_(profile_bar).first
 
     @property
     def user_nickname(self) -> Locator:
-        """닉네임 텍스트 (User ID: 바로 위 형제 요소)"""
-        return self.page.get_by_text("User ID:", exact=False).locator(
-            "xpath=preceding-sibling::*[1]"
-        )
+        """닉네임 텍스트"""
+        legacy_user_info = self.page.get_by_text("User ID:", exact=False)
+        if legacy_user_info.count() > 0 and legacy_user_info.first.is_visible():
+            return legacy_user_info.locator("xpath=preceding-sibling::*[1]")
+
+        return self.user_info.locator(":scope > div:last-child span").first
 
     def get_nickname(self) -> str:
         """현재 로그인한 사용자의 닉네임 반환"""
-        return self.user_nickname.inner_text()
+        return self.user_nickname.inner_text().strip()
 
     # --- 액션 ---
 

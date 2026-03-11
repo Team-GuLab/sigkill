@@ -5,7 +5,7 @@ from playwright.sync_api import Page
 
 
 class BasePage:
-    BASE_URL = os.environ.get("E2E_BASE_URL", "https://sigkill-quiz.kr").rstrip("/")
+    BASE_URL = os.environ.get("E2E_BASE_URL", "https://dev.sigkill-quiz.kr").rstrip("/")
 
     def __init__(self, page: Page) -> None:
         self.page = page
