@@ -13,7 +13,7 @@ def _get_random_title():
     return f"테스트방_{uuid.uuid4().hex[:6]}"  # '테스트방_a3f9c1'
 
 
-def test_게임_시작_버튼을_눌러_방_목록_화면으로_이동한다(page: Page):
+def test_1_게임_시작_버튼을_눌러_방_목록_화면으로_이동한다(page: Page):
     base_page = HomePage(page)
     rooms_page = RoomsPage(page)
     base_page.navigate()
@@ -23,7 +23,7 @@ def test_게임_시작_버튼을_눌러_방_목록_화면으로_이동한다(pag
     expect(rooms_page.user_info).to_be_visible()
 
 
-def test_방을_생성한다(make_page):
+def test_2_방을_생성한다(make_page):
     page1 = make_page()
     base_page = HomePage(page1)
     rooms_page = RoomsPage(page1)
@@ -35,7 +35,7 @@ def test_방을_생성한다(make_page):
     expect(waiting_page.room_name_heading).to_be_visible()
 
 
-def test_방에_참가한다(make_page):
+def test_3_방에_참가한다(make_page):
     page1 = make_page()
     page2 = make_page()
     base_page1 = HomePage(page1)
@@ -63,7 +63,7 @@ def test_방에_참가한다(make_page):
     expect(waiting_page1.empty_slots).to_have_count(4)
 
 
-def test_게임을_시작한다(make_page):
+def test_4_게임을_시작한다(make_page):
     page1 = make_page()
     page2 = make_page()
     base_page1 = HomePage(page1)
@@ -96,7 +96,7 @@ def test_게임을_시작한다(make_page):
     expect(game_page2.answer_buttons).to_have_count(4)
 
 
-def test_게임을_진행하고_결과를_확인한다(make_page):
+def test_5_게임을_진행하고_결과를_확인한다(make_page):
     page1 = make_page()
     page2 = make_page()
     base_page1 = HomePage(page1)
