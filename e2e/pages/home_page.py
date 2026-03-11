@@ -1,10 +1,10 @@
-from playwright.sync_api import Page, Locator
+from playwright.sync_api import Page, Locator, expect
 
 from pages.base_page import BasePage
 
 
 class HomePage(BasePage):
-    """메인 랜딩 페이지 (/)"""
+    """서비스 진입 페이지 (/)"""
 
     URL = "/"
 
@@ -15,8 +15,13 @@ class HomePage(BasePage):
 
     @property
     def title_heading(self) -> Locator:
-        """'SIGKILL' 제목 헤딩"""
+        """예전 랜딩의 'SIGKILL' 제목 헤딩"""
         return self.page.get_by_role("heading", name="SIGKILL", level=1)
+
+    @property
+    def rooms_heading(self) -> Locator:
+        """현재 메인 화면의 '방 목록' 제목 헤딩"""
+        return self.page.get_by_role("heading", name="방 목록", level=1)
 
     @property
     def subtitle(self) -> Locator:
@@ -35,5 +40,12 @@ class HomePage(BasePage):
         self.navigate(self.URL)
 
     def click_game_start(self) -> None:
-        """Game Start 버튼 클릭 → 방 목록 페이지로 이동"""
-        self.game_start_button.click()
+        """예전 랜딩은 버튼 클릭, 현재 메인은 이미 방 목록이면 그대로 진행"""
+        entry_point = self.game_start_button.or_(self.rooms_heading)
+        expect(entry_point.first).to_be_visible()
+
+        if self.game_start_button.count() > 0 and self.game_start_button.first.is_visible():
+            self.game_start_button.first.click()
+            return
+
+        expect(self.rooms_heading).to_be_visible()
