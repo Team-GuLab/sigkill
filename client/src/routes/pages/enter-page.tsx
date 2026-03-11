@@ -21,9 +21,9 @@ export default function EnterPage() {
   };
 
   return (
-    <div className="bg-background text-foreground relative flex min-h-screen flex-col items-center justify-center">
+    <div className="relative flex flex-1 flex-col items-center justify-center">
       <header className="animate-in fade-in slide-in-from-bottom-4 flex flex-col items-center gap-4 duration-1000">
-        <h1 className="text-primary text-6xl font-extrabold tracking-tight">
+        <h1 className="title-typing text-primary text-6xl font-extrabold tracking-tight">
           SIGKILL
         </h1>
         <p className="text-muted-foreground text-xl">
@@ -31,11 +31,8 @@ export default function EnterPage() {
         </p>
       </header>
 
-      {/* 메인 콘텐츠 영역 (필요시 추가) */}
-      <main className="flex-1"></main>
-
       {/* 하단 중앙 입장 버튼 */}
-      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 transform">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 transform">
         <Button
           onClick={handleEnter}
           className="h-12 w-full min-w-fit rounded-lg px-12"
