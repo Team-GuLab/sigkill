@@ -2,8 +2,8 @@ server:
   servlet:
     session:
       cookie:
-        same-site: lax
-        secure: false
+        same-site: none
+        secure: true
 
 springdoc:
   api-docs:
