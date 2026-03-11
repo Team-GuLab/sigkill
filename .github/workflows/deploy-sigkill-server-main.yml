@@ -18,6 +18,7 @@ env:
   CHANNEL_TAG: latest
   PROD_WAS_HOST: ${{ secrets.PROD_WAS_HOST }}
   PROD_REDIS_HOST: ${{ secrets.PROD_REDIS_HOST }}
+  REDIS_EXPORTER_BIND_IP: ${{ vars.REDIS_EXPORTER_BIND_IP }}
   SSH_USER: ${{ secrets.OCI_USER }}
   SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
 
@@ -89,6 +90,7 @@ jobs:
           [ -n "${SSH_USER:-}" ] || { echo "OCI_USER secret is required"; exit 1; }
           [ -n "${SSH_KEY:-}" ] || { echo "OCI_SSH_KEY secret is required"; exit 1; }
           [ -n "${PROD_REDIS_HOST:-}" ] || { echo "PROD_REDIS_HOST secret is required for the app to reach Redis"; exit 1; }
+          [ -n "${REDIS_EXPORTER_BIND_IP:-}" ] || { echo "REDIS_EXPORTER_BIND_IP variable is required for remote Redis exporter scraping"; exit 1; }
           [ -n "${{ secrets.REDIS_PASSWORD }}" ] || { echo "REDIS_PASSWORD secret is required"; exit 1; }
 
       - name: Upload prod app compose to was-1
@@ -115,4 +117,5 @@ jobs:
             SPRING_DATA_REDIS_HOST="${{ env.PROD_REDIS_HOST }}" \
             SPRING_DATA_REDIS_PORT="6379" \
             SPRING_DATA_REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}" \
+            REDIS_EXPORTER_BIND_IP="${{ env.REDIS_EXPORTER_BIND_IP }}" \
             docker compose -f docker-compose.yml up -d --pull always --remove-orphans
