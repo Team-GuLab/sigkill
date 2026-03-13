@@ -13,7 +13,7 @@ export default function EnterPage() {
     try {
       const user = await guestLogin();
       login(user);
-      navigate(ROUTE_PATHS.ROOM_LIST);
+      navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
     } catch (error) {
       console.error(error);
       toast.error("로그인에 실패했습니다. 잠시후 다시 시도해주세요.");

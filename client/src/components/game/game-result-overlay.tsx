@@ -78,7 +78,7 @@ export default function GameResultOverlay() {
   const sorted = [...gameEnd.rankings].sort((a, b) => a.rank - b.rank);
 
   const handleClickConfirm = () => {
-    navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId ?? ""));
+    navigate(ROUTE_GENERATORS.WAITING_ROOM(roomId ?? ""), { replace: true });
   };
 
   return (
