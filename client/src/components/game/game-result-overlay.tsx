@@ -87,7 +87,7 @@ export default function GameResultOverlay() {
 
       {/* 순위표 */}
       <section className="relative z-10 flex flex-1 flex-col overflow-auto p-6">
-        <h2 className="mb-4 text-xl font-bold text-white">경기 결과</h2>
+        <h2 className="mb-4 text-xl font-bold text-white">게임 결과</h2>
 
         {/* 헤더 */}
         <div className="mb-1 grid grid-cols-[3rem_1fr_3.5rem] gap-2 border-b border-white/20 pb-2 text-sm text-white/50">
@@ -158,7 +158,7 @@ export default function GameResultOverlay() {
 
       {/* 확인 버튼 */}
       <div className="relative z-10 flex w-full justify-end p-4">
-        <div className="flex-end flex w-full max-w-60">
+        <div className="flex-end flex w-full">
           <Button
             size="lg"
             className="text-md w-full tracking-widest"
