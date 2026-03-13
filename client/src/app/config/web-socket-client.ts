@@ -1,35 +1,21 @@
-import { Client } from "@stomp/stompjs";
+import { getClient } from "./stomp-client";
+import { resubscribeAll } from "./stomp-subscribe-manager";
 
-let client: Client | null = null;
 let onConnectedCallback: (() => void) | null = null;
-
-const getClient = (): Client => {
-  if (!client) {
-    client = new Client({
-      brokerURL: import.meta.env.VITE_WS_URL,
-      reconnectDelay: 5000,
-    });
-  }
-  return client;
-};
 
 /**
  * WebSocket 연결
  * @param onConnected - 초기 연결 및 재연결 시마다 호출되는 콜백
  */
-export const connectWebSocket = async (
-  onConnected?: () => void,
-): Promise<void> => {
+export const connectWebSocket = async (): Promise<void> => {
   const wsClient = getClient();
-
-  onConnectedCallback = onConnected ?? null;
 
   return new Promise((resolve, reject) => {
     wsClient.onConnect = () => {
       console.log("Connected to WebSocket");
       resolve();
-      // 구독 재설정 등 복구 작업
-      onConnectedCallback?.();
+      // 재연결 시 기존 STOMP 구독 복구
+      resubscribeAll();
     };
 
     wsClient.onStompError = frame => {
@@ -58,8 +44,7 @@ export const connectWebSocket = async (
 };
 
 export const disconnectWebSocket = async () => {
-  console.log("디스커넥트");
-  if (!client) return;
+  const client = getClient();
 
   onConnectedCallback = null;
 

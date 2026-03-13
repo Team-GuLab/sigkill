@@ -38,10 +38,9 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
   const [isGameStarting, setIsGameStarting] = useState(false);
   const resetRoom = useResetRoom();
 
+  const isGameStarted = useRef(false);
   const roomUnsubscribe = useRef<(() => void) | undefined>(undefined);
   const errorUnsubscribe = useRef<(() => void) | undefined>(undefined);
-
-  const isGameStarted = useRef(false);
 
   useEffect(() => {
     if (!roomId) return;
@@ -65,7 +64,8 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
           }
         };
 
-        // 웹소켓 메시지 핸들러
+        // subscribeManager가 동일 destination 중복 구독을 자동으로 방지하므로
+        // 재진입 시에도 이전 구독이 먼저 해제되고 새로 등록됨
         roomUnsubscribe.current = subscribeRoom(roomId, message => {
           if (message.type === "GAME_START") {
             isGameStarted.current = true;
@@ -80,7 +80,6 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
           handleRoomMessage(message, myUserId);
         });
 
-        // 에러 메시지 구독
         errorUnsubscribe.current = subscribeError(error => {
           handleErrorMessage(error);
         });
@@ -99,17 +98,15 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
     setupConnection();
 
     return () => {
-      // TODO: 더 나은 방법으로 개선 필요
+      // 게임이 시작된 경우: 구독을 유지하고 웹소켓도 유지
+      // (게임 화면에서 계속 사용)
       if (isGameStarted.current) {
         return;
       }
 
-      // 게임이 시작되지 않은 경우 정상적으로 cleanup
-      const client = getClient();
-      if (client && client.active) {
-        if (roomUnsubscribe.current) roomUnsubscribe.current();
-        if (errorUnsubscribe.current) errorUnsubscribe.current();
-      }
+      // 게임이 시작되지 않은 경우 완전 정리
+      roomUnsubscribe.current?.();
+      errorUnsubscribe.current?.();
       disconnectWebSocket();
       resetRoom();
     };
