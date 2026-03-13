@@ -39,8 +39,6 @@ export const useGameSocket = ({ gameId }: UseGameSocketParams) => {
       if (unsubscribe.current) {
         unsubscribe.current();
       }
-
-      disconnectWebSocket();
     };
-  }, [gameId]);
+  }, []);
 };

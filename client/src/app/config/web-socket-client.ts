@@ -24,11 +24,6 @@ export const connectWebSocket = async (
 
   onConnectedCallback = onConnected ?? null;
 
-  // 안전한 재연결을 위한 이미 활성화된 상태라면 연결 해제 선행
-  if (wsClient.active) {
-    await wsClient.deactivate();
-  }
-
   return new Promise((resolve, reject) => {
     wsClient.onConnect = () => {
       console.log("Connected to WebSocket");
@@ -63,6 +58,7 @@ export const connectWebSocket = async (
 };
 
 export const disconnectWebSocket = async () => {
+  console.log("디스커넥트");
   if (!client) return;
 
   onConnectedCallback = null;

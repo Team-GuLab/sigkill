@@ -49,8 +49,12 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
     const setupConnection = async () => {
       try {
         setIsPending(true);
-        await connectWebSocket();
         const client = getClient();
+
+        // 이미 연결된 웹소켓이 있는 경우 재사용, 그렇지 않으면 새로 연결
+        if (!client.active) {
+          await connectWebSocket();
+        }
 
         // 연결 종료 감지 (비정상 종료 포함)
         client.onWebSocketClose = event => {
