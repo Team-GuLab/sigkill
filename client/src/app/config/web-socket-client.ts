@@ -1,8 +1,6 @@
 import { getClient } from "./stomp-client";
 import { resubscribeAll } from "./stomp-subscribe-manager";
 
-let onConnectedCallback: (() => void) | null = null;
-
 /**
  * WebSocket 연결
  * @param onConnected - 초기 연결 및 재연결 시마다 호출되는 콜백
@@ -45,8 +43,6 @@ export const connectWebSocket = async (): Promise<void> => {
 
 export const disconnectWebSocket = async () => {
   const client = getClient();
-
-  onConnectedCallback = null;
 
   if (client.active) {
     await client.deactivate();
