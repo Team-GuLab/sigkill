@@ -2,12 +2,12 @@ import { Suspense, useState } from "react";
 import { RoomCreateModal } from "@/components/room/room-create-modal";
 import { createPortal } from "react-dom";
 import { Button } from "@/ui/button";
-import { Spinner } from "@/ui/spinner";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 import { useQueryErrorResetBoundary } from "@tanstack/react-query";
 import { AppError } from "@/api/axios";
 import Rooms from "@/components/room/rooms";
 import ErrorFallback from "@/components/common/error-fallback";
+import { RoomsSkeleton } from "@/components/room/rooms-skeleton";
 
 export default function RoomListPage() {
   const [showModal, setShowModal] = useState(false);
@@ -36,25 +36,19 @@ export default function RoomListPage() {
   };
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div className="p relative flex h-full flex-col">
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-foreground text-lg font-bold">방 목록</h1>
       </header>
       <div className="flex-1 overflow-y-auto">
         <ErrorBoundary fallbackRender={renderErrorFallback} onReset={reset}>
-          <Suspense
-            fallback={
-              <div className="flex h-100 items-center justify-center">
-                <Spinner />
-              </div>
-            }
-          >
+          <Suspense fallback={<RoomsSkeleton />}>
             <Rooms />
           </Suspense>
         </ErrorBoundary>
       </div>
 
-      <div className="mt-4 flex justify-end">
+      <div className="my-4 flex justify-end">
         <Button
           className="text-md h-10 min-w-28 cursor-pointer rounded-lg"
           onClick={handleButtonClick}

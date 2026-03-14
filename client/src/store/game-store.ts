@@ -10,6 +10,7 @@ import type {
 const initialState = {
   roomId: null as string | null,
   gameId: null as number | null,
+  isInGame: false,
   quiz: null as QuizDetail | null,
   players: [] as GamePlayer[],
   allLoaded: false,
@@ -30,6 +31,7 @@ export const useGameStore = create(
       combine(initialState, set => ({
         setGameInfo: (roomId: string, gameId: number) =>
           set({ roomId, gameId }),
+        setIsInGame: (isInGame: boolean) => set({ isInGame }),
         setQuiz: (quiz: QuizDetail) => set({ quiz }),
         setPlayers: (players: GamePlayer[]) => set({ players }),
         setAllLoaded: (allLoaded: boolean) => set({ allLoaded }),
@@ -59,6 +61,8 @@ export const useGamePlayers = () => useGameStore(state => state.players);
 export const useGameAllLoaded = () => useGameStore(state => state.allLoaded);
 export const useGameChoiceSubmits = () =>
   useGameStore(state => state.choiceSubmits);
+export const useIsInGame = () => useGameStore(state => state.isInGame);
+export const useSetIsInGame = () => useGameStore(state => state.setIsInGame);
 export const useSetGameInfo = () => useGameStore(state => state.setGameInfo);
 export const useSetGameQuiz = () => useGameStore(state => state.setQuiz);
 export const useSetGamePlayers = () => useGameStore(state => state.setPlayers);
