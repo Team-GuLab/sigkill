@@ -1,11 +1,7 @@
 import { useEffect, useRef } from "react";
 import { subscribeGame } from "@/api/game/subscribe-game";
 import { handleGameMessage } from "@/api/game/handle-game-message";
-import {
-  disconnectWebSocket,
-  getClient,
-  publishMessage,
-} from "@/app/config/web-socket-client";
+import { getClient, publishMessage } from "@/app/config/web-socket-client";
 
 interface UseGameSocketParams {
   gameId: number;
