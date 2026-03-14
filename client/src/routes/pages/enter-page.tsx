@@ -32,10 +32,10 @@ export default function EnterPage() {
       </header>
 
       {/* 하단 중앙 입장 버튼 */}
-      <div className="absolute bottom-48 left-1/2 -translate-x-1/2 transform">
+      <div className="">
         <Button
           onClick={handleEnter}
-          className="h-12 w-full min-w-fit rounded-lg px-12"
+          className="mt-32 h-14 w-full min-w-fit rounded-lg px-12"
         >
           <span className="mr-2">Game Start</span>
           <svg
