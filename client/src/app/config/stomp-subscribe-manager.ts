@@ -1,5 +1,12 @@
-import { getClient } from "./web-socket-client";
-import type { IMessage } from "@stomp/stompjs";
+import { getClient } from "./stomp-client";
+import type { IMessage, StompSubscription } from "@stomp/stompjs";
+
+// destination별 활성 구독을 추적
+// WebSocket 재연결 시 구독 복구에도 사용
+const activeSubscriptions = new Map<
+  string,
+  { subscription: StompSubscription; onMessage: (message: IMessage) => void }
+>();
 
 /**
  * STOMP 구독 관리자
@@ -17,16 +24,35 @@ export const subscribeManager = <T>(
     console.warn(`Subscribing to ${destination} but client is not connected.`);
   }
 
-  const subscription = client.subscribe(destination, (message: IMessage) => {
+  // 동일 destination에 이미 구독이 있으면 먼저 해제
+  activeSubscriptions.get(destination)?.subscription.unsubscribe();
+
+  const handler = (message: IMessage) => {
     try {
       const data = JSON.parse(message.body) as T;
       onMessage(data);
     } catch (error) {
       console.error(`Failed to parse message from ${destination}:`, error);
     }
-  });
+  };
+
+  const subscription = client.subscribe(destination, handler);
+  activeSubscriptions.set(destination, { subscription, onMessage: handler });
 
   return () => {
     subscription.unsubscribe();
+    activeSubscriptions.delete(destination);
   };
+};
+
+/**
+ * WebSocket 재연결 시 활성 구독을 복구
+ * connectWebSocket의 onConnected 콜백에서 호출
+ */
+export const resubscribeAll = () => {
+  const client = getClient();
+  for (const [destination, { onMessage }] of activeSubscriptions) {
+    const subscription = client.subscribe(destination, onMessage);
+    activeSubscriptions.set(destination, { subscription, onMessage });
+  }
 };

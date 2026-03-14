@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import type { RoomWebSocketMessage } from "./types";
 import { useRoomStore } from "@/store/room-store";
 import { useUserStore } from "@/store/user-store";
-import { ROUTE_PATHS } from "@/routes/paths";
+import { useGameStore } from "@/store/game-store";
 
 /**
  * 대기방 관련 stomp 메시지 핸들러
@@ -15,9 +15,7 @@ export const handleRoomMessage = (
 ) => {
   // 게임 진행 중에는 대기방 토스트를 표시하지 않음
   // (게임 시작 후 방 구독이 남아있어 메시지가 계속 수신될 수 있음)
-  const isInGame = window.location.pathname.startsWith(
-    ROUTE_PATHS.GAME_ROOM.split("/")[0],
-  );
+  const { isInGame } = useGameStore.getState();
 
   switch (message.type) {
     case "ROOM_SNAPSHOT": {

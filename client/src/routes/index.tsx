@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider, useNavigate } from "react-router";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 import RoomListPage from "./pages/room-list-page";
 import DefaultLayout from "./layouts/default";
+import WithProfileLayout from "./layouts/with-profile";
 import WaitingRoom from "./pages/waiting-room";
 import EnterPage from "./pages/enter-page";
 import GameRoom from "./pages/game-room";
@@ -75,19 +76,24 @@ function GameRoomRoute() {
 
 const router = createBrowserRouter([
   {
-    path: ROUTE_PATHS.HOME,
-    element: <EnterPage />,
-  },
-  {
     element: <DefaultLayout />,
     children: [
       {
-        path: ROUTE_PATHS.ROOM_LIST,
-        element: <RoomListPage />,
+        path: ROUTE_PATHS.LANDING,
+        element: <EnterPage />,
       },
       {
-        path: ROUTE_PATHS.WAITING_ROOM,
-        element: <WaitingRoomRoute />,
+        element: <WithProfileLayout />,
+        children: [
+          {
+            path: ROUTE_PATHS.ROOM_LIST,
+            element: <RoomListPage />,
+          },
+          {
+            path: ROUTE_PATHS.WAITING_ROOM,
+            element: <WaitingRoomRoute />,
+          },
+        ],
       },
     ],
   },

@@ -7,7 +7,7 @@ test.describe("인증/인가", () => {
       page,
     }) => {
       // Arrange
-      await page.goto(ROUTE_PATHS.HOME);
+      await page.goto(ROUTE_PATHS.LANDING);
 
       // Act
       await page.getByRole("button", { name: "Game Start" }).click();

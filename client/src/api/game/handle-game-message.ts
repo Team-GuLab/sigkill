@@ -52,7 +52,10 @@ export const handleGameMessage = (message: GameWebSocketMessage) => {
 
     case "GAME_END": {
       const { setGameEnd } = useGameStore.getState();
+      const { setIsInGame } = useGameStore.getState();
       setGameEnd(message.payload);
+      setIsInGame(false);
+
       break;
     }
 

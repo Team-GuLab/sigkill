@@ -6,7 +6,7 @@ test.describe("방", () => {
   test.describe("생성하기", () => {
     test.beforeEach(async ({ page }) => {
       // 랜딩페이지에서 Game Start 클릭으로 로그인 후 방 목록 진입
-      await page.goto(ROUTE_PATHS.HOME);
+      await page.goto(ROUTE_PATHS.LANDING);
       await page.getByRole("button", { name: "Game Start" }).click();
       await expect(page).toHaveURL(ROUTE_PATHS.ROOM_LIST);
 
@@ -32,7 +32,7 @@ test.describe("방", () => {
       // 사용자 B: 새 브라우저 컨텍스트로 로그인 후 방 목록 진입
       const contextB = await browser.newContext();
       const pageB = await contextB.newPage();
-      await pageB.goto(ROUTE_PATHS.HOME);
+      await pageB.goto(ROUTE_PATHS.LANDING);
       await pageB.getByRole("button", { name: "Game Start" }).click();
       await expect(pageB).toHaveURL(ROUTE_PATHS.ROOM_LIST);
 
@@ -64,7 +64,7 @@ test.describe("방", () => {
       // 사용자 C: 새 브라우저 컨텍스트로 방 입장 시도
       const contextC = await browser.newContext();
       const pageC = await contextC.newPage();
-      await pageC.goto(ROUTE_PATHS.HOME);
+      await pageC.goto(ROUTE_PATHS.LANDING);
       await pageC.getByRole("button", { name: "Game Start" }).click();
       await expect(pageC).toHaveURL(ROUTE_PATHS.ROOM_LIST);
 

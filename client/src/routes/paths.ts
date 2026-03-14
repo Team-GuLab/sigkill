@@ -1,5 +1,5 @@
 export const ROUTE_PATHS = Object.freeze({
-  HOME: "/",
+  LANDING: "/",
   ROOM_LIST: "/rooms",
   WAITING_ROOM: "/waiting-room/:roomId",
   GAME_ROOM: "/game/:gameId",
