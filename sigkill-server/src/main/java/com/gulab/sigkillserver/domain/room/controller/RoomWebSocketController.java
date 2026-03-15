@@ -7,9 +7,11 @@ import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerJoinEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomSnapshotEvent;
+import com.gulab.sigkillserver.domain.room.service.PendingRoomJoinOrchestrator;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import jakarta.validation.Valid;
 import java.security.Principal;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Controller;
 public class RoomWebSocketController {
 
     private final RoomService roomService;
+    private final PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator;
     private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/room/snapshot")
@@ -40,11 +43,13 @@ public class RoomWebSocketController {
     public void joinRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
 
-        PlayerJoinEvent playerJoinEvent = roomService.joinEvent(request.roomId(), userId);
+        Optional<PlayerJoinEvent> playerJoinEvent = roomService.confirmJoin(request.roomId(), userId);
+        pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(userId);
 
-        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), playerJoinEvent);
+        playerJoinEvent.ifPresent(event -> messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), event));
 
-        log.debug("방 참가 알림 브로드캐스트 완료 - roomId: {}", request.roomId());
+        log.debug("방 참가 확정 처리 완료 - roomId: {}, userId: {}, broadcasted={}",
+                request.roomId(), userId, playerJoinEvent.isPresent());
     }
 
     @MessageMapping("/room/leave")
@@ -52,6 +57,7 @@ public class RoomWebSocketController {
         Long userId = Long.parseLong(principal.getName());
 
         LeaveRoomResult leaveRoomResult = roomService.leaveRoom(request.roomId(), userId);
+        pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(userId);
 
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), leaveRoomResult.playerLeftEvent());
         if (leaveRoomResult.hasHostChangedEvent()) {

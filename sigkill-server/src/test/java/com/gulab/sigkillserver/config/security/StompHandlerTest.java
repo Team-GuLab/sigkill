@@ -48,10 +48,16 @@ class StompHandlerTest {
         MDC.clear();
     }
 
+    private Player activePlayer(Long userId, String roomId, String nickname) {
+        Player player = Player.create(userId, roomId, nickname);
+        player.activate();
+        return player;
+    }
+
     @Test
     void room_topic_현재_방_멤버_구독은_허용한다() {
         // given
-        when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "1001", "user1")));
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(activePlayer(1L, "1001", "user1")));
         Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/room/1001");
 
         // when
@@ -65,7 +71,7 @@ class StompHandlerTest {
     @Test
     void room_topic_다른_방_멤버_구독은_거부한다() {
         // given
-        when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "2002", "user1")));
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(activePlayer(1L, "2002", "user1")));
         Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/room/1001");
 
         // when // then
@@ -123,7 +129,7 @@ class StompHandlerTest {
     @Test
     void game_topic_같은_방_플레이어_구독은_허용한다() {
         // given
-        when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "1001", "user1")));
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(activePlayer(1L, "1001", "user1")));
         when(gameRepository.findById(7L)).thenReturn(
                 Optional.of(Game.create("1001", java.util.List.of(101L)).withGameId(7L)));
         Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/game/7");
@@ -140,7 +146,7 @@ class StompHandlerTest {
     @Test
     void game_topic_다른_방_플레이어_구독은_거부한다() {
         // given
-        when(playerRepository.findById(1L)).thenReturn(Optional.of(Player.create(1L, "1001", "user1")));
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(activePlayer(1L, "1001", "user1")));
         when(gameRepository.findById(7L)).thenReturn(
                 Optional.of(Game.create("2002", java.util.List.of(101L)).withGameId(7L)));
         Message<byte[]> message = createMessage(StompCommand.SUBSCRIBE, () -> "1", "/topic/game/7");

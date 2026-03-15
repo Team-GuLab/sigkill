@@ -14,6 +14,7 @@ import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
+import com.gulab.sigkillserver.domain.room.service.PendingRoomJoinOrchestrator;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import java.security.Principal;
 import java.util.Optional;
@@ -29,16 +30,27 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 class StompEventListenerTest {
 
     private final RoomService roomService = mock(RoomService.class);
+    private final PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator = mock(PendingRoomJoinOrchestrator.class);
     private final PlayerRepository playerRepository = mock(PlayerRepository.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
-    private final StompEventListener stompEventListener = new StompEventListener(roomService, playerRepository,
-            messagingTemplate);
+    private final StompEventListener stompEventListener = new StompEventListener(
+            roomService,
+            pendingRoomJoinOrchestrator,
+            playerRepository,
+            messagingTemplate
+    );
+
+    private Player activePlayer(Long userId, String roomId, String nickname) {
+        Player player = Player.create(userId, roomId, nickname);
+        player.activate();
+        return player;
+    }
 
     @Test
     void disconnect_시_플레이어가_있으면_자동_퇴장_이벤트를_브로드캐스트한다() {
         // given
         Long userId = 1L;
-        Player player = Player.create(userId, "1001", "tester");
+        Player player = activePlayer(userId, "1001", "tester");
         PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, userId);
         when(playerRepository.findById(userId)).thenReturn(Optional.of(player));
         when(roomService.leaveRoom("1001", userId)).thenReturn(LeaveRoomResult.of(playerLeftEvent));
@@ -50,6 +62,7 @@ class StompEventListenerTest {
 
         // then
         verify(roomService).leaveRoom("1001", userId);
+        verify(pendingRoomJoinOrchestrator).cancelPendingJoinTimeout(userId);
         verify(messagingTemplate).convertAndSend("/topic/room/1001", playerLeftEvent);
     }
 
@@ -57,8 +70,8 @@ class StompEventListenerTest {
     void disconnect_시_호스트_변경_이벤트가_있으면_추가로_브로드캐스트한다() {
         // given
         Long userId = 1L;
-        Player leavingPlayer = Player.create(userId, "1001", "oldHost");
-        Player newHost = Player.create(2L, "1001", "newHost");
+        Player leavingPlayer = activePlayer(userId, "1001", "oldHost");
+        Player newHost = activePlayer(2L, "1001", "newHost");
         PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(leavingPlayer, userId);
         HostChangedEvent hostChangedEvent = HostChangedEvent.of(newHost, leavingPlayer, newHost.getUserId(), "HOST_LEFT");
         when(playerRepository.findById(userId)).thenReturn(Optional.of(leavingPlayer));
@@ -73,6 +86,26 @@ class StompEventListenerTest {
         // then
         verify(messagingTemplate).convertAndSend("/topic/room/1001", playerLeftEvent);
         verify(messagingTemplate).convertAndSend("/topic/room/1001", hostChangedEvent);
+    }
+
+    @Test
+    void disconnect_시_pending_플레이어는_브로드캐스트하지_않는다() {
+        // given
+        Long userId = 1L;
+        Player pendingPlayer = Player.create(userId, "1001", "pending");
+        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(pendingPlayer, userId);
+        when(playerRepository.findById(userId)).thenReturn(Optional.of(pendingPlayer));
+        when(roomService.leaveRoom("1001", userId)).thenReturn(LeaveRoomResult.of(playerLeftEvent));
+
+        SessionDisconnectEvent event = createDisconnectEvent("session-1", () -> String.valueOf(userId));
+
+        // when
+        stompEventListener.disconnectHandle(event);
+
+        // then
+        verify(roomService).leaveRoom("1001", userId);
+        verify(pendingRoomJoinOrchestrator).cancelPendingJoinTimeout(userId);
+        verifyNoInteractions(messagingTemplate);
     }
 
     @Test

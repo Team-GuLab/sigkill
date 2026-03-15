@@ -112,6 +112,12 @@ class GameServiceTest {
         return room;
     }
 
+    private Player activePlayer(Long userId, String roomId, String nickname) {
+        Player player = Player.create(userId, roomId, nickname);
+        player.activate();
+        return player;
+    }
+
     private Game saveGameWithQuizIds(String roomId, int quizCount) {
         List<Long> quizIds = quizRepository.findByCategoryId(GameConstants.DEFAULT_CATEGORY_ID, quizCount)
                 .stream()
@@ -135,8 +141,8 @@ class GameServiceTest {
             Room room = saveRoom("1234");
             User user1 = saveUser("start-game-session-1", "start-game-user-1");
             User user2 = saveUser("start-game-session-2", "start-game-user-2");
-            playerRepository.create(Player.create(user1.getUserId(), room.getRoomId(), user1.getNickname()));
-            playerRepository.create(Player.create(user2.getUserId(), room.getRoomId(), user2.getNickname()));
+            playerRepository.create(activePlayer(user1.getUserId(), room.getRoomId(), user1.getNickname()));
+            playerRepository.create(activePlayer(user2.getUserId(), room.getRoomId(), user2.getNickname()));
 
             // when
             GameStartEvent result = gameService.startGame(room);
@@ -245,7 +251,7 @@ class GameServiceTest {
             User host = saveUser("load-game-not-started-host-session", "load-game-not-started-host");
             Room room = Room.create("1734", "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
@@ -260,8 +266,8 @@ class GameServiceTest {
             User guest = saveUser(roomId + "-guest-session", roomId + "-guest");
             Room room = Room.create(roomId, "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
-            playerRepository.create(Player.create(guest.getUserId(), room.getRoomId(), guest.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(guest.getUserId(), room.getRoomId(), guest.getNickname()));
 
             gameService.startGame(room);
             Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
@@ -287,7 +293,7 @@ class GameServiceTest {
             Room room = saveRoom("1234");
             room.startGame();
 
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
@@ -326,7 +332,7 @@ class GameServiceTest {
             User user = saveUser("start-quiz-invalid-room-id-session", "start-quiz-invalid-room-id-user");
             Room room = saveRoom("1235");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
@@ -342,7 +348,7 @@ class GameServiceTest {
             // given
             User user = saveUser("session-2", "tester2");
             Room room = saveRoom("2234");
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
@@ -375,7 +381,7 @@ class GameServiceTest {
             User user = saveUser("session-4", "tester4");
             Room room = saveRoom("4234");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), "9999", user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), "9999", user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
@@ -392,7 +398,7 @@ class GameServiceTest {
             User user = saveUser("session-4-1", "tester4-1");
             Room userRoom = saveRoom("4235");
             userRoom.startGame();
-            playerRepository.create(Player.create(user.getUserId(), userRoom.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), userRoom.getRoomId(), user.getNickname()));
 
             Room gameRoom = saveRoom("4236");
             gameRoom.startGame();
@@ -412,7 +418,7 @@ class GameServiceTest {
             User user = saveUser("session-5", "tester5");
             Room room = saveRoom("5234");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
             game.startNextQuiz(Instant.now().toEpochMilli());
             game.startNextQuiz(Instant.now().toEpochMilli());
@@ -467,7 +473,7 @@ class GameServiceTest {
             User user = saveUser("submit-map-session-1", "submit-map-user");
             Room room = saveRoom("6134");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 4);
 
             // startQuiz 사전 조건 충족(현재 구현 기준)
@@ -507,7 +513,7 @@ class GameServiceTest {
             User user = saveUser("submit-map-session-2", "submit-map-user-2");
             Room room = saveRoom("6144");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 4);
 
             // startQuiz 사전 조건 충족(현재 구현 기준)
@@ -536,7 +542,7 @@ class GameServiceTest {
             User user = saveUser("submit-session-1", "submitter");
             Room room = saveRoom("6234");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
             long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
             Quiz quiz = quizRepository.findById(currentQuizId).orElseThrow();
@@ -575,7 +581,7 @@ class GameServiceTest {
             User user = saveUser("submit-session-multi", "submitter-multi");
             Room room = saveRoom("6334");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
             long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
             Quiz quiz = quizRepository.findById(currentQuizId).orElseThrow();
@@ -614,7 +620,7 @@ class GameServiceTest {
             User user = saveUser("submit-session-deadline", "submitter-deadline");
             Room room = saveRoom("7334");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             long startedAt = Instant.now().toEpochMilli()
@@ -649,7 +655,7 @@ class GameServiceTest {
             // given
             User user = saveUser("submit-session-2", "submitter2");
             Room room = saveRoom("7234");
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
             long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
 
@@ -671,7 +677,7 @@ class GameServiceTest {
             User user = saveUser("submit-session-3", "submitter3");
             Room room = saveRoom("8234");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
             long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
             Quiz currentQuiz = quizRepository.findById(currentQuizId).orElseThrow();
@@ -705,7 +711,7 @@ class GameServiceTest {
             User user = saveUser("submit-session-4", "submitter4");
             Room room = saveRoom("9234");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
             long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
 
@@ -727,7 +733,7 @@ class GameServiceTest {
             User user = saveUser("submit-session-5", "submitter5");
             Room room = saveRoom("1034");
             room.startGame();
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
             long currentQuizId = game.startNextQuiz(Instant.now().toEpochMilli());
             Quiz quiz = quizRepository.findById(currentQuizId).orElseThrow();
@@ -846,7 +852,7 @@ class GameServiceTest {
             // given
             User user = saveUser("end-quiz-not-started-session", "end-quiz-not-started");
             Room room = saveRoom("2234");
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
             Long quizId = game.getQuizIds().get(0);
 
@@ -926,9 +932,9 @@ class GameServiceTest {
             User third = saveUser("last-quiz-third-session", "last-quiz-third");
             Room room = Room.create("2454", "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
-            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
-            playerRepository.create(Player.create(third.getUserId(), room.getRoomId(), third.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(activePlayer(third.getUserId(), room.getRoomId(), third.getNickname()));
             gameService.startGame(room);
 
             Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
@@ -972,11 +978,9 @@ class GameServiceTest {
             Room room = Room.create(roomId, "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
 
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
-            playerRepository.create(
-                    Player.create(secondPlayer.getUserId(), room.getRoomId(), secondPlayer.getNickname()));
-            playerRepository.create(
-                    Player.create(thirdPlayer.getUserId(), room.getRoomId(), thirdPlayer.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(secondPlayer.getUserId(), room.getRoomId(), secondPlayer.getNickname()));
+            playerRepository.create(activePlayer(thirdPlayer.getUserId(), room.getRoomId(), thirdPlayer.getNickname()));
 
             gameService.startGame(room);
 
@@ -1042,9 +1046,9 @@ class GameServiceTest {
             User third = saveUser("end-game-third-session", "end-game-third");
             Room room = Room.create("2534", "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
-            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
-            playerRepository.create(Player.create(third.getUserId(), room.getRoomId(), third.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(activePlayer(third.getUserId(), room.getRoomId(), third.getNickname()));
             gameService.startGame(room);
 
             Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
@@ -1095,7 +1099,7 @@ class GameServiceTest {
             // given
             User user = saveUser("end-game-not-started-session", "end-game-not-started");
             Room room = saveRoom("2634");
-            playerRepository.create(Player.create(user.getUserId(), room.getRoomId(), user.getNickname()));
+            playerRepository.create(activePlayer(user.getUserId(), room.getRoomId(), user.getNickname()));
             Game game = saveGameWithQuizIds(room.getRoomId(), 3);
 
             // when
@@ -1116,8 +1120,8 @@ class GameServiceTest {
             User second = saveUser("end-game-invalid-room-id-second-session", "end-game-invalid-room-id-second");
             Room room = Room.create("2644", "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
-            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(second.getUserId(), room.getRoomId(), second.getNickname()));
             gameService.startGame(room);
             Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
 
@@ -1139,8 +1143,8 @@ class GameServiceTest {
             User second = saveUser("end-game-finished-second-session", "end-game-finished-second");
             Room room = Room.create("2734", "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
-            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(second.getUserId(), room.getRoomId(), second.getNickname()));
             gameService.startGame(room);
             Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
             room.endGame();
@@ -1163,8 +1167,8 @@ class GameServiceTest {
             User second = saveUser("end-game-exhaust-second-session", "end-game-exhaust-second");
             Room room = Room.create("2834", "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
-            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(second.getUserId(), room.getRoomId(), second.getNickname()));
             gameService.startGame(room);
             Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
 
@@ -1186,8 +1190,8 @@ class GameServiceTest {
             User second = saveUser("end-game-guard-second-session", "end-game-guard-second");
             Room room = Room.create("2844", "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
-            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(second.getUserId(), room.getRoomId(), second.getNickname()));
             gameService.startGame(room);
             Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
 
@@ -1206,9 +1210,9 @@ class GameServiceTest {
             User third = saveUser("end-game-tie-third-session", "end-game-tie-third");
             Room room = Room.create("2934", "테스트 방", host.getUserId(), 6);
             roomRepository.save(room);
-            playerRepository.create(Player.create(host.getUserId(), room.getRoomId(), host.getNickname()));
-            playerRepository.create(Player.create(second.getUserId(), room.getRoomId(), second.getNickname()));
-            playerRepository.create(Player.create(third.getUserId(), room.getRoomId(), third.getNickname()));
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(second.getUserId(), room.getRoomId(), second.getNickname()));
+            playerRepository.create(activePlayer(third.getUserId(), room.getRoomId(), third.getNickname()));
             gameService.startGame(room);
             Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
 
