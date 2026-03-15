@@ -16,9 +16,7 @@ import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
-import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
-import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
@@ -34,8 +32,8 @@ import org.springframework.scheduling.TaskScheduler;
 class PendingRoomJoinOrchestratorTest {
 
     private UserRepository userRepository;
-    private PlayerRepository playerRepository;
-    private RoomRepository roomRepository;
+    private PlayerMemoryRepository playerRepository;
+    private RoomMemoryRepository roomRepository;
     private RoomService roomService;
     private TaskScheduler taskScheduler;
     private PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator;
@@ -67,7 +65,7 @@ class PendingRoomJoinOrchestratorTest {
                 gameService
         );
         taskScheduler = mock(TaskScheduler.class);
-        pendingRoomJoinOrchestrator = new PendingRoomJoinOrchestrator(taskScheduler, playerRepository, roomService);
+        pendingRoomJoinOrchestrator = new PendingRoomJoinOrchestrator(taskScheduler, roomService);
     }
 
     @Test
@@ -109,6 +107,22 @@ class PendingRoomJoinOrchestratorTest {
         scheduledTask.get().run();
 
         // then
+        assertThat(playerRepository.findById(host.getUserId())).isPresent();
+        assertThat(roomRepository.findById(roomId)).isPresent();
+    }
+
+    @Test
+    void expirePendingJoin은_이미_active로_전환된_플레이어를_정리하지_않는다() {
+        // given
+        User host = userRepository.save(User.create("confirmed-host-session", "호스트", UserRole.GUEST));
+        String roomId = roomService.createRoom("방", 6, host.getUserId()).roomId();
+        roomService.confirmJoin(roomId, host.getUserId());
+
+        // when
+        boolean expired = roomService.expirePendingJoin(roomId, host.getUserId());
+
+        // then
+        assertThat(expired).isFalse();
         assertThat(playerRepository.findById(host.getUserId())).isPresent();
         assertThat(roomRepository.findById(roomId)).isPresent();
     }

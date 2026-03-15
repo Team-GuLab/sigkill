@@ -258,6 +258,18 @@ public class RoomService {
         return playerJoinEvent;
     }
 
+    public boolean expirePendingJoin(String roomId, Long userId) {
+        validateRoomId(roomId);
+        return roomLockManager.executeWithLock(roomId, () -> {
+            Player player = playerRepository.findById(userId).orElse(null);
+            if (player == null || !roomId.equals(player.getRoomId()) || player.isActive()) {
+                return false;
+            }
+            leaveRoom(roomId, userId);
+            return true;
+        });
+    }
+
     private void validateCanJoinRoom(Long userId, Room room) {
         if (room.isInGame()) {
             throw new CustomException(ROOM_IN_GAME);

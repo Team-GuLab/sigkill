@@ -2,8 +2,6 @@ package com.gulab.sigkillserver.domain.room.service;
 
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.PENDING_JOIN_TIMEOUT_MILLIS;
 
-import com.gulab.sigkillserver.domain.room.model.Player;
-import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,17 +16,14 @@ import org.springframework.stereotype.Component;
 public class PendingRoomJoinOrchestrator {
 
     private final TaskScheduler taskScheduler;
-    private final PlayerRepository playerRepository;
     private final RoomService roomService;
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
     public PendingRoomJoinOrchestrator(
             @Qualifier("gameTaskScheduler") TaskScheduler taskScheduler,
-            PlayerRepository playerRepository,
             RoomService roomService
     ) {
         this.taskScheduler = taskScheduler;
-        this.playerRepository = playerRepository;
         this.roomService = roomService;
     }
 
@@ -61,12 +56,9 @@ public class PendingRoomJoinOrchestrator {
     private void expirePendingJoin(String roomId, Long userId) {
         scheduledTasks.remove(userId);
         try {
-            Player player = playerRepository.findById(userId).orElse(null);
-            if (player == null || !roomId.equals(player.getRoomId()) || player.isActive()) {
-                return;
+            if (roomService.expirePendingJoin(roomId, userId)) {
+                log.info("room.pendingJoin expired - roomId={}, userId={}", roomId, userId);
             }
-            roomService.leaveRoom(roomId, userId);
-            log.info("room.pendingJoin expired - roomId={}, userId={}", roomId, userId);
         } catch (RuntimeException e) {
             log.warn("room.pendingJoin expiration failed - roomId={}, userId={}, message={}",
                     roomId, userId, e.getMessage());
