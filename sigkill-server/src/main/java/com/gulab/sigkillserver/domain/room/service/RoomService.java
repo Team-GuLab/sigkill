@@ -50,6 +50,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -239,14 +240,22 @@ public class RoomService {
     }
 
     /**
-     * 플레이어 방 참가 정보 알림
+     * 플레이어 방 참가 확정
      */
-    public PlayerJoinEvent joinEvent(String roomId, Long userId) {
+    public Optional<PlayerJoinEvent> confirmJoin(String roomId, Long userId) {
         validateRoomId(roomId);
-        Room room = getRoomOrThrow(roomId);
-        Player player = getPlayerInRoomOrThrow(userId, roomId);
+        Optional<PlayerJoinEvent> playerJoinEvent = roomLockManager.executeWithLock(roomId, () -> {
+            Room room = getRoomOrThrow(roomId);
+            Player player = getPlayerInRoomOrThrow(userId, roomId);
+            if (player.isActive()) {
+                return Optional.empty();
+            }
+            player.activate();
+            return Optional.of(PlayerJoinEvent.of(room, PlayerInfo.of(player, room.getHostId())));
+        });
+
         log.info("room.joinEvent success - roomId={}, userId={}", roomId, userId);
-        return PlayerJoinEvent.of(room, PlayerInfo.of(player, room.getHostId()));
+        return playerJoinEvent;
     }
 
     private void validateCanJoinRoom(Long userId, Room room) {
@@ -296,7 +305,12 @@ public class RoomService {
             playerRepository.deleteById(userId);
 
             if (room.getHostId().equals(userId)) {
-                HostChangedEvent hostChangedEvent = changeHost(room, player);
+                List<Player> remainingPlayers = findRemainingPlayers(roomId);
+                if (remainingPlayers.isEmpty()) {
+                    roomDeleted.set(true);
+                    return LeaveRoomResult.of(playerLeftEvent);
+                }
+                HostChangedEvent hostChangedEvent = changeHost(room, player, remainingPlayers);
                 return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
             }
 
@@ -316,8 +330,8 @@ public class RoomService {
     /**
      * 호스트 변경
      */
-    private HostChangedEvent changeHost(Room room, Player previousHost) {
-        Player newHost = playerRepository.findAllByRoomId(room.getRoomId()).stream()
+    private HostChangedEvent changeHost(Room room, Player previousHost, List<Player> remainingPlayers) {
+        Player newHost = remainingPlayers.stream()
                 .min(Comparator.comparing(Player::getCreatedAt))
                 .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
         newHost.unready();
@@ -435,6 +449,10 @@ public class RoomService {
         }
 
         return player;
+    }
+
+    private List<Player> findRemainingPlayers(String roomId) {
+        return playerRepository.findAllByRoomId(roomId);
     }
 
     private User getUserOrThrow(Long userId) {
