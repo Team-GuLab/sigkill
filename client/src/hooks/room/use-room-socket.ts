@@ -12,11 +12,7 @@ import { handleRoomMessage } from "@/api/room/handle-room-message";
 import { subscribeError } from "@/api/error/subscribe-error";
 import { handleErrorMessage } from "@/api/error/handle-error-message";
 import { ROUTE_PATHS } from "@/routes/paths";
-import {
-  useSetGameInfo,
-  useSetGamePlayers,
-  useSetIsInGame,
-} from "@/store/game-store";
+import { useGameTransition } from "@/store/game-store";
 import { useResetRoom } from "@/store/room-store";
 
 /**
@@ -31,9 +27,7 @@ interface UseRoomSocketProps {
 
 export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
   const navigate = useNavigate();
-  const setGameInfo = useSetGameInfo();
-  const setGamePlayers = useSetGamePlayers();
-  const setIsInGame = useSetIsInGame();
+  const transition = useGameTransition();
   const [isPending, setIsPending] = useState(false);
   const [isGameStarting, setIsGameStarting] = useState(false);
   const resetRoom = useResetRoom();
@@ -69,9 +63,12 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
         roomUnsubscribe.current = subscribeRoom(roomId, message => {
           if (message.type === "GAME_START") {
             isGameStarted.current = true;
-            setIsInGame(true);
-            setGameInfo(message.roomId, message.gameId);
-            setGamePlayers(message.payload.players);
+            transition({
+              type: "GAME_START",
+              roomId: message.roomId,
+              gameId: message.gameId,
+              players: message.payload.players,
+            });
             setIsGameStarting(true);
             navigate(`/game/${message.gameId}`, { replace: true });
             return;
