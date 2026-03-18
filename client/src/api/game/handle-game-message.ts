@@ -6,56 +6,42 @@ import type { GameWebSocketMessage } from "./types";
  * @param message - 게임 stomp 메시지
  */
 export const handleGameMessage = (message: GameWebSocketMessage) => {
+  const { transition } = useGameStore.getState();
+
   switch (message.type) {
     case "GAME_LOADED": {
-      const { setAllLoaded } = useGameStore.getState();
-      setAllLoaded(message.payload.allLoaded);
+      transition({ type: "GAME_LOADED", allLoaded: message.payload.allLoaded });
       break;
     }
 
     case "QUIZ_START": {
-      const {
-        setQuiz,
-        resetChoiceSubmits,
-        setQuizEndAnswer,
-        setQuizEndPlayerResults,
-      } = useGameStore.getState();
-      // 새 라운드 시작 시 이전 라운드의 게임 정보 초기화
-      resetChoiceSubmits();
-      setQuizEndAnswer(null);
-      setQuizEndPlayerResults([]);
-      setQuiz(message.payload.quiz);
+      transition({ type: "QUIZ_START", quiz: message.payload.quiz });
       break;
     }
 
     case "CHOICE_SUBMIT": {
-      const { setChoiceSubmit } = useGameStore.getState();
-      setChoiceSubmit(
-        message.payload.actor.userId,
-        message.payload.choiceNumber,
-      );
+      transition({
+        type: "CHOICE_SUBMIT",
+        userId: message.payload.actor.userId,
+        choiceNumber: message.payload.choiceNumber,
+      });
       break;
     }
 
     case "QUIZ_END": {
-      const { setQuizEndAnswer, setQuizEndPlayerResults } =
-        useGameStore.getState();
-      setQuizEndAnswer(message.payload.answer);
-      setQuizEndPlayerResults(message.payload.players);
-      // 플레이어 상태 반영
-      const players = message.payload.players;
+      const { answer, players } = message.payload;
+      transition({ type: "QUIZ_END", answer, playerResults: players });
+      // QUIZ_RESULT 단계에서 3초 후 플레이어 생존 상태 반영
       setTimeout(() => {
-        useGameStore.getState().setPlayers(players);
+        useGameStore
+          .getState()
+          .transition({ type: "PLAYER_STATUS_UPDATED", players });
       }, 3000);
       break;
     }
 
     case "GAME_END": {
-      const { setGameEnd } = useGameStore.getState();
-      const { setIsInGame } = useGameStore.getState();
-      setGameEnd(message.payload);
-      setIsInGame(false);
-
+      transition({ type: "GAME_END", gameEnd: message.payload });
       break;
     }
 
