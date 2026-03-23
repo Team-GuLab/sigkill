@@ -77,8 +77,8 @@ public class GameFlowOrchestrator {
                 Instant.now().plusMillis(delayMillis)
         );
         replaceScheduledTask(gameId, future);
-        log.debug("game.flow action=quiz-start-scheduled, roomId={}, gameId={}, delayMillis={}",
-                roomId, gameId, delayMillis);
+        log.debug("game.flow action=quiz-start-scheduled, roomId={}, roomTitle={}, gameId={}, delayMillis={}",
+                roomId, resolveRoomTitle(roomId), gameId, delayMillis);
     }
 
     private void handleQuizStart(String roomId, Long gameId) {
@@ -97,15 +97,16 @@ public class GameFlowOrchestrator {
             scheduleQuizEnd(roomId, gameId, quizStartEvent.payload().quiz().quizId(),
                     quizStartEvent.payload().quiz().endTime());
 
-            log.info("방 퀴즈 시작됨 - action=quiz-started, roomId={}, gameId={}, quizId={}, quizOrder={}/{}",
+            log.info("'{}' 방 퀴즈 시작됨 - action=quiz-started, roomId={}, gameId={}, quizId={}, quizOrder={}/{}",
+                    room.getRoomTitle(),
                     roomId,
                     gameId,
                     quizStartEvent.payload().quiz().quizId(),
                     quizStartEvent.payload().quiz().currentQuizIndex() + 1,
                     quizStartEvent.payload().quiz().totalQuizCount());
         } catch (CustomException e) {
-            log.warn("방 퀴즈 시작 실패 - action=quiz-start-failed, roomId={}, gameId={}, code={}, message={}",
-                    roomId, gameId, e.getErrorCode().getCode(), e.getErrorCode().getMessage());
+            log.warn("'{}' 방 퀴즈 시작 실패 - action=quiz-start-failed, roomId={}, gameId={}, code={}, message={}",
+                    resolveRoomTitle(roomId), roomId, gameId, e.getErrorCode().getCode(), e.getErrorCode().getMessage());
             initialQuizStartTriggeredGames.remove(gameId);
         } catch (RuntimeException e) {
             log.error("game.flow quiz-start unexpected failure - gameId={}", gameId, e);
@@ -119,8 +120,8 @@ public class GameFlowOrchestrator {
                 Instant.ofEpochMilli(quizEndAtMillis)
         );
         replaceScheduledTask(gameId, future);
-        log.debug("game.flow action=quiz-end-scheduled, roomId={}, gameId={}, quizId={}, endAt={}",
-                roomId, gameId, quizId, quizEndAtMillis);
+        log.debug("game.flow action=quiz-end-scheduled, roomId={}, roomTitle={}, gameId={}, quizId={}, endAt={}",
+                roomId, resolveRoomTitle(roomId), gameId, quizId, quizEndAtMillis);
     }
 
     private void handleQuizEnd(String roomId, Long gameId, Long quizId) {
@@ -135,13 +136,14 @@ public class GameFlowOrchestrator {
 
             EndQuizOrGameEvent endQuizOrGameEvent = gameService.endQuiz(room.getHostId(), roomId, gameId, quizId);
             messagingTemplate.convertAndSend("/topic/game/" + gameId, endQuizOrGameEvent.quizEndEvent());
-            log.info("방 퀴즈 종료됨 - action=quiz-ended, roomId={}, gameId={}, quizId={}",
-                    roomId, gameId, quizId);
+            log.info("'{}' 방 퀴즈 종료됨 - action=quiz-ended, roomId={}, gameId={}, quizId={}",
+                    room.getRoomTitle(), roomId, gameId, quizId);
 
             if (endQuizOrGameEvent.hasGameEnd()) {
                 messagingTemplate.convertAndSend("/topic/game/" + gameId, endQuizOrGameEvent.gameEndEvent());
                 initialQuizStartTriggeredGames.remove(gameId);
-                log.info("방 게임 종료됨 - action=game-ended, roomId={}, gameId={}, quizId={}, reason={}",
+                log.info("'{}' 방 게임 종료됨 - action=game-ended, roomId={}, gameId={}, quizId={}, reason={}",
+                        room.getRoomTitle(),
                         roomId,
                         gameId,
                         quizId,
@@ -150,10 +152,11 @@ public class GameFlowOrchestrator {
             }
 
             scheduleQuizStart(roomId, gameId, GameConstants.NEXT_QUIZ_START_DELAY_MILLIS);
-            log.debug("game.flow action=next-quiz-scheduled, roomId={}, gameId={}, quizId={}",
-                    roomId, gameId, quizId);
+            log.debug("game.flow action=next-quiz-scheduled, roomId={}, roomTitle={}, gameId={}, quizId={}",
+                    roomId, room.getRoomTitle(), gameId, quizId);
         } catch (CustomException e) {
-            log.warn("방 퀴즈 종료 실패 - action=quiz-end-failed, roomId={}, gameId={}, quizId={}, code={}, message={}",
+            log.warn("'{}' 방 퀴즈 종료 실패 - action=quiz-end-failed, roomId={}, gameId={}, quizId={}, code={}, message={}",
+                    resolveRoomTitle(roomId),
                     roomId,
                     gameId,
                     quizId,
@@ -179,6 +182,13 @@ public class GameFlowOrchestrator {
         return roomRepository.findById(roomId)
                 .orElse(null);
     }
+
+    private String resolveRoomTitle(String roomId) {
+        return roomRepository.findById(roomId)
+                .map(Room::getRoomTitle)
+                .orElse("알 수 없는");
+    }
+
     public record FlowCleanupResult(int canceledScheduledTaskCount, int clearedInitialQuizStartFlagCount) {
     }
 }

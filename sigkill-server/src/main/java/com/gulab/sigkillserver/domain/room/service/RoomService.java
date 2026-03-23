@@ -171,8 +171,8 @@ public class RoomService {
                 Player hostPlayer = Player.create(userId, roomId, host.getNickname());
                 playerRepository.create(hostPlayer);
 
-                log.info("방 생성됨 - action=room-created, roomId={}, hostId={}, capacity={}",
-                        roomId, userId, resolvedCapacity);
+                log.info("'{}' 방 생성됨 - action=room-created, roomId={}, hostId={}, capacity={}",
+                        room.getRoomTitle(), roomId, userId, resolvedCapacity);
                 return RoomInfoResponse.of(room);
             } catch (CustomException e) {
                 if (ROOM_ID_ALREADY_EXISTS.name().equals(e.getErrorCode().getCode())) {
@@ -236,8 +236,8 @@ public class RoomService {
             return RoomInfoResponse.of(room);
         });
 
-        log.info("방 참가됨 - action=room-joined, roomId={}, userId={}",
-                roomId, userId);
+        log.info("'{}' 방 참가됨 - action=room-joined, roomId={}, userId={}",
+                roomInfoResponse.roomTitle(), roomId, userId);
         return roomInfoResponse;
     }
 
@@ -256,8 +256,8 @@ public class RoomService {
             return Optional.of(PlayerJoinEvent.of(room, PlayerInfo.of(player, room.getHostId())));
         });
 
-        log.info("방 참가 확정됨 - action=room-join-confirmed, roomId={}, userId={}, broadcasted={}",
-                roomId, userId, playerJoinEvent.isPresent());
+        log.info("'{}' 방 참가 확정됨 - action=room-join-confirmed, roomId={}, userId={}, broadcasted={}",
+                resolveRoomTitle(roomId), roomId, userId, playerJoinEvent.isPresent());
         return playerJoinEvent;
     }
 
@@ -306,6 +306,7 @@ public class RoomService {
         validateRoomId(roomId);
         AtomicBoolean roomDeleted = new AtomicBoolean(false);
         AtomicBoolean hostChanged = new AtomicBoolean(false);
+        String roomTitle = resolveRoomTitle(roomId);
         LeaveRoomResult leaveRoomResult = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
@@ -334,8 +335,8 @@ public class RoomService {
             return LeaveRoomResult.of(playerLeftEvent);
         });
 
-        log.info("방 퇴장 처리됨 - action=room-left, roomId={}, userId={}, roomDeleted={}, hostChanged={}",
-                roomId, userId, roomDeleted.get(), hostChanged.get());
+        log.info("'{}' 방 퇴장 처리됨 - action=room-left, roomId={}, userId={}, roomDeleted={}, hostChanged={}",
+                roomTitle, roomId, userId, roomDeleted.get(), hostChanged.get());
         return leaveRoomResult;
     }
 
@@ -367,8 +368,8 @@ public class RoomService {
             boolean isAllReady = isAllGuestsReady(room);
             return PlayerReadyEvent.of(player, room.getHostId(), isAllReady);
         });
-        log.info("방 플레이어 준비 완료 - action=player-ready, roomId={}, userId={}, allReady={}",
-                roomId, userId, playerReadyEvent.allReady());
+        log.info("'{}' 방 플레이어 준비 완료 - action=player-ready, roomId={}, userId={}, allReady={}",
+                resolveRoomTitle(roomId), roomId, userId, playerReadyEvent.allReady());
 
         return playerReadyEvent;
     }
@@ -418,8 +419,8 @@ public class RoomService {
             player.unready();
             return PlayerUnreadyEvent.of(player, room.getHostId());
         });
-        log.info("방 플레이어 준비 취소 - action=player-unready, roomId={}, userId={}",
-                roomId, userId);
+        log.info("'{}' 방 플레이어 준비 취소 - action=player-unready, roomId={}, userId={}",
+                resolveRoomTitle(roomId), roomId, userId);
         return playerUnreadyEvent;
     }
 
@@ -439,8 +440,8 @@ public class RoomService {
             }
             return gameService.startGame(room);
         });
-        log.info("방 게임 시작됨 - action=game-started, roomId={}, gameId={}, hostId={}",
-                roomId, gameStartEvent.gameId(), userId);
+        log.info("'{}' 방 게임 시작됨 - action=game-started, roomId={}, gameId={}, hostId={}",
+                resolveRoomTitle(roomId), roomId, gameStartEvent.gameId(), userId);
         return gameStartEvent;
     }
 
@@ -476,4 +477,9 @@ public class RoomService {
                 .orElseThrow(() -> new CustomException(USER_NOT_FOUND));
     }
 
+    private String resolveRoomTitle(String roomId) {
+        return roomRepository.findById(roomId)
+                .map(Room::getRoomTitle)
+                .orElse("알 수 없는");
+    }
 }
