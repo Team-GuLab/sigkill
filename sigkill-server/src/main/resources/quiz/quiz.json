@@ -7,10 +7,22 @@
     "correctChoiceId": 1,
     "difficulty": 2,
     "choices": [
-      { "choiceId": 1, "text": "SYN" },
-      { "choiceId": 2, "text": "ACK" },
-      { "choiceId": 3, "text": "FIN" },
-      { "choiceId": 4, "text": "RST" }
+      {
+        "choiceId": 1,
+        "text": "SYN"
+      },
+      {
+        "choiceId": 2,
+        "text": "ACK"
+      },
+      {
+        "choiceId": 3,
+        "text": "FIN"
+      },
+      {
+        "choiceId": 4,
+        "text": "RST"
+      }
     ]
   },
   {
@@ -18,13 +30,25 @@
     "categoryId": "CS",
     "question": "DNS 기본 포트 번호는?",
     "explanation": "DNS는 기본적으로 53번 포트를 사용한다.",
-    "correctChoiceId": 3,
+    "correctChoiceId": 7,
     "difficulty": 1,
     "choices": [
-      { "choiceId": 1, "text": "21" },
-      { "choiceId": 2, "text": "25" },
-      { "choiceId": 3, "text": "53" },
-      { "choiceId": 4, "text": "80" }
+      {
+        "choiceId": 5,
+        "text": "21"
+      },
+      {
+        "choiceId": 6,
+        "text": "25"
+      },
+      {
+        "choiceId": 7,
+        "text": "53"
+      },
+      {
+        "choiceId": 8,
+        "text": "80"
+      }
     ]
   },
   {
@@ -32,13 +56,25 @@
     "categoryId": "CS",
     "question": "이진 탐색 시간복잡도는?",
     "explanation": "탐색 범위를 절반씩 줄여 O(log n)이다.",
-    "correctChoiceId": 2,
+    "correctChoiceId": 10,
     "difficulty": 2,
     "choices": [
-      { "choiceId": 1, "text": "O(n)" },
-      { "choiceId": 2, "text": "O(log n)" },
-      { "choiceId": 3, "text": "O(n log n)" },
-      { "choiceId": 4, "text": "O(1)" }
+      {
+        "choiceId": 9,
+        "text": "O(n)"
+      },
+      {
+        "choiceId": 10,
+        "text": "O(log n)"
+      },
+      {
+        "choiceId": 11,
+        "text": "O(n log n)"
+      },
+      {
+        "choiceId": 12,
+        "text": "O(1)"
+      }
     ]
   },
   {
@@ -46,13 +82,25 @@
     "categoryId": "CS",
     "question": "스택 구조 특징은?",
     "explanation": "스택은 마지막에 넣은 데이터가 먼저 나온다.",
-    "correctChoiceId": 2,
+    "correctChoiceId": 14,
     "difficulty": 1,
     "choices": [
-      { "choiceId": 1, "text": "FIFO" },
-      { "choiceId": 2, "text": "LIFO" },
-      { "choiceId": 3, "text": "무작위 접근" },
-      { "choiceId": 4, "text": "우선순위 처리" }
+      {
+        "choiceId": 13,
+        "text": "FIFO"
+      },
+      {
+        "choiceId": 14,
+        "text": "LIFO"
+      },
+      {
+        "choiceId": 15,
+        "text": "무작위 접근"
+      },
+      {
+        "choiceId": 16,
+        "text": "우선순위 처리"
+      }
     ]
   },
   {
@@ -60,13 +108,25 @@
     "categoryId": "CS",
     "question": "HTTP의 기본 특성은?",
     "explanation": "HTTP는 기본적으로 무상태다.",
-    "correctChoiceId": 2,
+    "correctChoiceId": 18,
     "difficulty": 2,
     "choices": [
-      { "choiceId": 1, "text": "상태 유지" },
-      { "choiceId": 2, "text": "무상태" },
-      { "choiceId": 3, "text": "암호화 필수" },
-      { "choiceId": 4, "text": "연결 영속 강제" }
+      {
+        "choiceId": 17,
+        "text": "상태 유지"
+      },
+      {
+        "choiceId": 18,
+        "text": "무상태"
+      },
+      {
+        "choiceId": 19,
+        "text": "암호화 필수"
+      },
+      {
+        "choiceId": 20,
+        "text": "연결 영속 강제"
+      }
     ]
   },
   {
@@ -74,13 +134,25 @@
     "categoryId": "CS",
     "question": "스레드의 특징으로 맞는 것은?",
     "explanation": "스레드는 같은 프로세스 주소 공간을 공유한다.",
-    "correctChoiceId": 3,
+    "correctChoiceId": 23,
     "difficulty": 3,
     "choices": [
-      { "choiceId": 1, "text": "독립 메모리 사용" },
-      { "choiceId": 2, "text": "코드 영역 미공유" },
-      { "choiceId": 3, "text": "주소 공간 공유" },
-      { "choiceId": 4, "text": "커널 없이 실행" }
+      {
+        "choiceId": 21,
+        "text": "독립 메모리 사용"
+      },
+      {
+        "choiceId": 22,
+        "text": "코드 영역 미공유"
+      },
+      {
+        "choiceId": 23,
+        "text": "주소 공간 공유"
+      },
+      {
+        "choiceId": 24,
+        "text": "커널 없이 실행"
+      }
     ]
   },
   {
@@ -88,13 +160,25 @@
     "categoryId": "CS",
     "question": "교착상태 필요 조건이 아닌 것은?",
     "explanation": "교착상태는 비선점 조건이 필요하다.",
-    "correctChoiceId": 4,
+    "correctChoiceId": 28,
     "difficulty": 4,
     "choices": [
-      { "choiceId": 1, "text": "상호 배제" },
-      { "choiceId": 2, "text": "점유와 대기" },
-      { "choiceId": 3, "text": "환형 대기" },
-      { "choiceId": 4, "text": "선점 가능" }
+      {
+        "choiceId": 25,
+        "text": "상호 배제"
+      },
+      {
+        "choiceId": 26,
+        "text": "점유와 대기"
+      },
+      {
+        "choiceId": 27,
+        "text": "환형 대기"
+      },
+      {
+        "choiceId": 28,
+        "text": "선점 가능"
+      }
     ]
   },
   {
@@ -102,13 +186,25 @@
     "categoryId": "CS",
     "question": "INNER JOIN 결과는?",
     "explanation": "두 테이블에서 조건이 맞는 행만 반환한다.",
-    "correctChoiceId": 3,
+    "correctChoiceId": 31,
     "difficulty": 2,
     "choices": [
-      { "choiceId": 1, "text": "왼쪽 전체 행" },
-      { "choiceId": 2, "text": "오른쪽 전체 행" },
-      { "choiceId": 3, "text": "매칭된 행만" },
-      { "choiceId": 4, "text": "모든 행 + NULL" }
+      {
+        "choiceId": 29,
+        "text": "왼쪽 전체 행"
+      },
+      {
+        "choiceId": 30,
+        "text": "오른쪽 전체 행"
+      },
+      {
+        "choiceId": 31,
+        "text": "매칭된 행만"
+      },
+      {
+        "choiceId": 32,
+        "text": "모든 행 + NULL"
+      }
     ]
   },
   {
@@ -116,13 +212,25 @@
     "categoryId": "CS",
     "question": "캐시 hit ratio 뜻은?",
     "explanation": "전체 요청 중 캐시 적중 요청의 비율이다.",
-    "correctChoiceId": 2,
+    "correctChoiceId": 34,
     "difficulty": 3,
     "choices": [
-      { "choiceId": 1, "text": "캐시 실패 비율" },
-      { "choiceId": 2, "text": "적중 요청/전체 요청" },
-      { "choiceId": 3, "text": "용량/라인 수" },
-      { "choiceId": 4, "text": "지연/대역폭" }
+      {
+        "choiceId": 33,
+        "text": "캐시 실패 비율"
+      },
+      {
+        "choiceId": 34,
+        "text": "적중 요청/전체 요청"
+      },
+      {
+        "choiceId": 35,
+        "text": "용량/라인 수"
+      },
+      {
+        "choiceId": 36,
+        "text": "지연/대역폭"
+      }
     ]
   },
   {
@@ -130,13 +238,25 @@
     "categoryId": "CS",
     "question": "가비지 컬렉션의 역할은?",
     "explanation": "더 이상 참조되지 않는 메모리를 회수한다.",
-    "correctChoiceId": 2,
+    "correctChoiceId": 38,
     "difficulty": 1,
     "choices": [
-      { "choiceId": 1, "text": "스레드 생성" },
-      { "choiceId": 2, "text": "미사용 메모리 회수" },
-      { "choiceId": 3, "text": "쿼리 최적화" },
-      { "choiceId": 4, "text": "네트워크 압축" }
+      {
+        "choiceId": 37,
+        "text": "스레드 생성"
+      },
+      {
+        "choiceId": 38,
+        "text": "미사용 메모리 회수"
+      },
+      {
+        "choiceId": 39,
+        "text": "쿼리 최적화"
+      },
+      {
+        "choiceId": 40,
+        "text": "네트워크 압축"
+      }
     ]
   },
   {
@@ -144,13 +264,25 @@
     "categoryId": "TEST",
     "question": "테스트용 퀴즈 1번입니다.",
     "explanation": "테스트용 정답은 '정답'이다.",
-    "correctChoiceId": 1,
+    "correctChoiceId": 41,
     "difficulty": 1,
     "choices": [
-      { "choiceId": 1, "text": "정답" },
-      { "choiceId": 2, "text": "오답1" },
-      { "choiceId": 3, "text": "오답2" },
-      { "choiceId": 4, "text": "오답3" }
+      {
+        "choiceId": 41,
+        "text": "정답"
+      },
+      {
+        "choiceId": 42,
+        "text": "오답1"
+      },
+      {
+        "choiceId": 43,
+        "text": "오답2"
+      },
+      {
+        "choiceId": 44,
+        "text": "오답3"
+      }
     ]
   },
   {
@@ -158,13 +290,25 @@
     "categoryId": "TEST",
     "question": "테스트용 퀴즈 2번입니다.",
     "explanation": "테스트용 정답은 '정답'이다.",
-    "correctChoiceId": 1,
+    "correctChoiceId": 45,
     "difficulty": 1,
     "choices": [
-      { "choiceId": 1, "text": "정답" },
-      { "choiceId": 2, "text": "오답1" },
-      { "choiceId": 3, "text": "오답2" },
-      { "choiceId": 4, "text": "오답3" }
+      {
+        "choiceId": 45,
+        "text": "정답"
+      },
+      {
+        "choiceId": 46,
+        "text": "오답1"
+      },
+      {
+        "choiceId": 47,
+        "text": "오답2"
+      },
+      {
+        "choiceId": 48,
+        "text": "오답3"
+      }
     ]
   },
   {
@@ -172,13 +316,1325 @@
     "categoryId": "TEST",
     "question": "테스트용 퀴즈 3번입니다.",
     "explanation": "테스트용 정답은 '정답'이다.",
-    "correctChoiceId": 1,
+    "correctChoiceId": 49,
     "difficulty": 1,
     "choices": [
-      { "choiceId": 1, "text": "정답" },
-      { "choiceId": 2, "text": "오답1" },
-      { "choiceId": 3, "text": "오답2" },
-      { "choiceId": 4, "text": "오답3" }
+      {
+        "choiceId": 49,
+        "text": "정답"
+      },
+      {
+        "choiceId": 50,
+        "text": "오답1"
+      },
+      {
+        "choiceId": 51,
+        "text": "오답2"
+      },
+      {
+        "choiceId": 52,
+        "text": "오답3"
+      }
+    ]
+  },
+  {
+    "quizId": 14,
+    "categoryId": "CS",
+    "question": "운영체제의 핵심 역할은?",
+    "explanation": "운영체제는 CPU, 메모리, 입출력 장치 같은 하드웨어 자원을 관리한다.",
+    "correctChoiceId": 54,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 53,
+        "text": "앱 디자인 자동 생성"
+      },
+      {
+        "choiceId": 54,
+        "text": "하드웨어 자원 관리"
+      },
+      {
+        "choiceId": 55,
+        "text": "인터넷 연결 보장"
+      },
+      {
+        "choiceId": 56,
+        "text": "데이터 영구 백업"
+      }
+    ]
+  },
+  {
+    "quizId": 15,
+    "categoryId": "CS",
+    "question": "CPU 할당을 기다리는 프로세스 상태는?",
+    "explanation": "READY 상태는 실행 가능하지만 CPU를 아직 배정받지 못한 상태다.",
+    "correctChoiceId": 57,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 57,
+        "text": "READY"
+      },
+      {
+        "choiceId": 58,
+        "text": "RUNNING"
+      },
+      {
+        "choiceId": 59,
+        "text": "WAITING"
+      },
+      {
+        "choiceId": 60,
+        "text": "TERMINATED"
+      }
+    ]
+  },
+  {
+    "quizId": 16,
+    "categoryId": "CS",
+    "question": "커널 모드에서만 직접 수행할 수 있는 작업은?",
+    "explanation": "입출력 장치 제어 같은 특권 명령은 커널 모드에서만 실행할 수 있다.",
+    "correctChoiceId": 64,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 61,
+        "text": "문자열 연결"
+      },
+      {
+        "choiceId": 62,
+        "text": "배열 순회"
+      },
+      {
+        "choiceId": 63,
+        "text": "정수 덧셈"
+      },
+      {
+        "choiceId": 64,
+        "text": "I/O 장치 직접 제어"
+      }
+    ]
+  },
+  {
+    "quizId": 17,
+    "categoryId": "CS",
+    "question": "선점형 스케줄링의 특징은?",
+    "explanation": "선점형은 더 높은 우선순위 작업이 오면 실행 중인 프로세스의 CPU를 회수할 수 있다.",
+    "correctChoiceId": 67,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 65,
+        "text": "한 번 실행되면 종료까지 CPU를 유지한다"
+      },
+      {
+        "choiceId": 66,
+        "text": "입출력 작업만 스케줄링한다"
+      },
+      {
+        "choiceId": 67,
+        "text": "실행 중인 프로세스에서 CPU를 회수할 수 있다"
+      },
+      {
+        "choiceId": 68,
+        "text": "항상 하나의 프로세스만 존재한다"
+      }
+    ]
+  },
+  {
+    "quizId": 18,
+    "categoryId": "CS",
+    "question": "페이지 폴트가 발생하는 경우는?",
+    "explanation": "참조한 페이지가 현재 물리 메모리에 없으면 페이지 폴트가 발생한다.",
+    "correctChoiceId": 72,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 69,
+        "text": "CPU 온도가 높을 때"
+      },
+      {
+        "choiceId": 70,
+        "text": "프로세스가 종료될 때"
+      },
+      {
+        "choiceId": 71,
+        "text": "문맥 교환이 시작될 때"
+      },
+      {
+        "choiceId": 72,
+        "text": "참조한 페이지가 메모리에 없을 때"
+      }
+    ]
+  },
+  {
+    "quizId": 19,
+    "categoryId": "CS",
+    "question": "가상 메모리의 장점으로 맞는 것은?",
+    "explanation": "가상 메모리는 실제 RAM보다 큰 논리 주소 공간을 제공하고 메모리 활용을 돕는다.",
+    "correctChoiceId": 74,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 73,
+        "text": "물리 메모리 접근을 없앤다"
+      },
+      {
+        "choiceId": 74,
+        "text": "실제 메모리보다 큰 주소 공간을 제공한다"
+      },
+      {
+        "choiceId": 75,
+        "text": "디스크 사용을 완전히 없앤다"
+      },
+      {
+        "choiceId": 76,
+        "text": "페이지 폴트를 방지한다"
+      }
+    ]
+  },
+  {
+    "quizId": 20,
+    "categoryId": "CS",
+    "question": "문맥 교환 시 주로 저장하는 정보는?",
+    "explanation": "다시 실행하려면 레지스터 값과 프로그램 카운터 같은 실행 문맥을 보존해야 한다.",
+    "correctChoiceId": 77,
+    "difficulty": 4,
+    "choices": [
+      {
+        "choiceId": 77,
+        "text": "레지스터와 프로그램 카운터"
+      },
+      {
+        "choiceId": 78,
+        "text": "파일 시스템 전체"
+      },
+      {
+        "choiceId": 79,
+        "text": "네트워크 대역폭"
+      },
+      {
+        "choiceId": 80,
+        "text": "BIOS 설정"
+      }
+    ]
+  },
+  {
+    "quizId": 21,
+    "categoryId": "CS",
+    "question": "LRU 페이지 교체 방식이 제거하는 페이지는?",
+    "explanation": "LRU는 가장 오랫동안 참조되지 않은 페이지를 교체 대상으로 선택한다.",
+    "correctChoiceId": 82,
+    "difficulty": 4,
+    "choices": [
+      {
+        "choiceId": 81,
+        "text": "가장 자주 쓰인 페이지"
+      },
+      {
+        "choiceId": 82,
+        "text": "가장 오래 사용되지 않은 페이지"
+      },
+      {
+        "choiceId": 83,
+        "text": "가장 작은 페이지 번호"
+      },
+      {
+        "choiceId": 84,
+        "text": "가장 최근에 적재된 페이지"
+      }
+    ]
+  },
+  {
+    "quizId": 22,
+    "categoryId": "CS",
+    "question": "세마포어의 P(wait) 연산 의미는?",
+    "explanation": "P 연산은 자원을 획득하려고 시도하고 사용할 수 없으면 대기한다.",
+    "correctChoiceId": 87,
+    "difficulty": 5,
+    "choices": [
+      {
+        "choiceId": 85,
+        "text": "자원을 즉시 해제한다"
+      },
+      {
+        "choiceId": 86,
+        "text": "프로세스를 종료한다"
+      },
+      {
+        "choiceId": 87,
+        "text": "자원 획득을 시도하고 필요하면 대기한다"
+      },
+      {
+        "choiceId": 88,
+        "text": "우선순위를 초기화한다"
+      }
+    ]
+  },
+  {
+    "quizId": 23,
+    "categoryId": "CS",
+    "question": "교착상태 회피 알고리즘으로 알려진 것은?",
+    "explanation": "은행원 알고리즘은 자원 할당 후에도 안전 상태를 유지하는지 검사해 교착상태를 회피한다.",
+    "correctChoiceId": 92,
+    "difficulty": 5,
+    "choices": [
+      {
+        "choiceId": 89,
+        "text": "라운드 로빈"
+      },
+      {
+        "choiceId": 90,
+        "text": "FCFS"
+      },
+      {
+        "choiceId": 91,
+        "text": "에이징"
+      },
+      {
+        "choiceId": 92,
+        "text": "은행원 알고리즘"
+      }
+    ]
+  },
+  {
+    "quizId": 24,
+    "categoryId": "CS",
+    "question": "큐(Queue) 구조의 처리 순서는?",
+    "explanation": "큐는 먼저 들어온 데이터가 먼저 나오는 FIFO 구조다.",
+    "correctChoiceId": 93,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 93,
+        "text": "FIFO"
+      },
+      {
+        "choiceId": 94,
+        "text": "LIFO"
+      },
+      {
+        "choiceId": 95,
+        "text": "우선순위 순"
+      },
+      {
+        "choiceId": 96,
+        "text": "무작위 순"
+      }
+    ]
+  },
+  {
+    "quizId": 25,
+    "categoryId": "CS",
+    "question": "배열에서 인덱스로 원소에 접근하는 시간복잡도는?",
+    "explanation": "배열은 메모리에 연속 저장되므로 인덱스를 통한 임의 접근이 O(1)이다.",
+    "correctChoiceId": 98,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 97,
+        "text": "O(n)"
+      },
+      {
+        "choiceId": 98,
+        "text": "O(1)"
+      },
+      {
+        "choiceId": 99,
+        "text": "O(log n)"
+      },
+      {
+        "choiceId": 100,
+        "text": "O(n log n)"
+      }
+    ]
+  },
+  {
+    "quizId": 26,
+    "categoryId": "CS",
+    "question": "연결 리스트가 배열보다 삽입에 유리한 이유는?",
+    "explanation": "연결 리스트는 노드 연결만 바꾸면 되므로 대량의 원소 이동이 필요 없다.",
+    "correctChoiceId": 103,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 101,
+        "text": "항상 더 적은 메모리를 사용해서"
+      },
+      {
+        "choiceId": 102,
+        "text": "인덱스 접근이 더 빨라서"
+      },
+      {
+        "choiceId": 103,
+        "text": "원소를 밀어내는 연속 이동이 필요 없어서"
+      },
+      {
+        "choiceId": 104,
+        "text": "정렬이 자동으로 유지돼서"
+      }
+    ]
+  },
+  {
+    "quizId": 27,
+    "categoryId": "CS",
+    "question": "해시 테이블의 평균 탐색 시간복잡도는?",
+    "explanation": "해시 함수가 잘 동작하면 해시 테이블의 평균 탐색은 O(1)에 가깝다.",
+    "correctChoiceId": 108,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 105,
+        "text": "O(n)"
+      },
+      {
+        "choiceId": 106,
+        "text": "O(log n)"
+      },
+      {
+        "choiceId": 107,
+        "text": "O(n log n)"
+      },
+      {
+        "choiceId": 108,
+        "text": "O(1)"
+      }
+    ]
+  },
+  {
+    "quizId": 28,
+    "categoryId": "CS",
+    "question": "최대 힙(Max Heap)의 루트 노드 특징은?",
+    "explanation": "최대 힙에서는 부모가 자식보다 크거나 같으므로 루트가 최댓값이다.",
+    "correctChoiceId": 110,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 109,
+        "text": "항상 최솟값을 가진다"
+      },
+      {
+        "choiceId": 110,
+        "text": "항상 최댓값을 가진다"
+      },
+      {
+        "choiceId": 111,
+        "text": "자식보다 항상 작다"
+      },
+      {
+        "choiceId": 112,
+        "text": "정렬된 중간값을 가진다"
+      }
+    ]
+  },
+  {
+    "quizId": 29,
+    "categoryId": "CS",
+    "question": "이진 탐색 트리를 중위 순회하면 어떤 순서가 되는가?",
+    "explanation": "이진 탐색 트리는 중위 순회 시 키가 오름차순으로 방문된다.",
+    "correctChoiceId": 113,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 113,
+        "text": "오름차순"
+      },
+      {
+        "choiceId": 114,
+        "text": "내림차순"
+      },
+      {
+        "choiceId": 115,
+        "text": "레벨 순"
+      },
+      {
+        "choiceId": 116,
+        "text": "무작위 순"
+      }
+    ]
+  },
+  {
+    "quizId": 30,
+    "categoryId": "CS",
+    "question": "간선 수가 적은 희소 그래프에 더 적합한 표현은?",
+    "explanation": "희소 그래프는 존재하는 간선만 저장하는 인접 리스트가 공간 효율이 좋다.",
+    "correctChoiceId": 119,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 117,
+        "text": "인접 행렬"
+      },
+      {
+        "choiceId": 118,
+        "text": "완전 이진 트리"
+      },
+      {
+        "choiceId": 119,
+        "text": "인접 리스트"
+      },
+      {
+        "choiceId": 120,
+        "text": "해시 충돌 표"
+      }
+    ]
+  },
+  {
+    "quizId": 31,
+    "categoryId": "CS",
+    "question": "Deque 자료구조의 특징은?",
+    "explanation": "Deque는 양쪽 끝에서 삽입과 삭제를 모두 지원하는 선형 자료구조다.",
+    "correctChoiceId": 124,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 121,
+        "text": "중간 위치에서만 삭제 가능"
+      },
+      {
+        "choiceId": 122,
+        "text": "한쪽 끝에서만 삽입 가능"
+      },
+      {
+        "choiceId": 123,
+        "text": "정렬 상태를 항상 유지"
+      },
+      {
+        "choiceId": 124,
+        "text": "양쪽 끝에서 삽입과 삭제 가능"
+      }
+    ]
+  },
+  {
+    "quizId": 32,
+    "categoryId": "CS",
+    "question": "원형 큐에서 front와 rear만 같을 때 생기는 문제는?",
+    "explanation": "구현 방식에 따라 같은 상태가 공백과 포화를 모두 의미할 수 있어 추가 조건이 필요하다.",
+    "correctChoiceId": 126,
+    "difficulty": 4,
+    "choices": [
+      {
+        "choiceId": 125,
+        "text": "정렬 순서가 뒤집힌다"
+      },
+      {
+        "choiceId": 126,
+        "text": "빈 상태와 가득 찬 상태를 구분하기 어렵다"
+      },
+      {
+        "choiceId": 127,
+        "text": "모든 원소가 자동 삭제된다"
+      },
+      {
+        "choiceId": 128,
+        "text": "해시 충돌이 발생한다"
+      }
+    ]
+  },
+  {
+    "quizId": 33,
+    "categoryId": "CS",
+    "question": "Trie 자료구조가 특히 적합한 작업은?",
+    "explanation": "Trie는 문자열의 공통 접두사를 공유해 prefix 검색과 자동완성에 적합하다.",
+    "correctChoiceId": 129,
+    "difficulty": 5,
+    "choices": [
+      {
+        "choiceId": 129,
+        "text": "문자열 접두사 검색"
+      },
+      {
+        "choiceId": 130,
+        "text": "힙 정렬 수행"
+      },
+      {
+        "choiceId": 131,
+        "text": "최단 경로 계산"
+      },
+      {
+        "choiceId": 132,
+        "text": "프로세스 문맥 교환"
+      }
+    ]
+  },
+  {
+    "quizId": 34,
+    "categoryId": "CS",
+    "question": "CPU 내부에서 연산에 가장 직접적으로 사용되는 저장장치는?",
+    "explanation": "레지스터는 CPU 내부에 있어 가장 빠르게 접근되는 저장장치다.",
+    "correctChoiceId": 134,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 133,
+        "text": "하드디스크"
+      },
+      {
+        "choiceId": 134,
+        "text": "레지스터"
+      },
+      {
+        "choiceId": 135,
+        "text": "SSD"
+      },
+      {
+        "choiceId": 136,
+        "text": "광디스크"
+      }
+    ]
+  },
+  {
+    "quizId": 35,
+    "categoryId": "CS",
+    "question": "전원이 꺼져도 내용이 유지되는 메모리는?",
+    "explanation": "ROM은 비휘발성 메모리라 전원이 꺼져도 저장된 내용이 유지된다.",
+    "correctChoiceId": 139,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 137,
+        "text": "RAM"
+      },
+      {
+        "choiceId": 138,
+        "text": "캐시 메모리"
+      },
+      {
+        "choiceId": 139,
+        "text": "ROM"
+      },
+      {
+        "choiceId": 140,
+        "text": "레지스터"
+      }
+    ]
+  },
+  {
+    "quizId": 36,
+    "categoryId": "CS",
+    "question": "명령어 사이클의 일반적인 순서는?",
+    "explanation": "CPU는 보통 명령어를 가져오고(fetch), 해독한 뒤(decode), 실행(execute)한다.",
+    "correctChoiceId": 141,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 141,
+        "text": "Fetch -> Decode -> Execute"
+      },
+      {
+        "choiceId": 142,
+        "text": "Decode -> Execute -> Fetch"
+      },
+      {
+        "choiceId": 143,
+        "text": "Execute -> Fetch -> Decode"
+      },
+      {
+        "choiceId": 144,
+        "text": "Fetch -> Execute -> Compile"
+      }
+    ]
+  },
+  {
+    "quizId": 37,
+    "categoryId": "CS",
+    "question": "Little Endian 방식의 설명으로 맞는 것은?",
+    "explanation": "Little Endian은 하위 바이트를 더 낮은 메모리 주소에 저장한다.",
+    "correctChoiceId": 148,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 145,
+        "text": "상위 바이트를 낮은 주소에 저장한다"
+      },
+      {
+        "choiceId": 146,
+        "text": "바이트 순서를 항상 유지하지 않는다"
+      },
+      {
+        "choiceId": 147,
+        "text": "문자열에만 적용된다"
+      },
+      {
+        "choiceId": 148,
+        "text": "하위 바이트를 낮은 주소에 저장한다"
+      }
+    ]
+  },
+  {
+    "quizId": 38,
+    "categoryId": "CS",
+    "question": "최근 접근한 데이터를 곧 다시 사용할 가능성이 높다는 지역성은?",
+    "explanation": "시간 지역성은 최근 참조한 데이터나 명령어를 가까운 미래에 다시 참조할 가능성이 높다는 성질이다.",
+    "correctChoiceId": 150,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 149,
+        "text": "공간 지역성"
+      },
+      {
+        "choiceId": 150,
+        "text": "시간 지역성"
+      },
+      {
+        "choiceId": 151,
+        "text": "참조 투명성"
+      },
+      {
+        "choiceId": 152,
+        "text": "순차 일관성"
+      }
+    ]
+  },
+  {
+    "quizId": 39,
+    "categoryId": "CS",
+    "question": "명령어 파이프라이닝의 주된 목적은?",
+    "explanation": "파이프라이닝은 여러 명령어 단계를 겹쳐 수행해 전체 처리량을 높인다.",
+    "correctChoiceId": 153,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 153,
+        "text": "여러 명령어의 처리 단계를 겹쳐 처리량을 높인다"
+      },
+      {
+        "choiceId": 154,
+        "text": "모든 명령어를 한 클록에 끝낸다"
+      },
+      {
+        "choiceId": 155,
+        "text": "메모리 용량을 자동으로 늘린다"
+      },
+      {
+        "choiceId": 156,
+        "text": "보조기억장치를 캐시로 바꾼다"
+      }
+    ]
+  },
+  {
+    "quizId": 40,
+    "categoryId": "CS",
+    "question": "Direct Mapped Cache에서 충돌 미스가 자주 생기는 이유는?",
+    "explanation": "여러 메모리 블록이 같은 캐시 라인 하나에만 매핑되면 서로를 계속 밀어내며 충돌 미스가 발생한다.",
+    "correctChoiceId": 159,
+    "difficulty": 4,
+    "choices": [
+      {
+        "choiceId": 157,
+        "text": "모든 블록이 모든 라인에 자유롭게 저장돼서"
+      },
+      {
+        "choiceId": 158,
+        "text": "캐시가 메모리보다 항상 커서"
+      },
+      {
+        "choiceId": 159,
+        "text": "서로 다른 블록이 같은 캐시 라인에 매핑될 수 있어서"
+      },
+      {
+        "choiceId": 160,
+        "text": "CPU가 레지스터를 사용하지 않아서"
+      }
+    ]
+  },
+  {
+    "quizId": 41,
+    "categoryId": "CS",
+    "question": "인터럽트가 발생했을 때 CPU가 일반적으로 먼저 하는 일은?",
+    "explanation": "현재 작업을 나중에 재개할 수 있도록 실행 문맥을 저장한 뒤 인터럽트 서비스 루틴으로 이동한다.",
+    "correctChoiceId": 162,
+    "difficulty": 4,
+    "choices": [
+      {
+        "choiceId": 161,
+        "text": "메인 메모리를 모두 초기화한다"
+      },
+      {
+        "choiceId": 162,
+        "text": "현재 실행 문맥을 저장한다"
+      },
+      {
+        "choiceId": 163,
+        "text": "운영체제를 종료한다"
+      },
+      {
+        "choiceId": 164,
+        "text": "캐시를 비운다"
+      }
+    ]
+  },
+  {
+    "quizId": 42,
+    "categoryId": "CS",
+    "question": "DMA(Direct Memory Access)의 주된 목적은?",
+    "explanation": "DMA는 입출력 장치가 CPU의 개입을 최소화하고 메모리와 직접 데이터 전송하도록 돕는다.",
+    "correctChoiceId": 168,
+    "difficulty": 5,
+    "choices": [
+      {
+        "choiceId": 165,
+        "text": "CPU 클록 속도를 높인다"
+      },
+      {
+        "choiceId": 166,
+        "text": "명령어를 더 작게 압축한다"
+      },
+      {
+        "choiceId": 167,
+        "text": "캐시 교체 알고리즘을 단순화한다"
+      },
+      {
+        "choiceId": 168,
+        "text": "I/O와 메모리 간 전송에서 CPU 부담을 줄인다"
+      }
+    ]
+  },
+  {
+    "quizId": 43,
+    "categoryId": "CS",
+    "question": "RISC 아키텍처의 특징으로 가장 적절한 것은?",
+    "explanation": "RISC는 단순한 명령어를 빠르게 수행하도록 설계되며 보통 명령어 형식이 비교적 단순하다.",
+    "correctChoiceId": 169,
+    "difficulty": 5,
+    "choices": [
+      {
+        "choiceId": 169,
+        "text": "단순한 명령어를 중심으로 빠른 실행을 지향한다"
+      },
+      {
+        "choiceId": 170,
+        "text": "복잡한 명령어 하나로 많은 작업을 처리하는 데 집중한다"
+      },
+      {
+        "choiceId": 171,
+        "text": "반드시 마이크로코드를 사용하지 않는다"
+      },
+      {
+        "choiceId": 172,
+        "text": "주기억장치 없이도 실행 가능하다"
+      }
+    ]
+  },
+  {
+    "quizId": 44,
+    "categoryId": "CS",
+    "question": "DBMS의 주된 역할은?",
+    "explanation": "DBMS는 데이터를 저장, 조회, 갱신하고 동시성 및 무결성을 관리한다.",
+    "correctChoiceId": 174,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 173,
+        "text": "CPU 클록 속도 향상"
+      },
+      {
+        "choiceId": 174,
+        "text": "데이터 저장과 관리"
+      },
+      {
+        "choiceId": 175,
+        "text": "운영체제 커널 대체"
+      },
+      {
+        "choiceId": 176,
+        "text": "네트워크 패킷 암호화"
+      }
+    ]
+  },
+  {
+    "quizId": 45,
+    "categoryId": "CS",
+    "question": "PRIMARY KEY 제약 조건의 특징으로 맞는 것은?",
+    "explanation": "PRIMARY KEY는 각 행을 유일하게 식별해야 하므로 중복과 NULL을 허용하지 않는다.",
+    "correctChoiceId": 179,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 177,
+        "text": "중복은 허용하지만 NULL은 허용하지 않는다"
+      },
+      {
+        "choiceId": 178,
+        "text": "NULL은 허용하지만 중복은 허용하지 않는다"
+      },
+      {
+        "choiceId": 179,
+        "text": "중복과 NULL을 모두 허용하지 않는다"
+      },
+      {
+        "choiceId": 180,
+        "text": "중복과 NULL을 모두 허용한다"
+      }
+    ]
+  },
+  {
+    "quizId": 46,
+    "categoryId": "CS",
+    "question": "트랜잭션의 ACID 중 Atomicity 의미는?",
+    "explanation": "Atomicity는 트랜잭션이 전부 성공하거나 전부 실패해야 함을 뜻한다.",
+    "correctChoiceId": 181,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 181,
+        "text": "모든 작업이 함께 반영되거나 전혀 반영되지 않는다"
+      },
+      {
+        "choiceId": 182,
+        "text": "항상 가장 빠르게 실행된다"
+      },
+      {
+        "choiceId": 183,
+        "text": "서버가 재시작돼도 메모리에 남는다"
+      },
+      {
+        "choiceId": 184,
+        "text": "같은 쿼리를 동시에 여러 번 실행한다"
+      }
+    ]
+  },
+  {
+    "quizId": 47,
+    "categoryId": "CS",
+    "question": "FOREIGN KEY의 주된 목적은?",
+    "explanation": "FOREIGN KEY는 테이블 간 참조 관계를 강제해 참조 무결성을 유지한다.",
+    "correctChoiceId": 188,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 185,
+        "text": "행의 정렬 순서를 강제한다"
+      },
+      {
+        "choiceId": 186,
+        "text": "중복 행을 자동 제거한다"
+      },
+      {
+        "choiceId": 187,
+        "text": "인덱스를 자동 압축한다"
+      },
+      {
+        "choiceId": 188,
+        "text": "테이블 간 참조 무결성을 보장한다"
+      }
+    ]
+  },
+  {
+    "quizId": 48,
+    "categoryId": "CS",
+    "question": "정규화의 주된 목적은?",
+    "explanation": "정규화는 데이터 중복을 줄이고 삽입, 수정, 삭제 이상 현상을 완화하는 데 목적이 있다.",
+    "correctChoiceId": 190,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 189,
+        "text": "모든 테이블을 하나로 합치기 위해"
+      },
+      {
+        "choiceId": 190,
+        "text": "중복을 줄이고 이상 현상을 방지하기 위해"
+      },
+      {
+        "choiceId": 191,
+        "text": "모든 컬럼을 문자열로 저장하기 위해"
+      },
+      {
+        "choiceId": 192,
+        "text": "조인을 사용할 수 없게 만들기 위해"
+      }
+    ]
+  },
+  {
+    "quizId": 49,
+    "categoryId": "CS",
+    "question": "인덱스를 과도하게 생성했을 때 생길 수 있는 단점은?",
+    "explanation": "인덱스가 많으면 조회 일부는 빨라질 수 있지만 쓰기 시 인덱스도 함께 갱신해야 해 오버헤드가 커진다.",
+    "correctChoiceId": 195,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 193,
+        "text": "모든 조인이 금지된다"
+      },
+      {
+        "choiceId": 194,
+        "text": "PRIMARY KEY를 사용할 수 없게 된다"
+      },
+      {
+        "choiceId": 195,
+        "text": "INSERT와 UPDATE 성능이 저하될 수 있다"
+      },
+      {
+        "choiceId": 196,
+        "text": "트랜잭션을 사용할 수 없게 된다"
+      }
+    ]
+  },
+  {
+    "quizId": 50,
+    "categoryId": "CS",
+    "question": "복합 인덱스가 (A, B) 순서로 있을 때 일반적으로 인덱스를 활용하기 쉬운 조건은?",
+    "explanation": "복합 인덱스는 보통 선행 컬럼부터 사용하는 leftmost prefix 규칙의 영향을 받는다.",
+    "correctChoiceId": 197,
+    "difficulty": 4,
+    "choices": [
+      {
+        "choiceId": 197,
+        "text": "A만 조건에 쓰거나 A와 B를 함께 조건에 쓸 때"
+      },
+      {
+        "choiceId": 198,
+        "text": "B만 조건에 쓸 때만"
+      },
+      {
+        "choiceId": 199,
+        "text": "A와 무관하게 모든 컬럼 조건에서 동일하게"
+      },
+      {
+        "choiceId": 200,
+        "text": "복합 인덱스는 WHERE 절에서 사용할 수 없다"
+      }
+    ]
+  },
+  {
+    "quizId": 51,
+    "categoryId": "CS",
+    "question": "REPEATABLE READ 격리 수준이 방지하는 현상은?",
+    "explanation": "REPEATABLE READ는 같은 행을 두 번 읽었을 때 값이 바뀌는 non-repeatable read를 방지한다.",
+    "correctChoiceId": 202,
+    "difficulty": 4,
+    "choices": [
+      {
+        "choiceId": 201,
+        "text": "컴파일 오류"
+      },
+      {
+        "choiceId": 202,
+        "text": "Non-repeatable read"
+      },
+      {
+        "choiceId": 203,
+        "text": "인덱스 단편화"
+      },
+      {
+        "choiceId": 204,
+        "text": "정규화 위반"
+      }
+    ]
+  },
+  {
+    "quizId": 52,
+    "categoryId": "CS",
+    "question": "B+Tree 인덱스가 범위 검색에 자주 쓰이는 이유는?",
+    "explanation": "B+Tree는 키가 정렬된 상태로 유지되고 리프 노드가 순차 접근에 유리해 범위 검색 효율이 좋다.",
+    "correctChoiceId": 208,
+    "difficulty": 5,
+    "choices": [
+      {
+        "choiceId": 205,
+        "text": "해시처럼 항상 한 번에 정확히 찾기 때문에"
+      },
+      {
+        "choiceId": 206,
+        "text": "모든 데이터를 메모리에만 저장하기 때문에"
+      },
+      {
+        "choiceId": 207,
+        "text": "조인을 자동으로 수행하기 때문에"
+      },
+      {
+        "choiceId": 208,
+        "text": "키 정렬과 리프 노드 순차 접근에 유리하기 때문에"
+      }
+    ]
+  },
+  {
+    "quizId": 53,
+    "categoryId": "CS",
+    "question": "MVCC의 핵심 아이디어로 가장 적절한 것은?",
+    "explanation": "MVCC는 여러 버전의 데이터를 활용해 읽기와 쓰기 충돌을 줄이고 일관된 스냅샷 조회를 돕는다.",
+    "correctChoiceId": 209,
+    "difficulty": 5,
+    "choices": [
+      {
+        "choiceId": 209,
+        "text": "데이터의 여러 버전을 두고 스냅샷 기반 읽기를 지원한다"
+      },
+      {
+        "choiceId": 210,
+        "text": "모든 트랜잭션을 단일 스레드로만 실행한다"
+      },
+      {
+        "choiceId": 211,
+        "text": "인덱스를 사용하지 않고 항상 전체 스캔한다"
+      },
+      {
+        "choiceId": 212,
+        "text": "외래 키를 모두 제거해 충돌을 막는다"
+      }
+    ]
+  },
+  {
+    "quizId": 54,
+    "categoryId": "CS",
+    "question": "IP 주소를 이용해 서로 다른 네트워크 사이에서 패킷을 전달하는 장비는?",
+    "explanation": "라우터는 목적지 IP를 보고 네트워크 간 패킷 전달 경로를 결정한다.",
+    "correctChoiceId": 214,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 213,
+        "text": "허브"
+      },
+      {
+        "choiceId": 214,
+        "text": "라우터"
+      },
+      {
+        "choiceId": 215,
+        "text": "리피터"
+      },
+      {
+        "choiceId": 216,
+        "text": "NIC"
+      }
+    ]
+  },
+  {
+    "quizId": 55,
+    "categoryId": "CS",
+    "question": "TCP가 제공하는 특성으로 맞는 것은?",
+    "explanation": "TCP는 연결 지향이며 순서 보장과 재전송을 통해 신뢰성을 제공한다.",
+    "correctChoiceId": 220,
+    "difficulty": 1,
+    "choices": [
+      {
+        "choiceId": 217,
+        "text": "비연결 지향이며 순서를 보장하지 않는다"
+      },
+      {
+        "choiceId": 218,
+        "text": "브로드캐스트만 지원한다"
+      },
+      {
+        "choiceId": 219,
+        "text": "항상 지연이 가장 짧다"
+      },
+      {
+        "choiceId": 220,
+        "text": "신뢰성 있는 연결 지향 전송을 제공한다"
+      }
+    ]
+  },
+  {
+    "quizId": 56,
+    "categoryId": "CS",
+    "question": "OSI 7계층에서 종단 간 프로세스 간 통신을 담당하는 계층은?",
+    "explanation": "전송 계층은 포트 번호를 사용해 종단 간 프로세스 통신을 담당한다.",
+    "correctChoiceId": 223,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 221,
+        "text": "물리 계층"
+      },
+      {
+        "choiceId": 222,
+        "text": "데이터링크 계층"
+      },
+      {
+        "choiceId": 223,
+        "text": "전송 계층"
+      },
+      {
+        "choiceId": 224,
+        "text": "네트워크 계층"
+      }
+    ]
+  },
+  {
+    "quizId": 57,
+    "categoryId": "CS",
+    "question": "같은 LAN에서 IP 주소에 대응하는 MAC 주소를 알아내는 프로토콜은?",
+    "explanation": "ARP는 동일 네트워크에서 IP 주소에 해당하는 MAC 주소를 조회할 때 사용된다.",
+    "correctChoiceId": 225,
+    "difficulty": 2,
+    "choices": [
+      {
+        "choiceId": 225,
+        "text": "ARP"
+      },
+      {
+        "choiceId": 226,
+        "text": "BGP"
+      },
+      {
+        "choiceId": 227,
+        "text": "ICMP"
+      },
+      {
+        "choiceId": 228,
+        "text": "FTP"
+      }
+    ]
+  },
+  {
+    "quizId": 58,
+    "categoryId": "CS",
+    "question": "NAT(Network Address Translation)를 사용하는 주된 이유는?",
+    "explanation": "NAT는 여러 사설 IP 호스트가 적은 수의 공인 IP를 공유하도록 도와 IPv4 주소를 절약한다.",
+    "correctChoiceId": 230,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 229,
+        "text": "모든 패킷을 자동 암호화하기 위해"
+      },
+      {
+        "choiceId": 230,
+        "text": "사설 IP 대역이 공인 IP를 공유하게 하기 위해"
+      },
+      {
+        "choiceId": 231,
+        "text": "TCP를 UDP로 변환하기 위해"
+      },
+      {
+        "choiceId": 232,
+        "text": "LAN 내부 스위칭 속도를 높이기 위해"
+      }
+    ]
+  },
+  {
+    "quizId": 59,
+    "categoryId": "CS",
+    "question": "서브넷 마스크 255.255.255.0은 CIDR로 무엇에 해당하는가?",
+    "explanation": "255.255.255.0은 앞의 24비트가 네트워크 비트인 /24를 의미한다.",
+    "correctChoiceId": 235,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 233,
+        "text": "/8"
+      },
+      {
+        "choiceId": 234,
+        "text": "/16"
+      },
+      {
+        "choiceId": 235,
+        "text": "/24"
+      },
+      {
+        "choiceId": 236,
+        "text": "/32"
+      }
+    ]
+  },
+  {
+    "quizId": 60,
+    "categoryId": "CS",
+    "question": "TLS의 주요 목적은?",
+    "explanation": "TLS는 통신 구간의 암호화와 무결성 보호, 상대방 인증을 제공한다.",
+    "correctChoiceId": 240,
+    "difficulty": 3,
+    "choices": [
+      {
+        "choiceId": 237,
+        "text": "패킷 라우팅 경로 최적화"
+      },
+      {
+        "choiceId": 238,
+        "text": "MAC 주소 자동 할당"
+      },
+      {
+        "choiceId": 239,
+        "text": "UDP를 TCP로 변환"
+      },
+      {
+        "choiceId": 240,
+        "text": "통신 내용의 암호화와 무결성 보호"
+      }
+    ]
+  },
+  {
+    "quizId": 61,
+    "categoryId": "CS",
+    "question": "라우팅 프로토콜 중 자율 시스템(AS) 사이의 경로 교환에 주로 사용되는 것은?",
+    "explanation": "BGP는 인터넷에서 AS 간 라우팅 정보를 교환하는 대표적인 외부 게이트웨이 프로토콜이다.",
+    "correctChoiceId": 241,
+    "difficulty": 4,
+    "choices": [
+      {
+        "choiceId": 241,
+        "text": "BGP"
+      },
+      {
+        "choiceId": 242,
+        "text": "ARP"
+      },
+      {
+        "choiceId": 243,
+        "text": "DHCP"
+      },
+      {
+        "choiceId": 244,
+        "text": "SNMP"
+      }
+    ]
+  },
+  {
+    "quizId": 62,
+    "categoryId": "CS",
+    "question": "TCP의 혼잡 제어에서 일반적으로 패킷 손실 신호로 간주하는 것은?",
+    "explanation": "TCP는 주로 타임아웃이나 중복 ACK를 혼잡 징후로 보고 전송 속도를 줄인다.",
+    "correctChoiceId": 246,
+    "difficulty": 4,
+    "choices": [
+      {
+        "choiceId": 245,
+        "text": "DNS 응답 성공"
+      },
+      {
+        "choiceId": 246,
+        "text": "타임아웃 또는 중복 ACK"
+      },
+      {
+        "choiceId": 247,
+        "text": "포트 번호 증가"
+      },
+      {
+        "choiceId": 248,
+        "text": "TTL 값이 64인 경우"
+      }
+    ]
+  },
+  {
+    "quizId": 63,
+    "categoryId": "CS",
+    "question": "HTTP/1.1의 keep-alive가 주는 이점으로 가장 적절한 것은?",
+    "explanation": "지속 연결을 사용하면 요청마다 새 TCP 연결을 맺는 비용을 줄여 지연과 오버헤드를 낮출 수 있다.",
+    "correctChoiceId": 251,
+    "difficulty": 5,
+    "choices": [
+      {
+        "choiceId": 249,
+        "text": "모든 응답을 압축 없이 보낸다"
+      },
+      {
+        "choiceId": 250,
+        "text": "패킷 손실을 완전히 제거한다"
+      },
+      {
+        "choiceId": 251,
+        "text": "여러 요청에 같은 TCP 연결을 재사용할 수 있다"
+      },
+      {
+        "choiceId": 252,
+        "text": "DNS 조회를 생략한다"
+      }
     ]
   }
 ]
