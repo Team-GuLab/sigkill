@@ -145,7 +145,7 @@ class ConsistencyRulesIntegrationTest {
     }
 
     private RoomInfoResponse joinActiveRoom(String roomId, Long userId) {
-        RoomInfoResponse roomInfoResponse = roomService.joinRoom(roomId, userId);
+        RoomInfoResponse roomInfoResponse = roomService.joinRoom(roomId, userId).roomInfoResponse();
         roomService.confirmJoin(roomId, userId);
         return roomInfoResponse;
     }

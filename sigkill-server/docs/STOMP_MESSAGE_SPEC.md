@@ -59,6 +59,10 @@
 - 타입: `RoomIdCommand`
 - 제약: `roomId`는 공백 불가(`@NotBlank`)
 - 사용 경로: `SEND /app/room/join`, `SEND /app/room/snapshot`
+- 선행 REST 의미:
+    - `POST /api/v1/rooms/{roomId}/join`은 같은 사용자/같은 방 재호출 시 현재 방 정보를 그대로 성공 재응답한다
+    - 같은 방 재호출은 기존 `PENDING` timeout을 연장하지 않으며 중복 `Player`를 만들지 않는다
+    - 다른 방에 이미 참가 중인 사용자의 호출만 `409 USER_ALREADY_IN_ROOM`이다
 - 클라이언트 순서:
     1. REST `POST /api/v1/rooms/{roomId}/join` 또는 `POST /api/v1/rooms`
     2. `SUBSCRIBE /topic/room/{roomId}`
@@ -136,6 +140,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
     - REST `POST /api/v1/rooms/{roomId}/join` 또는 `POST /api/v1/rooms`가 먼저 성공해야 함
     - `/topic/room/{roomId}` 구독 직후 가장 먼저 전송해야 함
 - 서버 동작:
+    - 같은 사용자의 같은 방 REST 재호출은 성공으로 재응답하지만 `PENDING` timeout은 유지한다
     - 첫 성공 호출에만 `PLAYER_JOIN`을 브로드캐스트한다
     - 이미 `ACTIVE`인 사용자의 재호출은 no-op 이다
     - REST 후 10초 안에 이 요청이 오지 않으면 서버가 `PENDING` 플레이어를 자동 정리한다

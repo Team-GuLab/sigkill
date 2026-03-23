@@ -225,21 +225,32 @@ public class RoomService {
     /**
      * 플레이어 방 참가
      */
-    public RoomInfoResponse joinRoom(String roomId, Long userId) {
+    public JoinRoomResult joinRoom(String roomId, Long userId) {
         validateRoomId(roomId);
         User user = getUserOrThrow(userId);
 
-        RoomInfoResponse roomInfoResponse = roomLockManager.executeWithLock(roomId, () -> {
+        JoinRoomResult joinRoomResult = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
-            validateCanJoinRoom(userId, room);
+            Optional<Player> existingPlayer = playerRepository.findById(userId);
+            if (existingPlayer.isPresent()) {
+                return resolveJoinReplay(room, existingPlayer.get());
+            }
+
+            validateRoomJoinable(room);
             Player player = Player.create(userId, roomId, user.getNickname());
             playerRepository.create(player);
-            return RoomInfoResponse.of(room);
+            return JoinRoomResult.createdPending(RoomInfoResponse.of(room));
         });
 
-        log.info("'{}' 방 참가됨 - action=room-joined, roomId={}, userId={}, userNickname={}",
-                roomInfoResponse.roomTitle(), roomId, userId, user.getNickname());
-        return roomInfoResponse;
+        if (joinRoomResult.isCreatedPending()) {
+            log.info("'{}' 방 참가됨 - action=room-joined, roomId={}, userId={}, userNickname={}",
+                    joinRoomResult.roomInfoResponse().roomTitle(), roomId, userId, user.getNickname());
+        } else {
+            log.debug("'{}' 방 참가 재요청 무시됨 - action=room-join-replayed, roomId={}, userId={}, userNickname={}, outcome={}",
+                    joinRoomResult.roomInfoResponse().roomTitle(), roomId, userId, user.getNickname(), joinRoomResult.outcome());
+        }
+
+        return joinRoomResult;
     }
 
     /**
@@ -278,14 +289,25 @@ public class RoomService {
         });
     }
 
-    private void validateCanJoinRoom(Long userId, Room room) {
+    private JoinRoomResult resolveJoinReplay(Room room, Player player) {
+        if (!room.getRoomId().equals(player.getRoomId())) {
+            throw new CustomException(USER_ALREADY_IN_ROOM);
+        }
+
+        RoomInfoResponse roomInfoResponse = RoomInfoResponse.of(room);
+        if (player.isActive()) {
+            return JoinRoomResult.replayActive(roomInfoResponse);
+        }
+        return JoinRoomResult.replayPending(roomInfoResponse);
+    }
+
+    private void validateRoomJoinable(Room room) {
         if (room.isInGame()) {
             throw new CustomException(ROOM_IN_GAME);
         }
         if (isRoomFull(room)) {
             throw new CustomException(ROOM_FULL);
         }
-        validateUserNotInRoom(userId);
     }
 
     /**
@@ -495,5 +517,32 @@ public class RoomService {
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(USER_NOT_FOUND));
+    }
+
+    public enum JoinRoomOutcome {
+        CREATED_PENDING,
+        REPLAY_PENDING,
+        REPLAY_ACTIVE
+    }
+
+    public record JoinRoomResult(
+            RoomInfoResponse roomInfoResponse,
+            JoinRoomOutcome outcome
+    ) {
+        public static JoinRoomResult createdPending(RoomInfoResponse roomInfoResponse) {
+            return new JoinRoomResult(roomInfoResponse, JoinRoomOutcome.CREATED_PENDING);
+        }
+
+        public static JoinRoomResult replayPending(RoomInfoResponse roomInfoResponse) {
+            return new JoinRoomResult(roomInfoResponse, JoinRoomOutcome.REPLAY_PENDING);
+        }
+
+        public static JoinRoomResult replayActive(RoomInfoResponse roomInfoResponse) {
+            return new JoinRoomResult(roomInfoResponse, JoinRoomOutcome.REPLAY_ACTIVE);
+        }
+
+        public boolean isCreatedPending() {
+            return outcome == JoinRoomOutcome.CREATED_PENDING;
+        }
     }
 }

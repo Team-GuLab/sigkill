@@ -78,7 +78,7 @@ public class RoomController {
      */
     @Operation(
             summary = "방 입장",
-            description = "방 번호로 대기방에 입장합니다. 게임 진행 중이거나 정원이 가득 찬 방은 입장할 수 없습니다."
+            description = "방 번호로 대기방에 입장합니다. 같은 방으로의 재요청은 성공으로 재응답하며 pending timeout을 연장하지 않습니다."
     )
     @PostMapping("/rooms/{roomId}/join")
     public BaseResponse<RoomEnvelopeResponse> join(
@@ -86,8 +86,11 @@ public class RoomController {
             @Parameter(description = "4자리 방 번호", example = "1234")
             @PathVariable String roomId
     ) {
-        RoomInfoResponse roomInfoResponse = roomService.joinRoom(roomId, userId);
-        pendingRoomJoinOrchestrator.schedulePendingJoinTimeout(roomId, userId);
+        RoomService.JoinRoomResult joinRoomResult = roomService.joinRoom(roomId, userId);
+        RoomInfoResponse roomInfoResponse = joinRoomResult.roomInfoResponse();
+        if (joinRoomResult.isCreatedPending()) {
+            pendingRoomJoinOrchestrator.schedulePendingJoinTimeout(roomId, userId);
+        }
         RoomEnvelopeResponse response = RoomEnvelopeResponse.of(roomInfoResponse);
         return BaseResponse.onSuccess(response);
     }
