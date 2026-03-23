@@ -7,7 +7,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.exception.QuizErrorCode;
 import com.gulab.sigkillserver.domain.game.model.quiz.Quiz;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Nested;
@@ -42,13 +46,15 @@ class QuizMemoryRepositoryTest {
         @Test
         void 요청_개수가_보유_문제보다_많으면_가능한_개수만큼_반환한다() {
             // given
-            QuizMemoryRepository repository = createRepositoryWithDefaultResource();
+            Resource defaultQuizResource = new ClassPathResource("quiz/quiz.json");
+            QuizMemoryRepository repository = new QuizMemoryRepository(objectMapper, defaultQuizResource);
+            int availableQuizCount = countQuizzesByCategory(defaultQuizResource, "CS");
 
             // when
             List<Quiz> quizzes = repository.findByCategoryId("CS", 100);
 
             // then
-            assertThat(quizzes).hasSize(10);
+            assertThat(quizzes).hasSize(availableQuizCount);
             assertThat(quizzes).allMatch(quiz -> quiz.categoryId().equals("CS"));
             assertThat(quizzes)
                     .extracting(Quiz::difficulty)
@@ -224,5 +230,16 @@ class QuizMemoryRepositoryTest {
 
     private Resource jsonResource(String json) {
         return new ByteArrayResource(json.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private int countQuizzesByCategory(Resource resource, String categoryId) {
+        try (InputStream inputStream = resource.getInputStream()) {
+            Quiz[] quizzes = objectMapper.readValue(inputStream, Quiz[].class);
+            return (int) Arrays.stream(quizzes)
+                    .filter(quiz -> categoryId.equals(quiz.categoryId()))
+                    .count();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }
