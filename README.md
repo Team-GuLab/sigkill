@@ -16,12 +16,14 @@ SIGKILL
 </small>
 </div>
 
+<!--
 ###### 개발 배경
 
 ###### 서비스 아키텍처
 <div align="center">
     <img src="" width="640px"/>
 </div>
+-->
 
 ### ⚒️ 개발환경
 
