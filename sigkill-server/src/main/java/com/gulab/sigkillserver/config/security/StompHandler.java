@@ -166,8 +166,8 @@ public class StompHandler implements ChannelInterceptor {
                 .getRoomId();
 
         if (!player.getRoomId().equals(gameRoomId)) {
-            log.warn("[SUBSCRIBE] 실패: 게임 방 불일치 - userId={}, playerRoomId={}, gameRoomId={}, destination={}",
-                    userId, player.getRoomId(), gameRoomId, destination);
+            log.warn("[SUBSCRIBE] 실패: 게임 방 불일치 - userId={}, userNickname={}, playerRoomId={}, gameRoomId={}, destination={}",
+                    userId, player.getNickname(), player.getRoomId(), gameRoomId, destination);
             throw new AccessDeniedException("게임 구독 권한이 없습니다.");
         }
     }
@@ -177,8 +177,8 @@ public class StompHandler implements ChannelInterceptor {
             return;
         }
 
-        log.warn("[SUBSCRIBE] 실패: 다른 방 멤버 - userId={}, currentRoomId={}, destination={}",
-                userId, player.getRoomId(), destination);
+        log.warn("[SUBSCRIBE] 실패: 다른 방 멤버 - userId={}, userNickname={}, currentRoomId={}, destination={}",
+                userId, player.getNickname(), player.getRoomId(), destination);
         throw new AccessDeniedException("방 구독 권한이 없습니다.");
     }
 
