@@ -12,7 +12,7 @@ SIGKILL
 <a href="https://sigkill-quiz.kr/">배포 링크</a>
 <br />
 <small>
-2026.03~now
+2026.01.27~now
 </small>
 </div>
 
