@@ -53,6 +53,41 @@ export default function EnterPage() {
           </svg>
         </Button>
       </div>
+
+      <footer className="absolute bottom-4 flex w-full flex-wrap justify-evenly gap-y-2 bg-zinc-200 px-4 py-2">
+        <a
+          href="https://sites.google.com/view/sigkill-docs-1"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+        >
+          이용약관
+        </a>
+        <a
+          href="https://sites.google.com/view/sigkill-docs-2"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+        >
+          운영정책
+        </a>
+        <a
+          href="https://sites.google.com/view/sigkill-docs-3"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+        >
+          개인정보처리방침
+        </a>
+        <a
+          href="https://sites.google.com/view/sigkill-docs-4"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+        >
+          오픈소스 안내
+        </a>
+      </footer>
     </div>
   );
 }
