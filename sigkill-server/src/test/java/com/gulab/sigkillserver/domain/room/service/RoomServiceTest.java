@@ -126,8 +126,12 @@ class RoomServiceTest {
         return roomInfoResponse;
     }
 
+    private RoomService.JoinRoomResult joinRoomResult(String roomId, Long userId) {
+        return roomService.joinRoom(roomId, userId);
+    }
+
     private RoomInfoResponse joinActiveRoom(String roomId, Long userId) {
-        RoomInfoResponse roomInfoResponse = roomService.joinRoom(roomId, userId);
+        RoomInfoResponse roomInfoResponse = joinRoomResult(roomId, userId).roomInfoResponse();
         roomService.confirmJoin(roomId, userId);
         return roomInfoResponse;
     }
@@ -657,13 +661,14 @@ class RoomServiceTest {
             createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
 
             // when
-            RoomInfoResponse result = roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
+            RoomService.JoinRoomResult result = joinRoomResult(TEST_ROOM_ID, guest.getUserId());
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.roomId()).isEqualTo(TEST_ROOM_ID);
-            assertThat(result.roomTitle()).isEqualTo(TEST_ROOM_TITLE);
-            assertThat(result.hostId()).isEqualTo(host.getUserId());
+            assertThat(result.outcome()).isEqualTo(RoomService.JoinRoomOutcome.CREATED_PENDING);
+            assertThat(result.roomInfoResponse().roomId()).isEqualTo(TEST_ROOM_ID);
+            assertThat(result.roomInfoResponse().roomTitle()).isEqualTo(TEST_ROOM_TITLE);
+            assertThat(result.roomInfoResponse().hostId()).isEqualTo(host.getUserId());
             assertThat(playerRepository.existsByRoomIdAndUserId(TEST_ROOM_ID, guest.getUserId())).isTrue();
         }
 
@@ -706,17 +711,37 @@ class RoomServiceTest {
         }
 
         @Test
-        void 이미_현재_방에_참가한_플레이어일_경우_예외를_발생한다() {
+        void 이미_현재_방에_참가한_pending_플레이어일_경우_성공을_재응답한다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
             User guest = createAndSaveUser("guest-session", "게스트유저");
             createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
-            roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
+            joinRoomResult(TEST_ROOM_ID, guest.getUserId());
 
-            // when then
-            assertThrowsCustomExceptionWithCode(
-                    () -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()),
-                    RoomErrorCode.USER_ALREADY_IN_ROOM.name());
+            // when
+            RoomService.JoinRoomResult result = joinRoomResult(TEST_ROOM_ID, guest.getUserId());
+
+            // then
+            assertThat(result.outcome()).isEqualTo(RoomService.JoinRoomOutcome.REPLAY_PENDING);
+            assertThat(result.roomInfoResponse().roomId()).isEqualTo(TEST_ROOM_ID);
+            assertThat(playerRepository.countByRoomId(TEST_ROOM_ID)).isEqualTo(2);
+        }
+
+        @Test
+        void 이미_현재_방에_참가한_active_플레이어일_경우_성공을_재응답한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User guest = createAndSaveUser("guest-session", "게스트유저");
+            createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+            joinActiveRoom(TEST_ROOM_ID, guest.getUserId());
+
+            // when
+            RoomService.JoinRoomResult result = joinRoomResult(TEST_ROOM_ID, guest.getUserId());
+
+            // then
+            assertThat(result.outcome()).isEqualTo(RoomService.JoinRoomOutcome.REPLAY_ACTIVE);
+            assertThat(result.roomInfoResponse().roomId()).isEqualTo(TEST_ROOM_ID);
+            assertThat(playerRepository.countByRoomId(TEST_ROOM_ID)).isEqualTo(2);
         }
 
         @Test
@@ -727,7 +752,7 @@ class RoomServiceTest {
             User guest = createAndSaveUser("guest-session", "게스트유저");
             createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host1);
             createAndSaveRoomWithHost("9999", "다른 방", TEST_CAPACITY, host2);
-            roomService.joinRoom(TEST_ROOM_ID, guest.getUserId());
+            joinRoomResult(TEST_ROOM_ID, guest.getUserId());
 
             // when then
             assertThrowsCustomExceptionWithCode(
@@ -755,6 +780,23 @@ class RoomServiceTest {
         }
 
         @Test
+        void 같은_방_replay는_방이_가득_차도_성공한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User guest = createAndSaveUser("guest-session", "게스트유저");
+            Room room = createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, 2, host);
+            joinActiveRoom(TEST_ROOM_ID, guest.getUserId());
+
+            // when
+            RoomService.JoinRoomResult result = joinRoomResult(room.getRoomId(), guest.getUserId());
+
+            // then
+            assertThat(result.outcome()).isEqualTo(RoomService.JoinRoomOutcome.REPLAY_ACTIVE);
+            assertThat(result.roomInfoResponse().roomId()).isEqualTo(room.getRoomId());
+            assertThat(playerRepository.countByRoomId(room.getRoomId())).isEqualTo(2);
+        }
+
+        @Test
         void 게임_중인_방일_경우_예외를_발생한다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
@@ -766,6 +808,24 @@ class RoomServiceTest {
             assertThrowsCustomExceptionWithCode(
                     () -> roomService.joinRoom(TEST_ROOM_ID, guest.getUserId()),
                     RoomErrorCode.ROOM_IN_GAME.name());
+        }
+
+        @Test
+        void 같은_방_replay는_이미_게임중이어도_성공한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User guest = createAndSaveUser("guest-session", "게스트유저");
+            Room room = createAndSaveRoomWithHost(TEST_ROOM_ID, TEST_ROOM_TITLE, TEST_CAPACITY, host);
+            joinActiveRoom(TEST_ROOM_ID, guest.getUserId());
+            room.startGame();
+
+            // when
+            RoomService.JoinRoomResult result = joinRoomResult(TEST_ROOM_ID, guest.getUserId());
+
+            // then
+            assertThat(result.outcome()).isEqualTo(RoomService.JoinRoomOutcome.REPLAY_ACTIVE);
+            assertThat(result.roomInfoResponse().status()).isEqualTo(RoomStatus.INGAME);
+            assertThat(playerRepository.countByRoomId(room.getRoomId())).isEqualTo(2);
         }
     }
 
@@ -1289,7 +1349,7 @@ class RoomServiceTest {
             String roomId = roomService.createRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
 
             // when
-            RoomInfoResponse result = roomService.joinRoom(roomId, guest.getUserId());
+            RoomInfoResponse result = joinRoomResult(roomId, guest.getUserId()).roomInfoResponse();
 
             // then
             assertThat(result.roomId()).isEqualTo(roomId);
@@ -1336,7 +1396,7 @@ class RoomServiceTest {
             User host = createAndSaveUser("snapshot-active-host-session", "호스트");
             User guest = createAndSaveUser("snapshot-pending-guest-session", "게스트");
             String roomId = createActiveRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
-            roomService.joinRoom(roomId, guest.getUserId());
+            joinRoomResult(roomId, guest.getUserId());
 
             // when
             RoomSnapshotEvent result = roomService.snapshot(roomId, host.getUserId());
@@ -1353,7 +1413,7 @@ class RoomServiceTest {
             User host = createAndSaveUser("host-session", "호스트");
             User pendingGuest = createAndSaveUser("pending-guest-session", "게스트");
             String roomId = createActiveRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
-            roomService.joinRoom(roomId, pendingGuest.getUserId());
+            joinRoomResult(roomId, pendingGuest.getUserId());
 
             // when
             LeaveRoomResult result = roomService.leaveRoom(roomId, host.getUserId());
@@ -1372,7 +1432,7 @@ class RoomServiceTest {
             User host = createAndSaveUser("host-session", "호스트");
             User guest = createAndSaveUser("pending-guest-session", "게스트");
             String roomId = createActiveRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
-            roomService.joinRoom(roomId, guest.getUserId());
+            joinRoomResult(roomId, guest.getUserId());
             roomService.readyPlayer(roomId, guest.getUserId());
 
             // when
