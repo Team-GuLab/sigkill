@@ -74,6 +74,7 @@ public class StompEventListener {
     private void leaveRoomByDisconnect(Player player) {
         String roomId = player.getRoomId();
         Long userId = player.getUserId();
+        String nickname = player.getNickname();
         boolean wasActive = player.isActive();
 
         LeaveRoomResult leaveRoomResult;
@@ -81,12 +82,14 @@ public class StompEventListener {
             leaveRoomResult = roomService.leaveRoom(roomId, userId);
             pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(userId);
         } catch (RuntimeException e) {
-            log.warn("DISCONNECT 자동 퇴장 처리 실패 - roomId={}, userId={}, message={}", roomId, userId, e.getMessage());
+            log.warn("DISCONNECT 자동 퇴장 처리 실패 - roomId={}, userId={}, userNickname={}, message={}",
+                    roomId, userId, nickname, e.getMessage());
             return;
         }
 
         if (!wasActive) {
-            log.debug("DISCONNECT pending player cleaned - roomId={}, userId={}", roomId, userId);
+            log.debug("DISCONNECT pending player cleaned - roomId={}, userId={}, userNickname={}",
+                    roomId, userId, nickname);
             return;
         }
 
@@ -95,6 +98,7 @@ public class StompEventListener {
             messagingTemplate.convertAndSend("/topic/room/" + roomId, leaveRoomResult.hostChangedEvent());
         }
 
-        log.debug("DISCONNECT 자동 퇴장 처리 완료 - roomId={}, userId={}", roomId, userId);
+        log.debug("DISCONNECT 자동 퇴장 처리 완료 - roomId={}, userId={}, userNickname={}",
+                roomId, userId, nickname);
     }
 }

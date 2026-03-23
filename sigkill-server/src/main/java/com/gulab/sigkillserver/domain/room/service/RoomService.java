@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -171,8 +172,8 @@ public class RoomService {
                 Player hostPlayer = Player.create(userId, roomId, host.getNickname());
                 playerRepository.create(hostPlayer);
 
-                log.info("'{}' 방 생성됨 - action=room-created, roomId={}, hostId={}, capacity={}",
-                        room.getRoomTitle(), roomId, userId, resolvedCapacity);
+                log.info("'{}' 방 생성됨 - action=room-created, roomId={}, hostId={}, hostNickname={}, capacity={}",
+                        room.getRoomTitle(), roomId, userId, host.getNickname(), resolvedCapacity);
                 return RoomInfoResponse.of(room);
             } catch (CustomException e) {
                 if (ROOM_ID_ALREADY_EXISTS.name().equals(e.getErrorCode().getCode())) {
@@ -236,8 +237,8 @@ public class RoomService {
             return RoomInfoResponse.of(room);
         });
 
-        log.info("'{}' 방 참가됨 - action=room-joined, roomId={}, userId={}",
-                roomInfoResponse.roomTitle(), roomId, userId);
+        log.info("'{}' 방 참가됨 - action=room-joined, roomId={}, userId={}, userNickname={}",
+                roomInfoResponse.roomTitle(), roomId, userId, user.getNickname());
         return roomInfoResponse;
     }
 
@@ -246,9 +247,13 @@ public class RoomService {
      */
     public Optional<PlayerJoinEvent> confirmJoin(String roomId, Long userId) {
         validateRoomId(roomId);
+        AtomicReference<String> nickname = new AtomicReference<>("");
+        AtomicReference<String> roomTitle = new AtomicReference<>("");
         Optional<PlayerJoinEvent> playerJoinEvent = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, roomId);
+            nickname.set(player.getNickname());
+            roomTitle.set(room.getRoomTitle());
             if (player.isActive()) {
                 return Optional.empty();
             }
@@ -256,8 +261,8 @@ public class RoomService {
             return Optional.of(PlayerJoinEvent.of(room, PlayerInfo.of(player, room.getHostId())));
         });
 
-        log.info("'{}' 방 참가 확정됨 - action=room-join-confirmed, roomId={}, userId={}, broadcasted={}",
-                resolveRoomTitle(roomId), roomId, userId, playerJoinEvent.isPresent());
+        log.info("'{}' 방 참가 확정됨 - action=room-join-confirmed, roomId={}, userId={}, userNickname={}, broadcasted={}",
+                roomTitle.get(), roomId, userId, nickname.get(), playerJoinEvent.isPresent());
         return playerJoinEvent;
     }
 
@@ -306,10 +311,13 @@ public class RoomService {
         validateRoomId(roomId);
         AtomicBoolean roomDeleted = new AtomicBoolean(false);
         AtomicBoolean hostChanged = new AtomicBoolean(false);
-        String roomTitle = resolveRoomTitle(roomId);
+        AtomicReference<String> nickname = new AtomicReference<>("");
+        AtomicReference<String> roomTitle = new AtomicReference<>("");
         LeaveRoomResult leaveRoomResult = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            nickname.set(player.getNickname());
+            roomTitle.set(room.getRoomTitle());
             PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, room.getHostId());
 
             if (getPlayerCountInRoom(roomId) <= 1) {
@@ -335,8 +343,8 @@ public class RoomService {
             return LeaveRoomResult.of(playerLeftEvent);
         });
 
-        log.info("'{}' 방 퇴장 처리됨 - action=room-left, roomId={}, userId={}, roomDeleted={}, hostChanged={}",
-                roomTitle, roomId, userId, roomDeleted.get(), hostChanged.get());
+        log.info("'{}' 방 퇴장 처리됨 - action=room-left, roomId={}, userId={}, userNickname={}, roomDeleted={}, hostChanged={}",
+                roomTitle.get(), roomId, userId, nickname.get(), roomDeleted.get(), hostChanged.get());
         return leaveRoomResult;
     }
 
@@ -357,9 +365,13 @@ public class RoomService {
      */
     public PlayerReadyEvent readyPlayer(String roomId, Long userId) {
         validateRoomId(roomId);
+        AtomicReference<String> nickname = new AtomicReference<>("");
+        AtomicReference<String> roomTitle = new AtomicReference<>("");
         PlayerReadyEvent playerReadyEvent = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            nickname.set(player.getNickname());
+            roomTitle.set(room.getRoomTitle());
             validatePlayerNotHost(player, room);
             validateRoomNotInGame(room);
 
@@ -368,8 +380,8 @@ public class RoomService {
             boolean isAllReady = isAllGuestsReady(room);
             return PlayerReadyEvent.of(player, room.getHostId(), isAllReady);
         });
-        log.info("'{}' 방 플레이어 준비 완료 - action=player-ready, roomId={}, userId={}, allReady={}",
-                resolveRoomTitle(roomId), roomId, userId, playerReadyEvent.allReady());
+        log.info("'{}' 방 플레이어 준비 완료 - action=player-ready, roomId={}, userId={}, userNickname={}, allReady={}",
+                roomTitle.get(), roomId, userId, nickname.get(), playerReadyEvent.allReady());
 
         return playerReadyEvent;
     }
@@ -411,16 +423,20 @@ public class RoomService {
      */
     public PlayerUnreadyEvent unreadyPlayer(String roomId, Long userId) {
         validateRoomId(roomId);
+        AtomicReference<String> nickname = new AtomicReference<>("");
+        AtomicReference<String> roomTitle = new AtomicReference<>("");
         PlayerUnreadyEvent playerUnreadyEvent = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            nickname.set(player.getNickname());
+            roomTitle.set(room.getRoomTitle());
             validatePlayerNotHost(player, room);
             validateRoomNotInGame(room);
             player.unready();
             return PlayerUnreadyEvent.of(player, room.getHostId());
         });
-        log.info("'{}' 방 플레이어 준비 취소 - action=player-unready, roomId={}, userId={}",
-                resolveRoomTitle(roomId), roomId, userId);
+        log.info("'{}' 방 플레이어 준비 취소 - action=player-unready, roomId={}, userId={}, userNickname={}",
+                roomTitle.get(), roomId, userId, nickname.get());
         return playerUnreadyEvent;
     }
 
@@ -429,9 +445,13 @@ public class RoomService {
      */
     public GameStartEvent startGame(String roomId, Long userId) {
         validateRoomId(roomId);
+        AtomicReference<String> hostNickname = new AtomicReference<>("");
+        AtomicReference<String> roomTitle = new AtomicReference<>("");
         GameStartEvent gameStartEvent = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            hostNickname.set(player.getNickname());
+            roomTitle.set(room.getRoomTitle());
             validateRoomNotInGame(room);
             validatePlayerHost(player, room);
             validatePlayerCountOverMinimum(room);
@@ -440,8 +460,8 @@ public class RoomService {
             }
             return gameService.startGame(room);
         });
-        log.info("'{}' 방 게임 시작됨 - action=game-started, roomId={}, gameId={}, hostId={}",
-                resolveRoomTitle(roomId), roomId, gameStartEvent.gameId(), userId);
+        log.info("'{}' 방 게임 시작됨 - action=game-started, roomId={}, gameId={}, hostId={}, hostNickname={}",
+                roomTitle.get(), roomId, gameStartEvent.gameId(), userId, hostNickname.get());
         return gameStartEvent;
     }
 
@@ -475,11 +495,5 @@ public class RoomService {
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(USER_NOT_FOUND));
-    }
-
-    private String resolveRoomTitle(String roomId) {
-        return roomRepository.findById(roomId)
-                .map(Room::getRoomTitle)
-                .orElse("알 수 없는");
     }
 }
