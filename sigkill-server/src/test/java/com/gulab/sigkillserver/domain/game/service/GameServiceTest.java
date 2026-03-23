@@ -50,6 +50,7 @@ import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +59,9 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 
 class GameServiceTest {
 
@@ -131,6 +134,22 @@ class GameServiceTest {
                 .isInstanceOf(CustomException.class)
                 .satisfies(throwable ->
                         assertThat(((CustomException) throwable).getErrorCode().getCode()).isEqualTo(code));
+    }
+
+    private void replaceQuizRepository(Resource resource) {
+        quizRepository = new QuizMemoryRepository(new ObjectMapper(), resource);
+        gameService = new GameService(
+                userRepository,
+                gameRepository,
+                quizRepository,
+                playerRepository,
+                roomRepository,
+                selectedChoiceRepository,
+                quizChoiceNumberMappingRepository,
+                gamePlayerRepository,
+                gameEventBuilder,
+                roomLockManager
+        );
     }
 
     @Nested
@@ -1033,6 +1052,85 @@ class GameServiceTest {
                 int correctNumber,
                 int wrongNumber
         ) {
+        }
+    }
+
+    @Nested
+    class ChoiceIdBehaviorTests {
+        @Test
+        void choiceId가_전역으로_유일해도_번호매핑_제출_채점이_정상동작한다() {
+            // given
+            replaceQuizRepository(new ByteArrayResource("""
+                    [
+                      {
+                        "quizId": 9001,
+                        "categoryId": "CS",
+                        "question": "유일 choiceId 테스트 1",
+                        "explanation": "정답은 1001이다.",
+                        "correctChoiceId": 1001,
+                        "difficulty": 1,
+                        "choices": [
+                          { "choiceId": 1001, "text": "정답" },
+                          { "choiceId": 1002, "text": "오답1" },
+                          { "choiceId": 1003, "text": "오답2" },
+                          { "choiceId": 1004, "text": "오답3" }
+                        ]
+                      },
+                      {
+                        "quizId": 9002,
+                        "categoryId": "CS",
+                        "question": "유일 choiceId 테스트 2",
+                        "explanation": "정답은 2004이다.",
+                        "correctChoiceId": 2004,
+                        "difficulty": 2,
+                        "choices": [
+                          { "choiceId": 2001, "text": "오답1" },
+                          { "choiceId": 2002, "text": "오답2" },
+                          { "choiceId": 2003, "text": "오답3" },
+                          { "choiceId": 2004, "text": "정답" }
+                        ]
+                      }
+                    ]
+                    """.getBytes(StandardCharsets.UTF_8)));
+
+            User host = saveUser("choice-id-unique-host-session", "choice-id-unique-host");
+            User guest = saveUser("choice-id-unique-guest-session", "choice-id-unique-guest");
+            Room room = Room.create("2634", "테스트 방", host.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(activePlayer(host.getUserId(), room.getRoomId(), host.getNickname()));
+            playerRepository.create(activePlayer(guest.getUserId(), room.getRoomId(), guest.getNickname()));
+            gameService.startGame(room);
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+
+            // when
+            QuizStartEvent startEvent = gameService.startQuiz(host.getUserId(), room.getRoomId(), game.getGameId());
+            QuizChoiceNumberMapping mapping = quizChoiceNumberMappingRepository
+                    .findByGameIdAndQuizId(game.getGameId(), startEvent.payload().quiz().quizId())
+                    .orElseThrow();
+            int correctNumber = mapping.getNumberToChoiceId().entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(1001L))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElseThrow();
+
+            gameService.submitChoice(host.getUserId(), game.getGameId(), 9001L, correctNumber);
+            QuizEndEvent result = gameService.endQuiz(
+                    host.getUserId(),
+                    room.getRoomId(),
+                    game.getGameId(),
+                    9001L
+            ).quizEndEvent();
+
+            // then
+            assertThat(result.payload().quiz().quizId()).isEqualTo(9001L);
+            assertThat(result.payload().answer().correctChoiceNumber()).isEqualTo(correctNumber);
+            assertThat(result.payload().players())
+                    .filteredOn(player -> player.userId().equals(host.getUserId()))
+                    .singleElement()
+                    .satisfies(player -> {
+                        assertThat(player.quizResult()).isEqualTo(QuizResult.CORRECT);
+                        assertThat(player.score()).isEqualTo(1);
+                    });
         }
     }
 
