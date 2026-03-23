@@ -77,30 +77,35 @@ public class GameFlowOrchestrator {
                 Instant.now().plusMillis(delayMillis)
         );
         replaceScheduledTask(gameId, future);
-        log.info("game.flow quiz-start scheduled - roomId={}, gameId={}, delayMillis={}",
+        log.debug("game.flow action=quiz-start-scheduled, roomId={}, gameId={}, delayMillis={}",
                 roomId, gameId, delayMillis);
     }
 
     private void handleQuizStart(String roomId, Long gameId) {
         scheduledTasks.remove(gameId);
         try {
-            Long hostId = resolveHostId(roomId);
-            if (hostId == null) {
-                log.warn("game.flow quiz-start skipped - room not found, roomId={}, gameId={}", roomId, gameId);
+            Room room = findRoom(roomId);
+            if (room == null) {
+                log.warn("game.flow action=quiz-start-skipped, reason=room-not-found, roomId={}, gameId={}",
+                        roomId, gameId);
                 initialQuizStartTriggeredGames.remove(gameId);
                 return;
             }
 
-            QuizStartEvent quizStartEvent = gameService.startQuiz(hostId, roomId, gameId);
+            QuizStartEvent quizStartEvent = gameService.startQuiz(room.getHostId(), roomId, gameId);
             messagingTemplate.convertAndSend("/topic/game/" + gameId, quizStartEvent);
             scheduleQuizEnd(roomId, gameId, quizStartEvent.payload().quiz().quizId(),
                     quizStartEvent.payload().quiz().endTime());
 
-            log.info("game.flow quiz-start executed - roomId={}, gameId={}, quizId={}",
-                    roomId, gameId, quizStartEvent.payload().quiz().quizId());
+            log.info("방 퀴즈 시작됨 - action=quiz-started, roomId={}, gameId={}, quizId={}, quizOrder={}/{}",
+                    roomId,
+                    gameId,
+                    quizStartEvent.payload().quiz().quizId(),
+                    quizStartEvent.payload().quiz().currentQuizIndex() + 1,
+                    quizStartEvent.payload().quiz().totalQuizCount());
         } catch (CustomException e) {
-            log.warn("game.flow quiz-start failed - gameId={}, code={}, message={}",
-                    gameId, e.getErrorCode().getCode(), e.getErrorCode().getMessage());
+            log.warn("방 퀴즈 시작 실패 - action=quiz-start-failed, roomId={}, gameId={}, code={}, message={}",
+                    roomId, gameId, e.getErrorCode().getCode(), e.getErrorCode().getMessage());
             initialQuizStartTriggeredGames.remove(gameId);
         } catch (RuntimeException e) {
             log.error("game.flow quiz-start unexpected failure - gameId={}", gameId, e);
@@ -114,34 +119,46 @@ public class GameFlowOrchestrator {
                 Instant.ofEpochMilli(quizEndAtMillis)
         );
         replaceScheduledTask(gameId, future);
-        log.info("game.flow quiz-end scheduled - roomId={}, gameId={}, quizId={}, endAt={}",
+        log.debug("game.flow action=quiz-end-scheduled, roomId={}, gameId={}, quizId={}, endAt={}",
                 roomId, gameId, quizId, quizEndAtMillis);
     }
 
     private void handleQuizEnd(String roomId, Long gameId, Long quizId) {
         scheduledTasks.remove(gameId);
         try {
-            Long hostId = resolveHostId(roomId);
-            if (hostId == null) {
-                log.warn("game.flow quiz-end skipped - room not found, roomId={}, gameId={}, quizId={}",
+            Room room = findRoom(roomId);
+            if (room == null) {
+                log.warn("game.flow action=quiz-end-skipped, reason=room-not-found, roomId={}, gameId={}, quizId={}",
                         roomId, gameId, quizId);
                 return;
             }
 
-            EndQuizOrGameEvent endQuizOrGameEvent = gameService.endQuiz(hostId, roomId, gameId, quizId);
+            EndQuizOrGameEvent endQuizOrGameEvent = gameService.endQuiz(room.getHostId(), roomId, gameId, quizId);
             messagingTemplate.convertAndSend("/topic/game/" + gameId, endQuizOrGameEvent.quizEndEvent());
+            log.info("방 퀴즈 종료됨 - action=quiz-ended, roomId={}, gameId={}, quizId={}",
+                    roomId, gameId, quizId);
+
             if (endQuizOrGameEvent.hasGameEnd()) {
                 messagingTemplate.convertAndSend("/topic/game/" + gameId, endQuizOrGameEvent.gameEndEvent());
                 initialQuizStartTriggeredGames.remove(gameId);
-                log.info("game.flow game-end reached - roomId={}, gameId={}, quizId={}", roomId, gameId, quizId);
+                log.info("방 게임 종료됨 - action=game-ended, roomId={}, gameId={}, quizId={}, reason={}",
+                        roomId,
+                        gameId,
+                        quizId,
+                        endQuizOrGameEvent.gameEndEvent().payload().reason());
                 return;
             }
 
             scheduleQuizStart(roomId, gameId, GameConstants.NEXT_QUIZ_START_DELAY_MILLIS);
-            log.info("game.flow next-quiz scheduled - roomId={}, gameId={}, quizId={}", roomId, gameId, quizId);
+            log.debug("game.flow action=next-quiz-scheduled, roomId={}, gameId={}, quizId={}",
+                    roomId, gameId, quizId);
         } catch (CustomException e) {
-            log.warn("game.flow quiz-end failed - gameId={}, quizId={}, code={}, message={}",
-                    gameId, quizId, e.getErrorCode().getCode(), e.getErrorCode().getMessage());
+            log.warn("방 퀴즈 종료 실패 - action=quiz-end-failed, roomId={}, gameId={}, quizId={}, code={}, message={}",
+                    roomId,
+                    gameId,
+                    quizId,
+                    e.getErrorCode().getCode(),
+                    e.getErrorCode().getMessage());
         } catch (RuntimeException e) {
             log.error("game.flow quiz-end unexpected failure - gameId={}, quizId={}", gameId, quizId, e);
         }
@@ -158,12 +175,10 @@ public class GameFlowOrchestrator {
         }
     }
 
-    private Long resolveHostId(String roomId) {
+    private Room findRoom(String roomId) {
         return roomRepository.findById(roomId)
-                .map(Room::getHostId)
                 .orElse(null);
     }
-
     public record FlowCleanupResult(int canceledScheduledTaskCount, int clearedInitialQuizStartFlagCount) {
     }
 }
