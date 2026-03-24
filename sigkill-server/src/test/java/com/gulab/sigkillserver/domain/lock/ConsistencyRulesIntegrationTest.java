@@ -138,6 +138,18 @@ class ConsistencyRulesIntegrationTest {
         return userService.loginAsGuest(session);
     }
 
+    private RoomInfoResponse createActiveRoom(String roomTitle, Integer capacity, Long userId) {
+        RoomInfoResponse roomInfoResponse = roomService.createRoom(roomTitle, capacity, userId);
+        roomService.confirmJoin(roomInfoResponse.roomId(), userId);
+        return roomInfoResponse;
+    }
+
+    private RoomInfoResponse joinActiveRoom(String roomId, Long userId) {
+        RoomInfoResponse roomInfoResponse = roomService.joinRoom(roomId, userId).roomInfoResponse();
+        roomService.confirmJoin(roomId, userId);
+        return roomInfoResponse;
+    }
+
     private List<Throwable> runConcurrently(ThrowingRunnable... actions) throws InterruptedException {
         int threadCount = actions.length;
         ExecutorService pool = Executors.newFixedThreadPool(threadCount);
@@ -272,27 +284,27 @@ class ConsistencyRulesIntegrationTest {
             // when
             List<Throwable> errors = runConcurrently(
                     () -> {
-                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user1.userId());
+                        RoomInfoResponse res = createActiveRoom("테스트 방", 6, user1.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user2.userId());
+                        RoomInfoResponse res = createActiveRoom("테스트 방", 6, user2.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user3.userId());
+                        RoomInfoResponse res = createActiveRoom("테스트 방", 6, user3.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user4.userId());
+                        RoomInfoResponse res = createActiveRoom("테스트 방", 6, user4.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user5.userId());
+                        RoomInfoResponse res = createActiveRoom("테스트 방", 6, user5.userId());
                         roomIds.add(res.roomId());
                     },
                     () -> {
-                        RoomInfoResponse res = roomService.createRoom("테스트 방", 6, user6.userId());
+                        RoomInfoResponse res = createActiveRoom("테스트 방", 6, user6.userId());
                         roomIds.add(res.roomId());
                     }
             );
@@ -314,8 +326,8 @@ class ConsistencyRulesIntegrationTest {
 
             // when
             List<Throwable> errors = runConcurrently(
-                    () -> roomService.createRoom("테스트 방", 6, rs.userId()),
-                    () -> roomService.createRoom("테스트 방", 6, rs.userId())
+                    () -> createActiveRoom("테스트 방", 6, rs.userId()),
+                    () -> createActiveRoom("테스트 방", 6, rs.userId())
             );
 
             // then
@@ -337,16 +349,16 @@ class ConsistencyRulesIntegrationTest {
             LoginResponse user4 = loginGuest("session4");
             LoginResponse user5 = loginGuest("session5");
 
-            RoomInfoResponse res = roomService.createRoom("테스트 방", TEST_CAPACITY, hostUserId);
+            RoomInfoResponse res = createActiveRoom("테스트 방", TEST_CAPACITY, hostUserId);
             String roomId = res.roomId();
 
             // when
             List<Throwable> errors = runConcurrently(
-                    () -> roomService.joinRoom(roomId, user1.userId()),
-                    () -> roomService.joinRoom(roomId, user2.userId()),
-                    () -> roomService.joinRoom(roomId, user3.userId()),
-                    () -> roomService.joinRoom(roomId, user4.userId()),
-                    () -> roomService.joinRoom(roomId, user5.userId())
+                    () -> joinActiveRoom(roomId, user1.userId()),
+                    () -> joinActiveRoom(roomId, user2.userId()),
+                    () -> joinActiveRoom(roomId, user3.userId()),
+                    () -> joinActiveRoom(roomId, user4.userId()),
+                    () -> joinActiveRoom(roomId, user5.userId())
             );
 
             // then
@@ -380,9 +392,9 @@ class ConsistencyRulesIntegrationTest {
             long readyGuestUserId = loginGuest("readyGuestSession").userId();
             long lateJoinerUserId = loginGuest("lateJoinerSession").userId();
 
-            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = createActiveRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
-            roomService.joinRoom(roomId, readyGuestUserId);
+            joinActiveRoom(roomId, readyGuestUserId);
             roomService.readyPlayer(roomId, readyGuestUserId);
 
             AtomicReference<GameStartEvent> gameStartEventRef = new AtomicReference<>();
@@ -390,7 +402,7 @@ class ConsistencyRulesIntegrationTest {
             // when
             List<Throwable> errors = runConcurrently(
                     () -> gameStartEventRef.set(roomService.startGame(roomId, hostUserId)),
-                    () -> roomService.joinRoom(roomId, lateJoinerUserId)
+                    () -> joinActiveRoom(roomId, lateJoinerUserId)
             );
 
             // then
@@ -424,14 +436,14 @@ class ConsistencyRulesIntegrationTest {
             long hostUserId = loginGuest("hostSession").userId();
             long leavingGuestUserId = loginGuest("leavingGuestSession").userId();
             long joiningGuestUserId = loginGuest("joiningGuestSession").userId();
-            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = createActiveRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
-            roomService.joinRoom(roomId, leavingGuestUserId);
+            joinActiveRoom(roomId, leavingGuestUserId);
 
             // when
             List<Throwable> errors = runConcurrently(
                     () -> roomService.leaveRoom(roomId, leavingGuestUserId),
-                    () -> roomService.joinRoom(roomId, joiningGuestUserId)
+                    () -> joinActiveRoom(roomId, joiningGuestUserId)
             );
 
             // then
@@ -450,10 +462,10 @@ class ConsistencyRulesIntegrationTest {
             long leavingGuestUserId = loginGuest("leavingGuestSession").userId();
             long stayingGuestUserId = loginGuest("stayingGuestSession").userId();
 
-            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = createActiveRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
-            roomService.joinRoom(roomId, leavingGuestUserId);
-            roomService.joinRoom(roomId, stayingGuestUserId);
+            joinActiveRoom(roomId, leavingGuestUserId);
+            joinActiveRoom(roomId, stayingGuestUserId);
             roomService.readyPlayer(roomId, leavingGuestUserId);
             roomService.readyPlayer(roomId, stayingGuestUserId);
 
@@ -504,10 +516,10 @@ class ConsistencyRulesIntegrationTest {
             long guest1UserId = loginGuest("guest1Session").userId();
             long guest2UserId = loginGuest("guest2Session").userId();
 
-            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = createActiveRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
-            roomService.joinRoom(roomId, guest1UserId);
-            roomService.joinRoom(roomId, guest2UserId);
+            joinActiveRoom(roomId, guest1UserId);
+            joinActiveRoom(roomId, guest2UserId);
             roomService.readyPlayer(roomId, guest1UserId);
             roomService.readyPlayer(roomId, guest2UserId);
 
@@ -557,9 +569,9 @@ class ConsistencyRulesIntegrationTest {
             long guest1 = loginGuest("g1").userId();
             long guest2 = loginGuest("g2").userId();
 
-            String roomId = roomService.createRoom("방", 4, hostId).roomId();
-            roomService.joinRoom(roomId, guest1);
-            roomService.joinRoom(roomId, guest2);
+            String roomId = createActiveRoom("방", 4, hostId).roomId();
+            joinActiveRoom(roomId, guest1);
+            joinActiveRoom(roomId, guest2);
 
             List<LeaveRoomResult> results = Collections.synchronizedList(new ArrayList<>());
 
@@ -585,10 +597,10 @@ class ConsistencyRulesIntegrationTest {
             long readyGuestUserId = loginGuest("readyGuestSession").userId();
             long leavingGuestUserId = loginGuest("leavingGuestSession").userId();
 
-            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = createActiveRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
-            roomService.joinRoom(roomId, readyGuestUserId);
-            roomService.joinRoom(roomId, leavingGuestUserId);
+            joinActiveRoom(roomId, readyGuestUserId);
+            joinActiveRoom(roomId, leavingGuestUserId);
             AtomicReference<PlayerReadyEvent> readyEventRef = new AtomicReference<>();
 
             // when
@@ -617,10 +629,10 @@ class ConsistencyRulesIntegrationTest {
             long readyGuest1UserId = loginGuest("readyGuest1Session").userId();
             long readyGuest2UserId = loginGuest("readyGuest2Session").userId();
 
-            RoomInfoResponse createdRoom = roomService.createRoom("테스트 방", 3, hostUserId);
+            RoomInfoResponse createdRoom = createActiveRoom("테스트 방", 3, hostUserId);
             String roomId = createdRoom.roomId();
-            roomService.joinRoom(roomId, readyGuest1UserId);
-            roomService.joinRoom(roomId, readyGuest2UserId);
+            joinActiveRoom(roomId, readyGuest1UserId);
+            joinActiveRoom(roomId, readyGuest2UserId);
             roomService.readyPlayer(roomId, readyGuest1UserId);
             roomService.readyPlayer(roomId, readyGuest2UserId);
 
@@ -659,9 +671,9 @@ class ConsistencyRulesIntegrationTest {
             long guest1UserId = loginGuest("guest1Session").userId();
             long guest2UserId = loginGuest("guest2Session").userId();
 
-            String roomId = roomService.createRoom("테스트 방", 3, hostUserId).roomId();
-            roomService.joinRoom(roomId, guest1UserId);
-            roomService.joinRoom(roomId, guest2UserId);
+            String roomId = createActiveRoom("테스트 방", 3, hostUserId).roomId();
+            joinActiveRoom(roomId, guest1UserId);
+            joinActiveRoom(roomId, guest2UserId);
             roomService.readyPlayer(roomId, guest1UserId);
             roomService.readyPlayer(roomId, guest2UserId);
             Long gameId = roomService.startGame(roomId, hostUserId).gameId();
@@ -693,9 +705,9 @@ class ConsistencyRulesIntegrationTest {
             long guest1UserId = loginGuest("guest1Session").userId();
             long guest2UserId = loginGuest("guest2Session").userId();
 
-            String roomId = roomService.createRoom("테스트 방", 3, hostUserId).roomId();
-            roomService.joinRoom(roomId, guest1UserId);
-            roomService.joinRoom(roomId, guest2UserId);
+            String roomId = createActiveRoom("테스트 방", 3, hostUserId).roomId();
+            joinActiveRoom(roomId, guest1UserId);
+            joinActiveRoom(roomId, guest2UserId);
             roomService.readyPlayer(roomId, guest1UserId);
             roomService.readyPlayer(roomId, guest2UserId);
 
@@ -741,9 +753,9 @@ class ConsistencyRulesIntegrationTest {
             long guest1UserId = loginGuest("guest1Session").userId();
             long guest2UserId = loginGuest("guest2Session").userId();
 
-            String roomId = roomService.createRoom("테스트 방", 3, hostUserId).roomId();
-            roomService.joinRoom(roomId, guest1UserId);
-            roomService.joinRoom(roomId, guest2UserId);
+            String roomId = createActiveRoom("테스트 방", 3, hostUserId).roomId();
+            joinActiveRoom(roomId, guest1UserId);
+            joinActiveRoom(roomId, guest2UserId);
             roomService.readyPlayer(roomId, guest1UserId);
             roomService.readyPlayer(roomId, guest2UserId);
 
@@ -787,8 +799,8 @@ class ConsistencyRulesIntegrationTest {
             long hostUserId = loginGuest("hostSession").userId();
             long guestUserId = loginGuest("guestSession").userId();
 
-            String roomId = roomService.createRoom("테스트 방", 2, hostUserId).roomId();
-            roomService.joinRoom(roomId, guestUserId);
+            String roomId = createActiveRoom("테스트 방", 2, hostUserId).roomId();
+            joinActiveRoom(roomId, guestUserId);
             roomService.readyPlayer(roomId, guestUserId);
 
             Long gameId = roomService.startGame(roomId, hostUserId).gameId();
@@ -832,8 +844,8 @@ class ConsistencyRulesIntegrationTest {
             long hostUserId = loginGuest("hostSession").userId();
             long guestUserId = loginGuest("guestSession").userId();
 
-            String roomId = roomService.createRoom("테스트 방", 2, hostUserId).roomId();
-            roomService.joinRoom(roomId, guestUserId);
+            String roomId = createActiveRoom("테스트 방", 2, hostUserId).roomId();
+            joinActiveRoom(roomId, guestUserId);
             roomService.readyPlayer(roomId, guestUserId);
 
             Long gameId = roomService.startGame(roomId, hostUserId).gameId();
@@ -885,8 +897,8 @@ class ConsistencyRulesIntegrationTest {
             long hostUserId = loginGuest("hostSession").userId();
             long guestUserId = loginGuest("guestSession").userId();
 
-            String roomId = roomService.createRoom("테스트 방", 2, hostUserId).roomId();
-            roomService.joinRoom(roomId, guestUserId);
+            String roomId = createActiveRoom("테스트 방", 2, hostUserId).roomId();
+            joinActiveRoom(roomId, guestUserId);
             roomService.readyPlayer(roomId, guestUserId);
 
             Long gameId = roomService.startGame(roomId, hostUserId).gameId();
@@ -927,8 +939,8 @@ class ConsistencyRulesIntegrationTest {
             long hostUserId = loginGuest("hostSession").userId();
             long guestUserId = loginGuest("guestSession").userId();
 
-            String roomId = roomService.createRoom("테스트 방", 2, hostUserId).roomId();
-            roomService.joinRoom(roomId, guestUserId);
+            String roomId = createActiveRoom("테스트 방", 2, hostUserId).roomId();
+            joinActiveRoom(roomId, guestUserId);
             roomService.readyPlayer(roomId, guestUserId);
 
             Long gameId = roomService.startGame(roomId, hostUserId).gameId();

@@ -3,6 +3,7 @@ package com.gulab.sigkillserver.config.websocket;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
+import com.gulab.sigkillserver.domain.room.service.PendingRoomJoinOrchestrator;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import java.security.Principal;
 import java.util.Set;
@@ -24,6 +25,7 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 public class StompEventListener {
 
     private final RoomService roomService;
+    private final PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator;
     private final PlayerRepository playerRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final Set<String> sessions = ConcurrentHashMap.newKeySet();
@@ -72,13 +74,27 @@ public class StompEventListener {
     private void leaveRoomByDisconnect(Player player) {
         String roomId = player.getRoomId();
         Long userId = player.getUserId();
+        String nickname = player.getNickname();
+        boolean wasActive = player.isActive();
 
         LeaveRoomResult leaveRoomResult;
         try {
             leaveRoomResult = roomService.leaveRoom(roomId, userId);
+            pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(userId);
         } catch (RuntimeException e) {
-            log.warn("DISCONNECT 자동 퇴장 처리 실패 - roomId={}, userId={}, message={}", roomId, userId, e.getMessage());
+            log.warn("DISCONNECT 자동 퇴장 처리 실패 - roomId={}, userId={}, userNickname={}, message={}",
+                    roomId, userId, nickname, e.getMessage());
             return;
+        }
+
+        if (!wasActive) {
+            if (!leaveRoomResult.hasHostChangedEvent()) {
+                log.debug("DISCONNECT pending player cleaned without broadcast - roomId={}, userId={}, userNickname={}",
+                        roomId, userId, nickname);
+                return;
+            }
+            log.debug("DISCONNECT pending host cleaned with host change broadcast - roomId={}, userId={}, userNickname={}",
+                    roomId, userId, nickname);
         }
 
         messagingTemplate.convertAndSend("/topic/room/" + roomId, leaveRoomResult.playerLeftEvent());
@@ -86,6 +102,7 @@ public class StompEventListener {
             messagingTemplate.convertAndSend("/topic/room/" + roomId, leaveRoomResult.hostChangedEvent());
         }
 
-        log.debug("DISCONNECT 자동 퇴장 처리 완료 - roomId={}, userId={}", roomId, userId);
+        log.debug("DISCONNECT 자동 퇴장 처리 완료 - roomId={}, userId={}, userNickname={}",
+                roomId, userId, nickname);
     }
 }

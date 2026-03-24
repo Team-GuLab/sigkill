@@ -10,6 +10,7 @@ import com.gulab.sigkillserver.domain.room.dto.shared.RoomInfoResponse;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
+import com.gulab.sigkillserver.domain.room.service.PendingRoomJoinOrchestrator;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import com.gulab.sigkillserver.domain.user.dto.rest.response.LoginResponse;
 import com.gulab.sigkillserver.domain.user.model.User;
@@ -53,6 +54,7 @@ public class TestController {
     private final SelectedChoiceRepository selectedChoiceRepository;
     private final QuizChoiceNumberMappingRepository quizChoiceNumberMappingRepository;
     private final GameFlowOrchestrator gameFlowOrchestrator;
+    private final PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator;
     private final RoomService roomService;
 
     /**
@@ -135,6 +137,8 @@ public class TestController {
     @PostMapping("/clear-memory")
     public BaseResponse<MemoryCleanupResponse> clearMemory() {
         GameFlowOrchestrator.FlowCleanupResult flowCleanupResult = gameFlowOrchestrator.clearAllFlows();
+        PendingRoomJoinOrchestrator.PendingJoinCleanupResult pendingJoinCleanupResult =
+                pendingRoomJoinOrchestrator.clearAllPendingJoinTimeouts();
         int clearedSelectedChoiceCount = selectedChoiceRepository.clear();
         int clearedQuizChoiceMappingCount = quizChoiceNumberMappingRepository.clear();
         int clearedGamePlayerCount = gamePlayerRepository.clear();
@@ -152,11 +156,12 @@ public class TestController {
                 clearedSelectedChoiceCount,
                 clearedQuizChoiceMappingCount,
                 flowCleanupResult.canceledScheduledTaskCount(),
-                flowCleanupResult.clearedInitialQuizStartFlagCount()
+                flowCleanupResult.clearedInitialQuizStartFlagCount(),
+                pendingJoinCleanupResult.canceledScheduledTaskCount()
         );
 
         log.info("테스트 메모리 정리 완료 - users={}, rooms={}, players={}, games={}, gamePlayers={}, selectedChoices={}, "
-                        + "quizChoiceMappings={}, canceledFlows={}, clearedInitialFlags={}",
+                        + "quizChoiceMappings={}, canceledFlows={}, clearedInitialFlags={}, canceledPendingJoins={}",
                 response.clearedUserCount(),
                 response.clearedRoomCount(),
                 response.clearedPlayerCount(),
@@ -165,7 +170,8 @@ public class TestController {
                 response.clearedSelectedChoiceCount(),
                 response.clearedQuizChoiceMappingCount(),
                 response.canceledScheduledFlowCount(),
-                response.clearedInitialQuizStartFlagCount());
+                response.clearedInitialQuizStartFlagCount(),
+                response.canceledPendingJoinCount());
 
         return BaseResponse.onSuccess(response);
     }
@@ -201,10 +207,12 @@ public class TestController {
         LoginResponse host = users.get(startIndex);
         RoomInfoResponse roomInfoResponse = roomService.createRoom(roomTitle, capacity, host.userId());
         String roomId = roomInfoResponse.roomId();
+        roomService.confirmJoin(roomId, host.userId());
 
         for (int i = 1; i < targetOccupancy; i++) {
             LoginResponse guest = users.get(startIndex + i);
             roomService.joinRoom(roomId, guest.userId());
+            roomService.confirmJoin(roomId, guest.userId());
         }
         if (allReady) {
             playerRepository.findAllByRoomId(roomId).forEach(Player::ready);
@@ -242,7 +250,8 @@ public class TestController {
             int clearedSelectedChoiceCount,
             int clearedQuizChoiceMappingCount,
             int canceledScheduledFlowCount,
-            int clearedInitialQuizStartFlagCount
+            int clearedInitialQuizStartFlagCount,
+            int canceledPendingJoinCount
     ) {
     }
 }

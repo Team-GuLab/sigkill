@@ -25,6 +25,9 @@ server:
 logging:
   file:
     name: /var/log/sigkill/app.log
+  level:
+    com.gulab.sigkillserver.config.websocket.StompEventListener: DEBUG
+    com.gulab.sigkillserver.config.security.StompHandler: DEBUG
 
 management:
   endpoints:

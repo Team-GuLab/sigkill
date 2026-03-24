@@ -31,6 +31,11 @@ public class RoomConstants {
     public static final int MIN_PLAYERS_TO_START = 2;
 
     /**
+     * REST 입장 후 WS 확정 대기 시간
+     */
+    public static final long PENDING_JOIN_TIMEOUT_MILLIS = 10_000L;
+
+    /**
      * 최소 방 번호
      */
     public static final int MIN_ROOM_NUMBER = 1000;

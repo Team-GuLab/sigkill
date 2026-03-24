@@ -8,7 +8,7 @@
   `submit`, `quiz/end`, `game/end`), 연결 상태 확인 이벤트 (`ping`)
 - 마이그레이션 노트:
     - REST `GET /api/v1/rooms/{roomId}/availability` 삭제
-    - 방 입장은 `POST /api/v1/rooms/{roomId}/join`에서 확인+확정으로 완료
+    - 방 입장은 REST `POST /api/v1/rooms/{roomId}/join` 후 STOMP `SEND /app/room/join`으로 최종 확정된다
 
 ## 2. 연결 및 목적지 규칙
 
@@ -59,6 +59,15 @@
 - 타입: `RoomIdCommand`
 - 제약: `roomId`는 공백 불가(`@NotBlank`)
 - 사용 경로: `SEND /app/room/join`, `SEND /app/room/snapshot`
+- 선행 REST 의미:
+    - `POST /api/v1/rooms/{roomId}/join`은 같은 사용자/같은 방 재호출 시 현재 방 정보를 그대로 성공 재응답한다
+    - 같은 방 재호출은 기존 `PENDING` timeout을 연장하지 않으며 중복 `Player`를 만들지 않는다
+    - 다른 방에 이미 참가 중인 사용자의 호출만 `409 USER_ALREADY_IN_ROOM`이다
+- 클라이언트 순서:
+    1. REST `POST /api/v1/rooms/{roomId}/join` 또는 `POST /api/v1/rooms`
+    2. `SUBSCRIBE /topic/room/{roomId}`
+    3. 가능하면 즉시 `SEND /app/room/join`
+    4. `SEND /app/room/snapshot`, `SEND /app/room/ready` 등 나머지 명령 전송
 
 ### 4.3 Shared Response
 
@@ -126,7 +135,15 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 - SUBSCRIBE: `/topic/room/{roomId}`
 - Response type: `PLAYER_JOIN`
 - 요청 payload는 `RoomIdCommand`
-- 선행 조건: REST `POST /api/v1/rooms/{roomId}/join`이 먼저 성공해야 함
+- 의미: REST로 생성/입장된 `PENDING` 플레이어를 최종 `ACTIVE` 상태로 확정한다
+- 선행 조건:
+    - REST `POST /api/v1/rooms/{roomId}/join` 또는 `POST /api/v1/rooms`가 먼저 성공해야 함
+    - `/topic/room/{roomId}` 구독 직후 가장 먼저 전송해야 함
+- 서버 동작:
+    - 같은 사용자의 같은 방 REST 재호출은 성공으로 재응답하지만 `PENDING` timeout은 유지한다
+    - 첫 성공 호출에만 `PLAYER_JOIN`을 브로드캐스트한다
+    - 이미 `ACTIVE`인 사용자의 재호출은 no-op 이다
+    - REST 후 10초 안에 이 요청이 오지 않으면 서버가 `PENDING` 플레이어를 자동 정리한다
 
 ```json
 {
@@ -161,6 +178,9 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 - SUBSCRIBE: `/topic/room/{roomId}`
 - Response type: `ROOM_SNAPSHOT`
 - 요청 payload는 `RoomIdCommand`
+- 선행 조건: REST `POST /api/v1/rooms/{roomId}/join` 또는 `POST /api/v1/rooms`가 먼저 성공해야 함
+- `SEND /app/room/join` 전의 `PENDING` 상태에서도 호출할 수 있다
+- 응답의 `players` 목록에는 현재 방 멤버 전체가 포함되며, `PENDING` 플레이어도 포함될 수 있다
 
 응답 예시:
 

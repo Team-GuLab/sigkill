@@ -15,7 +15,7 @@ export const handleRoomMessage = (
 ) => {
   // 게임 진행 중에는 대기방 토스트를 표시하지 않음
   // (게임 시작 후 방 구독이 남아있어 메시지가 계속 수신될 수 있음)
-  const { isInGame } = useGameStore.getState();
+  const isInGame = useGameStore.getState().phase.status !== "IDLE";
 
   switch (message.type) {
     case "ROOM_SNAPSHOT": {
