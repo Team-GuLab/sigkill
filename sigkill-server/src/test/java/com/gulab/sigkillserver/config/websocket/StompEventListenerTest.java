@@ -109,6 +109,30 @@ class StompEventListenerTest {
     }
 
     @Test
+    void disconnect_시_pending_호스트는_호스트_변경_이벤트와_퇴장_이벤트를_브로드캐스트한다() {
+        // given
+        Long userId = 1L;
+        Player pendingHost = Player.create(userId, "1001", "pendingHost");
+        Player pendingGuest = Player.create(2L, "1001", "pendingGuest");
+        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(pendingHost, userId);
+        HostChangedEvent hostChangedEvent = HostChangedEvent.of(pendingGuest, pendingHost, pendingGuest.getUserId(), "HOST_LEFT");
+        when(playerRepository.findById(userId)).thenReturn(Optional.of(pendingHost));
+        when(roomService.leaveRoom("1001", userId))
+                .thenReturn(LeaveRoomResult.of(playerLeftEvent, hostChangedEvent));
+
+        SessionDisconnectEvent event = createDisconnectEvent("session-1", () -> String.valueOf(userId));
+
+        // when
+        stompEventListener.disconnectHandle(event);
+
+        // then
+        verify(roomService).leaveRoom("1001", userId);
+        verify(pendingRoomJoinOrchestrator).cancelPendingJoinTimeout(userId);
+        verify(messagingTemplate).convertAndSend("/topic/room/1001", playerLeftEvent);
+        verify(messagingTemplate).convertAndSend("/topic/room/1001", hostChangedEvent);
+    }
+
+    @Test
     void disconnect_시_플레이어가_없으면_자동_퇴장을_실행하지_않는다() {
         // given
         Long userId = 1L;

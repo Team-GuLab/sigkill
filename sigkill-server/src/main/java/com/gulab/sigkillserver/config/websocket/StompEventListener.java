@@ -88,9 +88,13 @@ public class StompEventListener {
         }
 
         if (!wasActive) {
-            log.debug("DISCONNECT pending player cleaned - roomId={}, userId={}, userNickname={}",
+            if (!leaveRoomResult.hasHostChangedEvent()) {
+                log.debug("DISCONNECT pending player cleaned without broadcast - roomId={}, userId={}, userNickname={}",
+                        roomId, userId, nickname);
+                return;
+            }
+            log.debug("DISCONNECT pending host cleaned with host change broadcast - roomId={}, userId={}, userNickname={}",
                     roomId, userId, nickname);
-            return;
         }
 
         messagingTemplate.convertAndSend("/topic/room/" + roomId, leaveRoomResult.playerLeftEvent());
