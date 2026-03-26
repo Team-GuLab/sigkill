@@ -243,6 +243,22 @@ class GameServiceTest {
         }
 
         @Test
+        void 중도_퇴장한_플레이어는_GAME_LOADED_목록과_allLoaded_계산에서_제외된다() {
+            // given
+            LoadGameFixture fixture = prepareLoadGameFixture("1544");
+            playerRepository.deleteById(fixture.host().getUserId());
+
+            // when
+            GameLoadEvent result = gameService.loadGame(fixture.guest().getUserId(), fixture.game().getGameId());
+
+            // then
+            assertThat(result.payload().allLoaded()).isTrue();
+            assertThat(result.payload().players())
+                    .extracting(player -> player.userId())
+                    .containsExactly(fixture.guest().getUserId());
+        }
+
+        @Test
         void 존재하지_않는_게임을_로드하면_GAME_NOT_FOUND_예외가_발생한다() {
             // when
             Runnable call = () -> gameService.loadGame(1L, 9999L);

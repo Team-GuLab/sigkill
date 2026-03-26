@@ -120,6 +120,11 @@ class RoomServiceTest {
         return userRepository.save(user);
     }
 
+    private User createAndSaveBotUser(String nickname) {
+        User user = User.create(null, nickname, UserRole.BOT);
+        return userRepository.save(user);
+    }
+
     private RoomInfoResponse createActiveRoom(String roomTitle, Integer capacity, Long userId) {
         RoomInfoResponse roomInfoResponse = roomService.createRoom(roomTitle, capacity, userId);
         roomService.confirmJoin(roomInfoResponse.roomId(), userId);
@@ -1007,6 +1012,29 @@ class RoomServiceTest {
             assertThat(newHost.getReadyStatus()).isEqualTo(ReadyStatus.NOT_READY);
             assertThat(result.hostChangedEvent()).isNotNull();
             assertThat(result.hostChangedEvent().newHost().status()).isEqualTo(ReadyStatus.NOT_READY);
+        }
+
+        @Test
+        void 호스트_퇴장시_봇보다_사람_플레이어를_우선해서_새_방장으로_선출한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User bot = createAndSaveBotUser("[봇] 테스트봇");
+            User humanGuest = createAndSaveUser("guest-session", "게스트유저");
+            Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
+            roomRepository.save(room);
+
+            playerRepository.create(activePlayer(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(activePlayer(bot.getUserId(), TEST_ROOM_ID, bot.getNickname()));
+            playerRepository.create(activePlayer(humanGuest.getUserId(), TEST_ROOM_ID, humanGuest.getNickname()));
+
+            // when
+            LeaveRoomResult result = roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
+
+            // then
+            assertThat(result.hasHostChangedEvent()).isTrue();
+            assertThat(result.hostChangedEvent().newHost().userId()).isEqualTo(humanGuest.getUserId());
+            assertThat(roomRepository.findById(TEST_ROOM_ID)).isPresent();
+            assertThat(roomRepository.findById(TEST_ROOM_ID).orElseThrow().getHostId()).isEqualTo(humanGuest.getUserId());
         }
 
         @Test

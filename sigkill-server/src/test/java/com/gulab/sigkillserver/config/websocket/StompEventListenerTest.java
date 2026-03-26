@@ -1,26 +1,18 @@
 package com.gulab.sigkillserver.config.websocket;
 
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyLong;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
-import com.gulab.sigkillserver.domain.room.dto.stomp.event.HostChangedEvent;
-import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerLeftEvent;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
-import com.gulab.sigkillserver.domain.room.service.PendingRoomJoinOrchestrator;
-import com.gulab.sigkillserver.domain.room.service.RoomService;
+import com.gulab.sigkillserver.domain.room.service.RoomExitCoordinator;
 import java.security.Principal;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
@@ -29,15 +21,11 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 class StompEventListenerTest {
 
-    private final RoomService roomService = mock(RoomService.class);
-    private final PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator = mock(PendingRoomJoinOrchestrator.class);
+    private final RoomExitCoordinator roomExitCoordinator = mock(RoomExitCoordinator.class);
     private final PlayerRepository playerRepository = mock(PlayerRepository.class);
-    private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
     private final StompEventListener stompEventListener = new StompEventListener(
-            roomService,
-            pendingRoomJoinOrchestrator,
-            playerRepository,
-            messagingTemplate
+            roomExitCoordinator,
+            playerRepository
     );
 
     private Player activePlayer(Long userId, String roomId, String nickname) {
@@ -51,9 +39,7 @@ class StompEventListenerTest {
         // given
         Long userId = 1L;
         Player player = activePlayer(userId, "1001", "tester");
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, userId);
         when(playerRepository.findById(userId)).thenReturn(Optional.of(player));
-        when(roomService.leaveRoom("1001", userId)).thenReturn(LeaveRoomResult.of(playerLeftEvent));
 
         SessionDisconnectEvent event = createDisconnectEvent("session-1", () -> String.valueOf(userId));
 
@@ -61,9 +47,7 @@ class StompEventListenerTest {
         stompEventListener.disconnectHandle(event);
 
         // then
-        verify(roomService).leaveRoom("1001", userId);
-        verify(pendingRoomJoinOrchestrator).cancelPendingJoinTimeout(userId);
-        verify(messagingTemplate).convertAndSend("/topic/room/1001", playerLeftEvent);
+        verify(roomExitCoordinator).leaveRoomByDisconnect(player);
     }
 
     @Test
@@ -71,12 +55,7 @@ class StompEventListenerTest {
         // given
         Long userId = 1L;
         Player leavingPlayer = activePlayer(userId, "1001", "oldHost");
-        Player newHost = activePlayer(2L, "1001", "newHost");
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(leavingPlayer, userId);
-        HostChangedEvent hostChangedEvent = HostChangedEvent.of(newHost, leavingPlayer, newHost.getUserId(), "HOST_LEFT");
         when(playerRepository.findById(userId)).thenReturn(Optional.of(leavingPlayer));
-        when(roomService.leaveRoom("1001", userId))
-                .thenReturn(LeaveRoomResult.of(playerLeftEvent, hostChangedEvent));
 
         SessionDisconnectEvent event = createDisconnectEvent("session-1", () -> String.valueOf(userId));
 
@@ -84,8 +63,7 @@ class StompEventListenerTest {
         stompEventListener.disconnectHandle(event);
 
         // then
-        verify(messagingTemplate).convertAndSend("/topic/room/1001", playerLeftEvent);
-        verify(messagingTemplate).convertAndSend("/topic/room/1001", hostChangedEvent);
+        verify(roomExitCoordinator).leaveRoomByDisconnect(leavingPlayer);
     }
 
     @Test
@@ -93,9 +71,7 @@ class StompEventListenerTest {
         // given
         Long userId = 1L;
         Player pendingPlayer = Player.create(userId, "1001", "pending");
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(pendingPlayer, userId);
         when(playerRepository.findById(userId)).thenReturn(Optional.of(pendingPlayer));
-        when(roomService.leaveRoom("1001", userId)).thenReturn(LeaveRoomResult.of(playerLeftEvent));
 
         SessionDisconnectEvent event = createDisconnectEvent("session-1", () -> String.valueOf(userId));
 
@@ -103,9 +79,7 @@ class StompEventListenerTest {
         stompEventListener.disconnectHandle(event);
 
         // then
-        verify(roomService).leaveRoom("1001", userId);
-        verify(pendingRoomJoinOrchestrator).cancelPendingJoinTimeout(userId);
-        verifyNoInteractions(messagingTemplate);
+        verify(roomExitCoordinator).leaveRoomByDisconnect(pendingPlayer);
     }
 
     @Test
@@ -113,12 +87,7 @@ class StompEventListenerTest {
         // given
         Long userId = 1L;
         Player pendingHost = Player.create(userId, "1001", "pendingHost");
-        Player pendingGuest = Player.create(2L, "1001", "pendingGuest");
-        PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(pendingHost, userId);
-        HostChangedEvent hostChangedEvent = HostChangedEvent.of(pendingGuest, pendingHost, pendingGuest.getUserId(), "HOST_LEFT");
         when(playerRepository.findById(userId)).thenReturn(Optional.of(pendingHost));
-        when(roomService.leaveRoom("1001", userId))
-                .thenReturn(LeaveRoomResult.of(playerLeftEvent, hostChangedEvent));
 
         SessionDisconnectEvent event = createDisconnectEvent("session-1", () -> String.valueOf(userId));
 
@@ -126,10 +95,7 @@ class StompEventListenerTest {
         stompEventListener.disconnectHandle(event);
 
         // then
-        verify(roomService).leaveRoom("1001", userId);
-        verify(pendingRoomJoinOrchestrator).cancelPendingJoinTimeout(userId);
-        verify(messagingTemplate).convertAndSend("/topic/room/1001", playerLeftEvent);
-        verify(messagingTemplate).convertAndSend("/topic/room/1001", hostChangedEvent);
+        verify(roomExitCoordinator).leaveRoomByDisconnect(pendingHost);
     }
 
     @Test
@@ -144,8 +110,7 @@ class StompEventListenerTest {
         stompEventListener.disconnectHandle(event);
 
         // then
-        verify(roomService, never()).leaveRoom(anyString(), anyLong());
-        verifyNoInteractions(messagingTemplate);
+        verify(roomExitCoordinator, never()).leaveRoomByDisconnect(any());
     }
 
     @Test
@@ -158,8 +123,7 @@ class StompEventListenerTest {
 
         // then
         verify(playerRepository, never()).findById(any());
-        verify(roomService, never()).leaveRoom(anyString(), anyLong());
-        verifyNoInteractions(messagingTemplate);
+        verify(roomExitCoordinator, never()).leaveRoomByDisconnect(any());
     }
 
     private SessionDisconnectEvent createDisconnectEvent(String sessionId, Principal principal) {
