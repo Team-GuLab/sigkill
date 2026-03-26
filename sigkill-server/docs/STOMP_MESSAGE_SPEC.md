@@ -4,8 +4,8 @@
 
 ## 1. 범위
 
-- 현재 구현/계약 범위: Room 도메인 이벤트 (`join`, `snapshot`, `leave`, `ready`, `unready`), Game 도메인 이벤트 (`game/start`, `quiz/start`,
-  `submit`, `quiz/end`, `game/end`), 연결 상태 확인 이벤트 (`ping`)
+- 현재 구현/계약 범위: Room 도메인 이벤트 (`join`, `snapshot`, `bot`, `leave`, `ready`, `unready`), Game 도메인 이벤트 (`game/start`,
+  `quiz/start`, `submit`, `quiz/end`, `game/end`), 연결 상태 확인 이벤트 (`ping`)
 - 마이그레이션 노트:
     - REST `GET /api/v1/rooms/{roomId}/availability` 삭제
     - 방 입장은 REST `POST /api/v1/rooms/{roomId}/join` 후 STOMP `SEND /app/room/join`으로 최종 확정된다
@@ -211,6 +211,21 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 }
 ```
 
+### 5.1.2 봇 추가
+
+- SEND: `/app/room/bot`
+- SUBSCRIBE: `/topic/room/{roomId}`
+- 요청 payload는 `RoomIdCommand`
+- 권한/조건:
+    - 방장만 호출 가능
+    - `WAITING` 상태 방에서만 호출 가능
+    - 정원이 가득 찬 방에서는 실패
+- 서버 동작:
+    - 서버는 `UserRole.BOT` 사용자를 내부 생성하고 닉네임은 항상 `[봇] ` 접두사를 사용한다
+    - 서버는 기존 서비스 경로로 `joinRoom -> confirmJoin`을 호출해 `PLAYER_JOIN`을 먼저 브로드캐스트한다
+    - 이어서 짧은 랜덤 지연 후 기존 서비스 경로로 `readyPlayer`를 호출해 `PLAYER_READY`를 브로드캐스트한다
+    - 따라서 `/app/room/bot` 성공은 단일 이벤트가 아니라 `PLAYER_JOIN -> PLAYER_READY` 순서의 연속 이벤트로 관찰된다
+
 ### 5.2 플레이어 퇴장
 
 - SEND: `/app/room/leave`
@@ -234,6 +249,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 - 퇴장한 사용자가 방장이면 같은 채널로 `HOST_CHANGED`를 추가 전송한다.
 - 마지막 1명이 퇴장하면 방이 삭제되며 `HOST_CHANGED`는 전송되지 않는다.
 - 클라이언트가 명시적으로 `leave`를 보내지 않고 연결이 끊겨도 서버는 자동 퇴장 처리 후 동일 이벤트를 브로드캐스트한다.
+- `leave` 또는 연결 종료 후 서버는 game topic으로 synthetic `GAME_LOADED`를 만들지 않는다.
 
 ### 5.3 방장 변경(자동 이벤트)
 
@@ -281,6 +297,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 `allReady` 규칙:
 
 - 호스트를 제외한 모든 플레이어가 `READY`면 `true`
+- 봇 추가 성공 시에는 `PLAYER_JOIN` 뒤 지연된 `PLAYER_READY`가 추가로 전송될 수 있다
 
 ### 5.5 플레이어 준비 취소
 
@@ -430,8 +447,9 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 
 - 클라이언트는 `GAME_START` 수신 후 게임 화면 진입/초기화가 완료되면 `/app/game/load`를 전송한다.
 - 서버는 `GAME_LOADED`를 `/topic/game/{gameId}`로 브로드캐스트한다.
-- `players[*].isLoaded`는 각 사용자별 로딩 완료 여부를 의미한다.
-- `payload.allLoaded=true`는 게임 참가자 전원의 `isLoaded=true`일 때만 성립한다.
+- 봇도 `GAME_START` 이후 서버 내부에서 실제 `loadGame()`을 호출하며, 그 결과만 `GAME_LOADED`로 브로드캐스트된다.
+- `players[*].isLoaded`는 현재 방에 남아 있는 각 사용자별 로딩 완료 여부를 의미한다.
+- `payload.allLoaded=true`는 현재 방에 남아 있는 게임 참가자 전원의 `isLoaded=true`일 때만 성립한다.
 - `allReady`(방 준비 상태)와 `allLoaded`(게임 로딩 상태)는 다른 값이다.
 - `payload.allLoaded=true`가 되는 시점에 서버는 최초 1회만 3초 뒤 첫 `QUIZ_START`를 자동 브로드캐스트한다.
 
@@ -482,6 +500,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 동작 규칙:
 
 - `GAME_LOADED` 응답에서 `payload.allLoaded=true`가 된 이후 서버는 3초 대기 후 `QUIZ_START`를 자동 브로드캐스트한다.
+- 살아 있는 봇은 `QUIZ_START` 이후 서버 내부에서 지연된 `submitChoice()`를 호출하고, 결과는 기존 `CHOICE_SUBMIT`으로만 노출된다.
 - `QUIZ_START` 이후 서버는 10초 대기 후 `QUIZ_END`를 자동 브로드캐스트한다.
 - `QUIZ_END` 이후 게임 종료 조건이면 같은 채널에 `GAME_END`를 브로드캐스트하고 종료한다.
 - 게임 미종료면 `QUIZ_END` 이후 10초 대기 후 다음 `QUIZ_START`를 자동 브로드캐스트한다.
@@ -501,6 +520,11 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
   "choiceNumber": 3
 }
 ```
+
+추가 규칙:
+
+- `GAME_END` 후 방에 사람이 1명 이상 남아 있으면 봇은 room topic으로 정상 `PLAYER_READY`를 다시 브로드캐스트한다.
+- `GAME_END` 후 사람이 0명이면 봇은 기존 `leaveRoom()` 경로로 순차 퇴장하며 room 정리를 완료한다.
 
 응답 예시:
 
