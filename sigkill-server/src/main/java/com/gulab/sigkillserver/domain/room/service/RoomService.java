@@ -45,6 +45,7 @@ import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import com.gulab.sigkillserver.domain.user.model.User;
+import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.util.Collections;
 import java.util.Comparator;
@@ -374,12 +375,26 @@ public class RoomService {
      * 호스트 변경
      */
     private HostChangedEvent changeHost(Room room, Player previousHost, List<Player> remainingPlayers) {
-        Player newHost = remainingPlayers.stream()
-                .min(Comparator.comparing(Player::getCreatedAt))
-                .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
+        Player newHost = selectNextHost(remainingPlayers);
         newHost.unready();
         room.changeHost(newHost.getUserId());
         return HostChangedEvent.of(newHost, previousHost, room.getHostId(), HOST_CHANGED_REASON_HOST_LEFT);
+    }
+
+    private Player selectNextHost(List<Player> remainingPlayers) {
+        return remainingPlayers.stream()
+                .filter(this::isHumanPlayer)
+                .min(Comparator.comparing(Player::getCreatedAt))
+                .or(() -> remainingPlayers.stream()
+                        .min(Comparator.comparing(Player::getCreatedAt)))
+                .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
+    }
+
+    private boolean isHumanPlayer(Player player) {
+        return userRepository.findById(player.getUserId())
+                .map(User::getRole)
+                .map(role -> role != UserRole.BOT)
+                .orElse(true);
     }
 
     /**

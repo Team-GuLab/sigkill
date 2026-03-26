@@ -38,12 +38,21 @@ public class UserMemoryRepository implements UserRepository {
         return Optional.ofNullable(store.get(userId));
     }
 
-    @Override public Optional<User> findBySessionId(String sessionId) {
+    @Override
+    public Optional<User> findBySessionId(String sessionId) {
         Long userId = sessionIndex.get(sessionId);
         if (userId == null) {
             return Optional.empty();
         }
         return Optional.ofNullable(store.get(userId));
+    }
+
+    @Override
+    public void deleteById(Long userId) {
+        User removed = store.remove(userId);
+        if (removed != null && removed.getSessionId() != null) {
+            sessionIndex.remove(removed.getSessionId(), userId);
+        }
     }
 
     @Override

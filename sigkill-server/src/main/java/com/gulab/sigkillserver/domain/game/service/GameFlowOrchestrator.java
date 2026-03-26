@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class GameFlowOrchestrator {
     private final RoomRepository roomRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final TaskScheduler gameTaskScheduler;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
     private final Set<Long> initialQuizStartTriggeredGames = ConcurrentHashMap.newKeySet();
@@ -33,12 +35,14 @@ public class GameFlowOrchestrator {
             GameService gameService,
             RoomRepository roomRepository,
             SimpMessagingTemplate messagingTemplate,
-            @Qualifier("gameTaskScheduler") TaskScheduler gameTaskScheduler
+            @Qualifier("gameTaskScheduler") TaskScheduler gameTaskScheduler,
+            ApplicationEventPublisher applicationEventPublisher
     ) {
         this.gameService = gameService;
         this.roomRepository = roomRepository;
         this.messagingTemplate = messagingTemplate;
         this.gameTaskScheduler = gameTaskScheduler;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     public void onAllPlayersLoaded(String roomId, Long gameId) {
@@ -94,6 +98,7 @@ public class GameFlowOrchestrator {
 
             QuizStartEvent quizStartEvent = gameService.startQuiz(room.getHostId(), roomId, gameId);
             messagingTemplate.convertAndSend("/topic/game/" + gameId, quizStartEvent);
+            applicationEventPublisher.publishEvent(quizStartEvent);
             scheduleQuizEnd(roomId, gameId, quizStartEvent.payload().quiz().quizId(),
                     quizStartEvent.payload().quiz().endTime());
 
@@ -141,6 +146,7 @@ public class GameFlowOrchestrator {
 
             if (endQuizOrGameEvent.hasGameEnd()) {
                 messagingTemplate.convertAndSend("/topic/game/" + gameId, endQuizOrGameEvent.gameEndEvent());
+                applicationEventPublisher.publishEvent(endQuizOrGameEvent.gameEndEvent());
                 initialQuizStartTriggeredGames.remove(gameId);
                 log.info("'{}' 방 게임 종료됨 - action=game-ended, roomId={}, gameId={}, quizId={}, reason={}",
                         room.getRoomTitle(),

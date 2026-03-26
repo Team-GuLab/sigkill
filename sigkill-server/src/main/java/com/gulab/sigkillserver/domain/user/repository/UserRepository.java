@@ -25,6 +25,11 @@ public interface UserRepository {
     Optional<User> findBySessionId(String sessionId);
 
     /**
+     * ID로 사용자 삭제
+     */
+    void deleteById(Long userId);
+
+    /**
      * 모든 사용자 조회
      */
     List<User> findAll();

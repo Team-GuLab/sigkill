@@ -1,10 +1,8 @@
 package com.gulab.sigkillserver.config.websocket;
 
-import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
-import com.gulab.sigkillserver.domain.room.service.PendingRoomJoinOrchestrator;
-import com.gulab.sigkillserver.domain.room.service.RoomService;
+import com.gulab.sigkillserver.domain.room.service.RoomExitCoordinator;
 import java.security.Principal;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
@@ -24,10 +21,8 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 @RequiredArgsConstructor
 public class StompEventListener {
 
-    private final RoomService roomService;
-    private final PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator;
+    private final RoomExitCoordinator roomExitCoordinator;
     private final PlayerRepository playerRepository;
-    private final SimpMessagingTemplate messagingTemplate;
     private final Set<String> sessions = ConcurrentHashMap.newKeySet();
 
     @EventListener
@@ -65,44 +60,9 @@ public class StompEventListener {
                 return;
             }
 
-            playerRepository.findById(userId).ifPresent(this::leaveRoomByDisconnect);
+            playerRepository.findById(userId).ifPresent(roomExitCoordinator::leaveRoomByDisconnect);
         } finally {
             MDC.remove("channel");
         }
-    }
-
-    private void leaveRoomByDisconnect(Player player) {
-        String roomId = player.getRoomId();
-        Long userId = player.getUserId();
-        String nickname = player.getNickname();
-        boolean wasActive = player.isActive();
-
-        LeaveRoomResult leaveRoomResult;
-        try {
-            leaveRoomResult = roomService.leaveRoom(roomId, userId);
-            pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(userId);
-        } catch (RuntimeException e) {
-            log.warn("DISCONNECT 자동 퇴장 처리 실패 - roomId={}, userId={}, userNickname={}, message={}",
-                    roomId, userId, nickname, e.getMessage());
-            return;
-        }
-
-        if (!wasActive) {
-            if (!leaveRoomResult.hasHostChangedEvent()) {
-                log.debug("DISCONNECT pending player cleaned without broadcast - roomId={}, userId={}, userNickname={}",
-                        roomId, userId, nickname);
-                return;
-            }
-            log.debug("DISCONNECT pending host cleaned with host change broadcast - roomId={}, userId={}, userNickname={}",
-                    roomId, userId, nickname);
-        }
-
-        messagingTemplate.convertAndSend("/topic/room/" + roomId, leaveRoomResult.playerLeftEvent());
-        if (leaveRoomResult.hasHostChangedEvent()) {
-            messagingTemplate.convertAndSend("/topic/room/" + roomId, leaveRoomResult.hostChangedEvent());
-        }
-
-        log.debug("DISCONNECT 자동 퇴장 처리 완료 - roomId={}, userId={}, userNickname={}",
-                roomId, userId, nickname);
     }
 }

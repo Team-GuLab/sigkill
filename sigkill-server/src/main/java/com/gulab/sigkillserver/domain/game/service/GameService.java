@@ -54,9 +54,11 @@ import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -140,7 +142,7 @@ public class GameService {
                     .markAsLoaded();
 
             // 게임 정보 반환
-            return gameEventBuilder.toGameLoadEvent(room, latestGame, gamePlayers);
+            return gameEventBuilder.toGameLoadEvent(room, latestGame, filterCurrentRoomParticipants(roomId, gamePlayers));
         });
     }
 
@@ -412,6 +414,17 @@ public class GameService {
     private Room getRoomOrThrow(String roomId) {
         return roomRepository.findById(roomId)
                 .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
+    }
+
+    private List<GamePlayer> filterCurrentRoomParticipants(String roomId, List<GamePlayer> gamePlayers) {
+        Set<Long> currentPlayerIds = new HashSet<>();
+        playerRepository.findAllByRoomId(roomId).stream()
+                .map(Player::getUserId)
+                .forEach(currentPlayerIds::add);
+
+        return gamePlayers.stream()
+                .filter(gamePlayer -> currentPlayerIds.contains(gamePlayer.getUserId()))
+                .toList();
     }
 
     private Game getGameOrThrow(Long gameId) {
