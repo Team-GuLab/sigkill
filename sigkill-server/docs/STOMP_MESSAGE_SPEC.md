@@ -220,6 +220,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
     - 방장만 호출 가능
     - `WAITING` 상태 방에서만 호출 가능
     - 정원이 가득 찬 방에서는 실패
+    - bot-only closing 상태 방에서는 `ROOM_CLOSING`으로 실패
 - 서버 동작:
     - 서버는 `UserRole.BOT` 사용자를 내부 생성하고 닉네임은 항상 `[봇] ` 접두사를 사용한다
     - 서버는 기존 서비스 경로로 `joinRoom -> confirmJoin`을 호출해 `PLAYER_JOIN`을 먼저 브로드캐스트한다
@@ -249,6 +250,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 - 퇴장한 사용자가 방장이면 같은 채널로 `HOST_CHANGED`를 추가 전송한다.
 - 마지막 1명이 퇴장하면 방이 삭제되며 `HOST_CHANGED`는 전송되지 않는다.
 - 클라이언트가 명시적으로 `leave`를 보내지 않고 연결이 끊겨도 서버는 자동 퇴장 처리 후 동일 이벤트를 브로드캐스트한다.
+- 마지막 사람이 나가고 waiting room에 봇만 남으면 방은 내부적으로 closing 상태로 전환되며 새 입장은 `ROOM_CLOSING`으로 거부된다.
 - `leave` 또는 연결 종료 후 서버는 game topic으로 synthetic `GAME_LOADED`를 만들지 않는다.
 
 ### 5.3 방장 변경(자동 이벤트)
@@ -524,7 +526,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 추가 규칙:
 
 - `GAME_END` 후 방에 사람이 1명 이상 남아 있으면 봇은 room topic으로 정상 `PLAYER_READY`를 다시 브로드캐스트한다.
-- `GAME_END` 후 사람이 0명이면 봇은 기존 `leaveRoom()` 경로로 순차 퇴장하며 room 정리를 완료한다.
+- `GAME_END` 후 사람이 0명이면 방은 closing 상태로 전환되고, 새 입장은 `ROOM_CLOSING`으로 거부되며, 봇은 기존 `leaveRoom()` 경로로 순차 퇴장하며 room 정리를 완료한다.
 
 응답 예시:
 
@@ -691,6 +693,7 @@ Response type: `ERROR`
   `NOT_ENOUGH_PLAYERS_TO_START`,
   `PLAYERS_NOT_READY`,
   `USER_ALREADY_IN_ROOM`,
+  `ROOM_CLOSING`,
   `ROOM_NUMBER_ERROR`,
   `SUBMIT_CHOICE_NOT_CURRENT_QUIZ`,
   `SUBMIT_CHOICE_IS_AFTER_DEADLINE`

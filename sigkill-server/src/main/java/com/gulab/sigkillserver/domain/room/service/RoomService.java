@@ -13,6 +13,7 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_C
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.NOT_ENOUGH_PLAYERS_TO_START;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ONLY_HOST_CAN_START_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYERS_NOT_READY;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CLOSING;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
@@ -139,7 +140,7 @@ public class RoomService {
     }
 
     private boolean canJoinRoom(Room room) {
-        return !room.isInGame() && !isRoomFull(room);
+        return !room.isClosing() && !room.isInGame() && !isRoomFull(room);
     }
 
     private void validatePaginationParameters(int page, int size) {
@@ -303,6 +304,9 @@ public class RoomService {
     }
 
     private void validateRoomJoinable(Room room) {
+        if (room.isClosing()) {
+            throw new CustomException(ROOM_CLOSING);
+        }
         if (room.isInGame()) {
             throw new CustomException(ROOM_IN_GAME);
         }
@@ -359,10 +363,12 @@ public class RoomService {
                     return LeaveRoomResult.of(playerLeftEvent);
                 }
                 HostChangedEvent hostChangedEvent = changeHost(room, player, remainingPlayers);
+                updateClosingState(room);
                 hostChanged.set(true);
                 return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
             }
 
+            updateClosingState(room);
             return LeaveRoomResult.of(playerLeftEvent);
         });
 
@@ -395,6 +401,24 @@ public class RoomService {
                 .map(User::getRole)
                 .map(role -> role != UserRole.BOT)
                 .orElse(true);
+    }
+
+    private void updateClosingState(Room room) {
+        if (room.isInGame()) {
+            room.clearClosing();
+            return;
+        }
+
+        List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
+        boolean hasOnlyBots = !players.isEmpty() && players.stream()
+                .noneMatch(this::isHumanPlayer);
+
+        if (hasOnlyBots) {
+            room.markClosing();
+            return;
+        }
+
+        room.clearClosing();
     }
 
     /**

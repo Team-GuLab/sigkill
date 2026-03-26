@@ -1038,6 +1038,30 @@ class RoomServiceTest {
         }
 
         @Test
+        void 마지막_사람이_퇴장해_봇만_남은_waiting_방은_closing_상태가_되어_새_입장을_막는다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User bot = createAndSaveBotUser("[봇] 테스트봇");
+            User lateGuest = createAndSaveUser("late-guest-session", "늦은손님");
+            Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
+            roomRepository.save(room);
+
+            playerRepository.create(activePlayer(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(activePlayer(bot.getUserId(), TEST_ROOM_ID, bot.getNickname()));
+
+            // when
+            roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
+
+            // then
+            assertThat(roomRepository.findById(TEST_ROOM_ID)).isPresent();
+            assertThat(roomRepository.findById(TEST_ROOM_ID).orElseThrow().isClosing()).isTrue();
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom(TEST_ROOM_ID, lateGuest.getUserId()),
+                    RoomErrorCode.ROOM_CLOSING.name()
+            );
+        }
+
+        @Test
         void 마지막_플레이어가_퇴장할_경우_방이_삭제된다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");

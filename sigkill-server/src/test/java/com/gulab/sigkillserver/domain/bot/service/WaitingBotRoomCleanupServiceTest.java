@@ -1,11 +1,13 @@
 package com.gulab.sigkillserver.domain.bot.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.repository.GameMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.GamePlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.game.repository.QuizChoiceNumberMappingMemoryRepository;
@@ -14,12 +16,15 @@ import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryReposi
 import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.lock.RoomLockManager;
+import com.gulab.sigkillserver.domain.room.exception.RoomErrorCode;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
 import com.gulab.sigkillserver.domain.room.service.PendingRoomJoinOrchestrator;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
+import com.gulab.sigkillserver.domain.user.model.User;
+import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -37,6 +42,7 @@ class WaitingBotRoomCleanupServiceTest {
     private PlayerMemoryRepository playerRepository;
     private RoomMemoryRepository roomRepository;
     private RoomService roomService;
+    private RoomLockManager roomLockManager;
     private TaskScheduler botTaskScheduler;
     private BotUserService botUserService;
     private WaitingBotRoomCleanupService waitingBotRoomCleanupService;
@@ -46,7 +52,7 @@ class WaitingBotRoomCleanupServiceTest {
         userRepository = new UserMemoryRepository();
         playerRepository = new PlayerMemoryRepository();
         roomRepository = new RoomMemoryRepository();
-        RoomLockManager roomLockManager = new RoomLockManager();
+        roomLockManager = new RoomLockManager();
 
         GameService gameService = new GameService(
                 userRepository,
@@ -74,6 +80,7 @@ class WaitingBotRoomCleanupServiceTest {
                 playerRepository,
                 botUserService,
                 roomService,
+                roomLockManager,
                 mock(PendingRoomJoinOrchestrator.class),
                 mock(SimpMessagingTemplate.class),
                 botTaskScheduler
@@ -89,6 +96,10 @@ class WaitingBotRoomCleanupServiceTest {
         Player player = Player.create(userId, roomId, nickname);
         player.activate();
         return player;
+    }
+
+    private User createGuestUser(String sessionId, String nickname) {
+        return userRepository.save(User.create(sessionId, nickname, UserRole.GUEST));
     }
 
     @Test
@@ -118,5 +129,30 @@ class WaitingBotRoomCleanupServiceTest {
         assertThat(playerRepository.findAllByRoomId(room.getRoomId())).isEmpty();
         assertThat(userRepository.findById(botHost.getUserId())).isEmpty();
         assertThat(userRepository.findById(botGuest.getUserId())).isEmpty();
+    }
+
+    @Test
+    void waiting_bot_only_room이_드레인_예약되면_closing_상태가_되어_새_입장이_거부된다() {
+        // given
+        var botHost = botUserService.createBotUser();
+        var botGuest = botUserService.createBotUser();
+        User human = createGuestUser("human-session", "사람");
+        Room room = Room.create("1457", "닫히는 봇 방", botHost.getUserId(), 6);
+        roomRepository.save(room);
+        playerRepository.create(activePlayer(botHost.getUserId(), room.getRoomId(), botHost.getNickname()));
+        playerRepository.create(activePlayer(botGuest.getUserId(), room.getRoomId(), botGuest.getNickname()));
+
+        when(botTaskScheduler.schedule(any(Runnable.class), any(Instant.class)))
+                .thenAnswer(invocation -> mockScheduledFuture());
+
+        // when
+        waitingBotRoomCleanupService.scheduleDrainIfWaitingBotOnly(room.getRoomId());
+
+        // then
+        assertThat(roomRepository.findById(room.getRoomId()).orElseThrow().isClosing()).isTrue();
+        assertThatThrownBy(() -> roomService.joinRoom(room.getRoomId(), human.getUserId()))
+                .isInstanceOf(CustomException.class)
+                .satisfies(throwable -> assertThat(((CustomException) throwable).getErrorCode().getCode())
+                        .isEqualTo(RoomErrorCode.ROOM_CLOSING.name()));
     }
 }

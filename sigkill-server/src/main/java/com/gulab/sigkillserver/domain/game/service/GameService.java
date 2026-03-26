@@ -50,6 +50,7 @@ import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import com.gulab.sigkillserver.domain.user.model.User;
+import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -363,6 +364,7 @@ public class GameService {
 
             // player 모두 준비 해제
             playerRepository.findAllByRoomId(roomId).forEach(Player::unready);
+            updateClosingState(room);
 
             return gameEndEvent;
         });
@@ -384,6 +386,27 @@ public class GameService {
             return GameEndReason.QUIZ_EXHAUSTED;
         }
         throw new CustomException(GAME_IN_PROGRESS);
+    }
+
+    private void updateClosingState(Room room) {
+        if (room.isInGame()) {
+            room.clearClosing();
+            return;
+        }
+
+        List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
+        boolean hasOnlyBots = !players.isEmpty() && players.stream()
+                .allMatch(player -> userRepository.findById(player.getUserId())
+                        .map(User::getRole)
+                        .map(role -> role == UserRole.BOT)
+                        .orElse(false));
+
+        if (hasOnlyBots) {
+            room.markClosing();
+            return;
+        }
+
+        room.clearClosing();
     }
 
     private void validateRoomId(String roomId) {

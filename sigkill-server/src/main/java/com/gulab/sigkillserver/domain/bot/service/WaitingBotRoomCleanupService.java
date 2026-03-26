@@ -1,6 +1,7 @@
 package com.gulab.sigkillserver.domain.bot.service;
 
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
+import com.gulab.sigkillserver.domain.lock.RoomLockManager;
 import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
@@ -32,6 +33,7 @@ public class WaitingBotRoomCleanupService {
     private final PlayerRepository playerRepository;
     private final BotUserService botUserService;
     private final RoomService roomService;
+    private final RoomLockManager roomLockManager;
     private final PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator;
     private final SimpMessagingTemplate messagingTemplate;
     @Qualifier("botTaskScheduler")
@@ -40,10 +42,15 @@ public class WaitingBotRoomCleanupService {
     private final Set<String> drainingRoomIds = ConcurrentHashMap.newKeySet();
 
     public void scheduleDrainIfWaitingBotOnly(String roomId) {
-        if (!isWaitingBotOnlyRoom(roomId)) {
-            return;
-        }
-        if (!drainingRoomIds.add(roomId)) {
+        boolean shouldSchedule = roomLockManager.executeWithLock(roomId, () -> {
+            Room room = roomRepository.findById(roomId).orElse(null);
+            if (!isWaitingBotOnlyRoom(room)) {
+                return false;
+            }
+            room.markClosing();
+            return drainingRoomIds.add(roomId);
+        });
+        if (!shouldSchedule) {
             return;
         }
         scheduleDrain(roomId, randomDelay(MIN_BOT_LEAVE_DELAY_MILLIS, MAX_BOT_LEAVE_DELAY_MILLIS));
@@ -58,33 +65,23 @@ public class WaitingBotRoomCleanupService {
 
     private void drainRoom(String roomId) {
         try {
-            Room room = roomRepository.findById(roomId).orElse(null);
-            if (room == null || room.isInGame()) {
+            DrainResult drainResult = roomLockManager.executeWithLock(roomId, () -> drainOneBot(roomId));
+            if (drainResult == null) {
                 drainingRoomIds.remove(roomId);
                 return;
             }
 
-            List<Player> botPlayers = findBotPlayers(roomId);
-            if (botPlayers.isEmpty() || hasHumanPlayers(roomId)) {
-                drainingRoomIds.remove(roomId);
-                return;
-            }
+            pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(drainResult.botUserId());
+            botUserService.deleteBotUser(drainResult.botUserId());
 
-            Player leavingBot = selectBotToLeave(room, botPlayers);
-            boolean wasActive = leavingBot.isActive();
-
-            LeaveRoomResult leaveRoomResult = roomService.leaveRoom(roomId, leavingBot.getUserId());
-            pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(leavingBot.getUserId());
-            botUserService.deleteBotUser(leavingBot.getUserId());
-
-            if (wasActive || leaveRoomResult.hasHostChangedEvent()) {
-                messagingTemplate.convertAndSend("/topic/room/" + roomId, leaveRoomResult.playerLeftEvent());
-                if (leaveRoomResult.hasHostChangedEvent()) {
-                    messagingTemplate.convertAndSend("/topic/room/" + roomId, leaveRoomResult.hostChangedEvent());
+            if (drainResult.wasActive() || drainResult.leaveRoomResult().hasHostChangedEvent()) {
+                messagingTemplate.convertAndSend("/topic/room/" + roomId, drainResult.leaveRoomResult().playerLeftEvent());
+                if (drainResult.leaveRoomResult().hasHostChangedEvent()) {
+                    messagingTemplate.convertAndSend("/topic/room/" + roomId, drainResult.leaveRoomResult().hostChangedEvent());
                 }
             }
 
-            if (isWaitingBotOnlyRoom(roomId)) {
+            if (drainResult.shouldContinue()) {
                 scheduleDrain(roomId, randomDelay(MIN_BOT_LEAVE_DELAY_MILLIS, MAX_BOT_LEAVE_DELAY_MILLIS));
                 return;
             }
@@ -96,6 +93,32 @@ public class WaitingBotRoomCleanupService {
         }
     }
 
+    private DrainResult drainOneBot(String roomId) {
+        Room room = roomRepository.findById(roomId).orElse(null);
+        if (!isWaitingBotOnlyRoom(room)) {
+            clearClosing(room);
+            return null;
+        }
+
+        List<Player> botPlayers = findBotPlayers(roomId);
+        if (botPlayers.isEmpty()) {
+            clearClosing(room);
+            return null;
+        }
+
+        Player leavingBot = selectBotToLeave(room, botPlayers);
+        boolean wasActive = leavingBot.isActive();
+        LeaveRoomResult leaveRoomResult = roomService.leaveRoom(roomId, leavingBot.getUserId());
+
+        Room remainingRoom = roomRepository.findById(roomId).orElse(null);
+        boolean shouldContinue = isWaitingBotOnlyRoom(remainingRoom);
+        if (!shouldContinue) {
+            clearClosing(remainingRoom);
+        }
+
+        return new DrainResult(leavingBot.getUserId(), wasActive, leaveRoomResult, shouldContinue);
+    }
+
     private Player selectBotToLeave(Room room, List<Player> botPlayers) {
         return botPlayers.stream()
                 .filter(player -> player.getUserId().equals(room.getHostId()))
@@ -105,21 +128,15 @@ public class WaitingBotRoomCleanupService {
                         .orElseThrow());
     }
 
-    private boolean isWaitingBotOnlyRoom(String roomId) {
-        Room room = roomRepository.findById(roomId).orElse(null);
+    private boolean isWaitingBotOnlyRoom(Room room) {
         if (room == null || room.isInGame()) {
             return false;
         }
-        List<Player> players = playerRepository.findAllByRoomId(roomId);
+        List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
         if (players.isEmpty()) {
             return false;
         }
         return players.stream().allMatch(player -> botUserService.isBotUser(player.getUserId()));
-    }
-
-    private boolean hasHumanPlayers(String roomId) {
-        return playerRepository.findAllByRoomId(roomId).stream()
-                .anyMatch(player -> !botUserService.isBotUser(player.getUserId()));
     }
 
     private List<Player> findBotPlayers(String roomId) {
@@ -128,7 +145,21 @@ public class WaitingBotRoomCleanupService {
                 .toList();
     }
 
+    private void clearClosing(Room room) {
+        if (room != null) {
+            room.clearClosing();
+        }
+    }
+
     private long randomDelay(long minDelayMillis, long maxDelayMillis) {
         return ThreadLocalRandom.current().nextLong(minDelayMillis, maxDelayMillis + 1);
+    }
+
+    private record DrainResult(
+            Long botUserId,
+            boolean wasActive,
+            LeaveRoomResult leaveRoomResult,
+            boolean shouldContinue
+    ) {
     }
 }

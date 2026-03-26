@@ -109,6 +109,10 @@ class GameServiceTest {
         return userRepository.save(User.create(sessionId, nickname, UserRole.GUEST));
     }
 
+    private User saveBotUser(String nickname) {
+        return userRepository.save(User.create(null, nickname, UserRole.BOT));
+    }
+
     private Room saveRoom(String roomId) {
         Room room = Room.create(roomId, "테스트 방", 1L, 6);
         roomRepository.save(room);
@@ -1351,6 +1355,32 @@ class GameServiceTest {
             assertThat(result.payload().rankings())
                     .extracting(ranking -> ranking.rank())
                     .containsExactly(1, 1, 3);
+        }
+
+        @Test
+        void 게임_종료후_방에_봇만_남아있으면_room이_closing_상태가_된다() {
+            // given
+            User botHost = saveBotUser("[봇] host");
+            User botGuest = saveBotUser("[봇] guest");
+            Room room = Room.create("3034", "봇 방", botHost.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(activePlayer(botHost.getUserId(), room.getRoomId(), botHost.getNickname()));
+            playerRepository.create(activePlayer(botGuest.getUserId(), room.getRoomId(), botGuest.getNickname()));
+            gameService.startGame(room);
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+
+            gamePlayerRepository.getByGameId(game.getGameId()).forEach(gamePlayer -> {
+                if (gamePlayer.getUserId() == botGuest.getUserId()) {
+                    gamePlayer.kill();
+                }
+            });
+
+            // when
+            gameService.endGame(botHost.getUserId(), room.getRoomId(), game.getGameId());
+
+            // then
+            assertThat(room.isInGame()).isFalse();
+            assertThat(room.isClosing()).isTrue();
         }
     }
 }
