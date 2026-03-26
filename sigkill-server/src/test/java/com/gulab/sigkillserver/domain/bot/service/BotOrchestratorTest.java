@@ -213,6 +213,29 @@ class BotOrchestratorTest {
             assertThat(userRepository.findAll()).hasSize(userCountBefore);
             assertThat(playerRepository.countByRoomId(roomId)).isEqualTo(playerCountBefore);
         }
+
+        @Test
+        void roomId가_4자리_정수가_아니면_ROOM_NUMBER_ERROR를_반환하고_봇_데이터를_남기지_않는다() {
+            // given
+            User host = createGuestUser("host-session", "호스트");
+            createActiveRoom(host);
+            int userCountBefore = userRepository.findAll().size();
+
+            // when then
+            assertThatThrownBy(() -> botOrchestrator.addBot("abc", host.getUserId()))
+                    .isInstanceOf(CustomException.class)
+                    .satisfies(throwable -> assertThat(((CustomException) throwable).getErrorCode().getCode())
+                            .isEqualTo(RoomErrorCode.ROOM_NUMBER_ERROR.name()));
+
+            assertThatThrownBy(() -> botOrchestrator.addBot("999", host.getUserId()))
+                    .isInstanceOf(CustomException.class)
+                    .satisfies(throwable -> assertThat(((CustomException) throwable).getErrorCode().getCode())
+                            .isEqualTo(RoomErrorCode.ROOM_NUMBER_ERROR.name()));
+
+            assertThat(userRepository.findAll()).hasSize(userCountBefore);
+            assertThat(userRepository.findAll())
+                    .allMatch(user -> user.getRole() != UserRole.BOT);
+        }
     }
 
     @Nested

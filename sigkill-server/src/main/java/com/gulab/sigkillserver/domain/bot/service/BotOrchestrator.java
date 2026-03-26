@@ -1,11 +1,14 @@
 package com.gulab.sigkillserver.domain.bot.service;
 
+import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_ROOM_NUMBER;
+import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_ROOM_NUMBER;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ONLY_HOST_CAN_ADD_BOT;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_IN_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 
 import com.gulab.sigkillserver.common.exception.CustomException;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.ChoiceSubmitEvent;
@@ -76,6 +79,7 @@ public class BotOrchestrator {
     private final TaskScheduler botTaskScheduler;
 
     public void addBot(String roomId, Long requesterId) {
+        validateRoomId(roomId);
         AtomicReference<Long> botUserIdRef = new AtomicReference<>();
         AtomicReference<PlayerJoinEvent> playerJoinEventRef = new AtomicReference<>();
 
@@ -277,6 +281,18 @@ public class BotOrchestrator {
     private Room getRoomOrThrow(String roomId) {
         return roomRepository.findById(roomId)
                 .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
+    }
+
+    private void validateRoomId(String roomId) {
+        int roomIdInt;
+        try {
+            roomIdInt = Integer.parseInt(roomId);
+        } catch (NumberFormatException e) {
+            throw new CustomException(ROOM_NUMBER_ERROR);
+        }
+        if (roomIdInt < MIN_ROOM_NUMBER || roomIdInt > MAX_ROOM_NUMBER) {
+            throw new CustomException(ROOM_NUMBER_ERROR);
+        }
     }
 
     private Player getPlayerInRoomOrThrow(Long userId, String roomId) {
