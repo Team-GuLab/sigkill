@@ -2,11 +2,13 @@ package com.gulab.sigkillserver.domain.room.service;
 
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.PENDING_JOIN_TIMEOUT_MILLIS;
 
+import com.gulab.sigkillserver.domain.bot.service.WaitingBotRoomCleanupService;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
@@ -17,14 +19,17 @@ public class PendingRoomJoinOrchestrator {
 
     private final TaskScheduler taskScheduler;
     private final RoomService roomService;
+    private final WaitingBotRoomCleanupService waitingBotRoomCleanupService;
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
     public PendingRoomJoinOrchestrator(
             @Qualifier("gameTaskScheduler") TaskScheduler taskScheduler,
-            RoomService roomService
+            RoomService roomService,
+            @Lazy WaitingBotRoomCleanupService waitingBotRoomCleanupService
     ) {
         this.taskScheduler = taskScheduler;
         this.roomService = roomService;
+        this.waitingBotRoomCleanupService = waitingBotRoomCleanupService;
     }
 
     public void schedulePendingJoinTimeout(String roomId, Long userId) {
@@ -57,6 +62,7 @@ public class PendingRoomJoinOrchestrator {
         scheduledTasks.remove(userId);
         try {
             if (roomService.expirePendingJoin(roomId, userId)) {
+                waitingBotRoomCleanupService.scheduleDrainIfWaitingBotOnly(roomId);
                 log.info("room.pendingJoin expired - roomId={}, userId={}", roomId, userId);
             }
         } catch (RuntimeException e) {

@@ -8,6 +8,8 @@ public interface GamePlayerRepository {
 
     List<GamePlayer> getByGameId(long gameId);
 
+    void deleteByGameIdAndUserId(long gameId, long userId);
+
     void deleteByGameId(long gameId);
 
     /**

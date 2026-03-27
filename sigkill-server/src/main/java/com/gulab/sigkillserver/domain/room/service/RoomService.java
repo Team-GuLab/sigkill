@@ -362,8 +362,17 @@ public class RoomService {
                     roomDeleted.set(true);
                     return LeaveRoomResult.of(playerLeftEvent);
                 }
-                HostChangedEvent hostChangedEvent = changeHost(room, player, remainingPlayers);
+                Player newHost = changeHost(room, remainingPlayers);
                 updateClosingState(room);
+                if (!newHost.isActive()) {
+                    return LeaveRoomResult.of(playerLeftEvent);
+                }
+                HostChangedEvent hostChangedEvent = HostChangedEvent.of(
+                        newHost,
+                        player,
+                        room.getHostId(),
+                        HOST_CHANGED_REASON_HOST_LEFT
+                );
                 hostChanged.set(true);
                 return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
             }
@@ -380,19 +389,21 @@ public class RoomService {
     /**
      * 호스트 변경
      */
-    private HostChangedEvent changeHost(Room room, Player previousHost, List<Player> remainingPlayers) {
+    private Player changeHost(Room room, List<Player> remainingPlayers) {
         Player newHost = selectNextHost(remainingPlayers);
         newHost.unready();
         room.changeHost(newHost.getUserId());
-        return HostChangedEvent.of(newHost, previousHost, room.getHostId(), HOST_CHANGED_REASON_HOST_LEFT);
+        return newHost;
     }
 
     private Player selectNextHost(List<Player> remainingPlayers) {
+        Comparator<Player> hostPriorityComparator = Comparator
+                .comparing(Player::isActive).reversed()
+                .thenComparing(this::isHumanPlayer, Comparator.reverseOrder())
+                .thenComparing(Player::getCreatedAt);
+
         return remainingPlayers.stream()
-                .filter(this::isHumanPlayer)
-                .min(Comparator.comparing(Player::getCreatedAt))
-                .or(() -> remainingPlayers.stream()
-                        .min(Comparator.comparing(Player::getCreatedAt)))
+                .min(hostPriorityComparator)
                 .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
     }
 

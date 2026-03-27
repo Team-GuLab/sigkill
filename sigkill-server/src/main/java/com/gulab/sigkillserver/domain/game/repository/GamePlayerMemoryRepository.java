@@ -37,6 +37,17 @@ public class GamePlayerMemoryRepository implements GamePlayerRepository {
     }
 
     @Override
+    public synchronized void deleteByGameIdAndUserId(long gameId, long userId) {
+        GamePlayer storedGamePlayer = store.get(userId);
+        if (storedGamePlayer == null || storedGamePlayer.getGameId() != gameId) {
+            return;
+        }
+
+        store.remove(userId);
+        removeUserFromGameIndex(gameId, userId);
+    }
+
+    @Override
     public synchronized void deleteByGameId(long gameId) {
         Set<Long> userIds = gameIdIndex.remove(gameId);
         if (userIds == null || userIds.isEmpty()) {

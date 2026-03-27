@@ -1460,7 +1460,7 @@ class RoomServiceTest {
         }
 
         @Test
-        void active_호스트가_나가면_pending_플레이어에게_방장이_이관된다() {
+        void active_호스트가_나가고_pending_플레이어만_남으면_방은_유지되고_HOST_CHANGED는_생략된다() {
             // given
             User host = createAndSaveUser("host-session", "호스트");
             User pendingGuest = createAndSaveUser("pending-guest-session", "게스트");
@@ -1474,8 +1474,32 @@ class RoomServiceTest {
             assertThat(roomRepository.findById(roomId)).isPresent();
             assertThat(roomRepository.findById(roomId).orElseThrow().getHostId()).isEqualTo(pendingGuest.getUserId());
             assertThat(playerRepository.findById(pendingGuest.getUserId())).isPresent();
+            assertThat(result.hasHostChangedEvent()).isFalse();
+            assertThat(roomService.confirmJoin(roomId, pendingGuest.getUserId()))
+                    .isPresent()
+                    .get()
+                    .extracting(event -> event.player().role())
+                    .isEqualTo(PlayerRole.HOST);
+        }
+
+        @Test
+        void active_봇이_있으면_pending_사람보다_우선해_방장을_이관한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트");
+            User activeBot = createAndSaveBotUser("[봇] 활성봇");
+            User pendingGuest = createAndSaveUser("pending-guest-session", "게스트");
+            String roomId = createActiveRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
+            playerRepository.create(activePlayer(activeBot.getUserId(), roomId, activeBot.getNickname()));
+            joinRoomResult(roomId, pendingGuest.getUserId());
+
+            // when
+            LeaveRoomResult result = roomService.leaveRoom(roomId, host.getUserId());
+
+            // then
+            assertThat(roomRepository.findById(roomId)).isPresent();
+            assertThat(roomRepository.findById(roomId).orElseThrow().getHostId()).isEqualTo(activeBot.getUserId());
             assertThat(result.hasHostChangedEvent()).isTrue();
-            assertThat(result.hostChangedEvent().newHost().userId()).isEqualTo(pendingGuest.getUserId());
+            assertThat(result.hostChangedEvent().newHost().userId()).isEqualTo(activeBot.getUserId());
         }
 
         @Test

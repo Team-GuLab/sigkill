@@ -260,6 +260,9 @@ class GameServiceTest {
             assertThat(result.payload().players())
                     .extracting(player -> player.userId())
                     .containsExactly(fixture.guest().getUserId());
+            assertThat(gamePlayerRepository.getByGameId(fixture.game().getGameId()))
+                    .extracting(gamePlayer -> gamePlayer.getUserId())
+                    .containsExactly(fixture.guest().getUserId());
         }
 
         @Test

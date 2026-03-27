@@ -136,14 +136,18 @@ public class GameService {
             Room room = getRoomOrThrow(roomId);
             validateGameInProgress(room, latestGame);
 
-            List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
+            List<GamePlayer> gamePlayers = pruneDepartedGamePlayers(
+                    roomId,
+                    latestGame.getGameId(),
+                    gamePlayerRepository.getByGameId(gameId)
+            );
             gamePlayers.stream().filter(gp -> userId.equals(gp.getUserId()))
                     .findFirst()
                     .orElseThrow(() -> new CustomException(GAME_PLAYER_NOT_FOUND))
                     .markAsLoaded();
 
             // 게임 정보 반환
-            return gameEventBuilder.toGameLoadEvent(room, latestGame, filterCurrentRoomParticipants(roomId, gamePlayers));
+            return gameEventBuilder.toGameLoadEvent(room, latestGame, gamePlayers);
         });
     }
 
@@ -439,11 +443,16 @@ public class GameService {
                 .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
     }
 
-    private List<GamePlayer> filterCurrentRoomParticipants(String roomId, List<GamePlayer> gamePlayers) {
+    private List<GamePlayer> pruneDepartedGamePlayers(String roomId, Long gameId, List<GamePlayer> gamePlayers) {
         Set<Long> currentPlayerIds = new HashSet<>();
         playerRepository.findAllByRoomId(roomId).stream()
                 .map(Player::getUserId)
                 .forEach(currentPlayerIds::add);
+
+        gamePlayers.stream()
+                .map(GamePlayer::getUserId)
+                .filter(gamePlayerUserId -> !currentPlayerIds.contains(gamePlayerUserId))
+                .forEach(gamePlayerUserId -> gamePlayerRepository.deleteByGameIdAndUserId(gameId, gamePlayerUserId));
 
         return gamePlayers.stream()
                 .filter(gamePlayer -> currentPlayerIds.contains(gamePlayer.getUserId()))
