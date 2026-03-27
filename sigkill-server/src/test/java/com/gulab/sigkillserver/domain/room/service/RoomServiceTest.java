@@ -398,6 +398,22 @@ class RoomServiceTest {
         }
 
         @Test
+        void closing_상태_방은_목록에서_canJoin이_false다() {
+            // given
+            User host = createAndSaveUser("closing-room-host-session", "호스트");
+            Room room = createAndSaveRoomWithHost("5555", "닫히는 방", 6, host);
+            room.markClosing();
+
+            // when
+            RoomListResponse response = roomService.fetchRooms(0, 10);
+
+            // then
+            assertThat(response.rooms()).hasSize(1);
+            assertThat(response.rooms().getFirst().roomId()).isEqualTo("5555");
+            assertThat(response.rooms().getFirst().canJoin()).isFalse();
+        }
+
+        @Test
         void 정렬된_결과를_기준으로_페이지를_자른다() {
             // given
             User host1 = createAndSaveUser("page-sort-session-1", "호스트1");
