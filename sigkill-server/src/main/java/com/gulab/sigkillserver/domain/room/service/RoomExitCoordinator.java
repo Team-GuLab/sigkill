@@ -22,13 +22,13 @@ public class RoomExitCoordinator {
 
     public void leaveRoom(String roomId, Long userId) {
         Player player = playerRepository.findById(userId).orElse(null);
-        LeaveRoomResult leaveRoomResult = processLeave(roomId, userId, player, false);
+        LeaveRoomResult leaveRoomResult = processLeave(roomId, userId, false);
         broadcastRoomExit(roomId, player, leaveRoomResult);
         waitingBotRoomCleanupService.scheduleDrainIfWaitingBotOnly(roomId);
     }
 
     public void leaveRoomByDisconnect(Player player) {
-        LeaveRoomResult leaveRoomResult = processLeave(player.getRoomId(), player.getUserId(), player, true);
+        LeaveRoomResult leaveRoomResult = processLeave(player.getRoomId(), player.getUserId(), true);
         if (leaveRoomResult == null) {
             return;
         }
@@ -36,14 +36,14 @@ public class RoomExitCoordinator {
         waitingBotRoomCleanupService.scheduleDrainIfWaitingBotOnly(player.getRoomId());
     }
 
-    private LeaveRoomResult processLeave(String roomId, Long userId, Player player, boolean swallowFailure) {
+    private LeaveRoomResult processLeave(String roomId, Long userId, boolean swallowFailure) {
         try {
             LeaveRoomResult leaveRoomResult = roomService.leaveRoom(roomId, userId);
             pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(userId);
             return leaveRoomResult;
         } catch (RuntimeException e) {
             if (swallowFailure) {
-                log.warn("room.exit failed - roomId={}, userId={}, message={}", roomId, userId, e.getMessage());
+                log.warn("room.exit failed - roomId={}, userId={}, message={}", roomId, userId, e.getMessage(), e);
                 return null;
             }
             throw e;

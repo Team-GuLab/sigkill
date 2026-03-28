@@ -33,7 +33,6 @@ import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import com.gulab.sigkillserver.domain.user.model.User;
-import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +65,6 @@ public class BotOrchestrator {
     private final RoomService roomService;
     private final RoomRepository roomRepository;
     private final PlayerRepository playerRepository;
-    private final UserRepository userRepository;
     private final RoomLockManager roomLockManager;
     private final GameService gameService;
     private final GameFlowOrchestrator gameFlowOrchestrator;

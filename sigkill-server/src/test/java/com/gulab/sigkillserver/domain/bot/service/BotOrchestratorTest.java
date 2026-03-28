@@ -119,7 +119,6 @@ class BotOrchestratorTest {
                 roomService,
                 roomRepository,
                 playerRepository,
-                userRepository,
                 roomLockManager,
                 gameService,
                 gameFlowOrchestrator,

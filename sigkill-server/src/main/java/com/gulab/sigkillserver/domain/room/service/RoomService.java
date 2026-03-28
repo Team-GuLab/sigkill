@@ -363,7 +363,7 @@ public class RoomService {
                     return LeaveRoomResult.of(playerLeftEvent);
                 }
                 Player newHost = changeHost(room, remainingPlayers);
-                updateClosingState(room);
+                RoomClosingStateManager.updateClosingState(room, playerRepository, userRepository);
                 if (!newHost.isActive()) {
                     return LeaveRoomResult.of(playerLeftEvent);
                 }
@@ -377,7 +377,7 @@ public class RoomService {
                 return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
             }
 
-            updateClosingState(room);
+            RoomClosingStateManager.updateClosingState(room, playerRepository, userRepository);
             return LeaveRoomResult.of(playerLeftEvent);
         });
 
@@ -412,24 +412,6 @@ public class RoomService {
                 .map(User::getRole)
                 .map(role -> role != UserRole.BOT)
                 .orElse(true);
-    }
-
-    private void updateClosingState(Room room) {
-        if (room.isInGame()) {
-            room.clearClosing();
-            return;
-        }
-
-        List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
-        boolean hasOnlyBots = !players.isEmpty() && players.stream()
-                .noneMatch(this::isHumanPlayer);
-
-        if (hasOnlyBots) {
-            room.markClosing();
-            return;
-        }
-
-        room.clearClosing();
     }
 
     /**
