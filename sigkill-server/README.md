@@ -100,6 +100,7 @@ docker compose up --build
 ### Room 명령
 
 - `SEND /app/room/join`
+- `SEND /app/room/bot`
 - `SEND /app/room/leave`
 - `SEND /app/room/ready`
 - `SEND /app/room/unready`
@@ -144,6 +145,7 @@ docker compose up --build
 
 - 클라이언트가 `leave` 없이 연결이 끊겨도 서버가 자동으로 퇴장 처리
 - 필요 시 `PLAYER_LEFT`, `HOST_CHANGED`를 기존 room topic으로 브로드캐스트
+- 이 경로에서는 game topic synthetic `GAME_LOADED`를 만들지 않음
 
 ### 4) SUBSCRIBE 인가 강화
 
@@ -163,6 +165,14 @@ docker compose up --build
 - 설정값:
   - `poolSize = 4`
   - `threadNamePrefix = game-task-`
+
+### 6) 봇 가상 플레이어
+
+- `/app/room/bot`은 방장만 호출 가능하며, 성공 시 room topic에 `PLAYER_JOIN` 뒤 지연된 `PLAYER_READY`가 순서대로 브로드캐스트됩니다.
+- 봇은 별도 규칙 객체가 아니라 기존 `joinRoom`, `confirmJoin`, `readyPlayer`, `loadGame`, `submitChoice`, `leaveRoom` 서비스 경로를 그대로 호출합니다.
+- `GAME_LOADED`는 사람/봇의 실제 `loadGame()` 결과만 브로드캐스트되며, 퇴장/연결 종료 후 보정용 synthetic 이벤트는 없습니다.
+- 마지막 사람이 나가거나 `GAME_END` 후 사람 없이 봇만 남으면 방은 내부적으로 closing 상태가 되고, 새 입장은 `ROOM_CLOSING`으로 거부됩니다.
+- `GAME_END` 후 사람이 남아 있으면 봇은 다시 `PLAYER_READY`를 브로드캐스트하고, 사람이 없으면 bot-only waiting room을 기존 `leaveRoom()` 경로로 정리합니다.
 
 ## WebSocket 테스트 페이지 사용 흐름
 

@@ -13,6 +13,7 @@ import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_C
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.NOT_ENOUGH_PLAYERS_TO_START;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ONLY_HOST_CAN_START_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYERS_NOT_READY;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CLOSING;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
@@ -45,6 +46,7 @@ import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import com.gulab.sigkillserver.domain.user.model.User;
+import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.util.Collections;
 import java.util.Comparator;
@@ -138,7 +140,7 @@ public class RoomService {
     }
 
     private boolean canJoinRoom(Room room) {
-        return !room.isInGame() && !isRoomFull(room);
+        return !room.isClosing() && !room.isInGame() && !isRoomFull(room);
     }
 
     private void validatePaginationParameters(int page, int size) {
@@ -302,6 +304,9 @@ public class RoomService {
     }
 
     private void validateRoomJoinable(Room room) {
+        if (room.isClosing()) {
+            throw new CustomException(ROOM_CLOSING);
+        }
         if (room.isInGame()) {
             throw new CustomException(ROOM_IN_GAME);
         }
@@ -357,11 +362,22 @@ public class RoomService {
                     roomDeleted.set(true);
                     return LeaveRoomResult.of(playerLeftEvent);
                 }
-                HostChangedEvent hostChangedEvent = changeHost(room, player, remainingPlayers);
+                Player newHost = changeHost(room, remainingPlayers);
+                RoomClosingStateManager.updateClosingState(room, playerRepository, userRepository);
+                if (!newHost.isActive()) {
+                    return LeaveRoomResult.of(playerLeftEvent);
+                }
+                HostChangedEvent hostChangedEvent = HostChangedEvent.of(
+                        newHost,
+                        player,
+                        room.getHostId(),
+                        HOST_CHANGED_REASON_HOST_LEFT
+                );
                 hostChanged.set(true);
                 return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
             }
 
+            RoomClosingStateManager.updateClosingState(room, playerRepository, userRepository);
             return LeaveRoomResult.of(playerLeftEvent);
         });
 
@@ -373,13 +389,29 @@ public class RoomService {
     /**
      * 호스트 변경
      */
-    private HostChangedEvent changeHost(Room room, Player previousHost, List<Player> remainingPlayers) {
-        Player newHost = remainingPlayers.stream()
-                .min(Comparator.comparing(Player::getCreatedAt))
-                .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
+    private Player changeHost(Room room, List<Player> remainingPlayers) {
+        Player newHost = selectNextHost(remainingPlayers);
         newHost.unready();
         room.changeHost(newHost.getUserId());
-        return HostChangedEvent.of(newHost, previousHost, room.getHostId(), HOST_CHANGED_REASON_HOST_LEFT);
+        return newHost;
+    }
+
+    private Player selectNextHost(List<Player> remainingPlayers) {
+        Comparator<Player> hostPriorityComparator = Comparator
+                .comparing(Player::isActive).reversed()
+                .thenComparing(this::isHumanPlayer, Comparator.reverseOrder())
+                .thenComparing(Player::getCreatedAt);
+
+        return remainingPlayers.stream()
+                .min(hostPriorityComparator)
+                .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
+    }
+
+    private boolean isHumanPlayer(Player player) {
+        return userRepository.findById(player.getUserId())
+                .map(User::getRole)
+                .map(role -> role != UserRole.BOT)
+                .orElse(true);
     }
 
     /**

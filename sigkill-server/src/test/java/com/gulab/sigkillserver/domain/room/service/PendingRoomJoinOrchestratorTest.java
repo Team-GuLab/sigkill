@@ -15,8 +15,10 @@ import com.gulab.sigkillserver.domain.game.repository.SelectedChoiceMemoryReposi
 import com.gulab.sigkillserver.domain.game.service.GameEventBuilder;
 import com.gulab.sigkillserver.domain.game.service.GameService;
 import com.gulab.sigkillserver.domain.lock.RoomLockManager;
+import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.repository.PlayerMemoryRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomMemoryRepository;
+import com.gulab.sigkillserver.domain.bot.service.WaitingBotRoomCleanupService;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserMemoryRepository;
@@ -36,6 +38,7 @@ class PendingRoomJoinOrchestratorTest {
     private RoomMemoryRepository roomRepository;
     private RoomService roomService;
     private TaskScheduler taskScheduler;
+    private WaitingBotRoomCleanupService waitingBotRoomCleanupService;
     private PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator;
 
     @BeforeEach
@@ -65,7 +68,18 @@ class PendingRoomJoinOrchestratorTest {
                 gameService
         );
         taskScheduler = mock(TaskScheduler.class);
-        pendingRoomJoinOrchestrator = new PendingRoomJoinOrchestrator(taskScheduler, roomService);
+        waitingBotRoomCleanupService = mock(WaitingBotRoomCleanupService.class);
+        pendingRoomJoinOrchestrator = new PendingRoomJoinOrchestrator(
+                taskScheduler,
+                roomService,
+                waitingBotRoomCleanupService
+        );
+    }
+
+    private Player activePlayer(Long userId, String roomId, String nickname) {
+        Player player = Player.create(userId, roomId, nickname);
+        player.activate();
+        return player;
     }
 
     @Test
@@ -87,6 +101,7 @@ class PendingRoomJoinOrchestratorTest {
         // then
         assertThat(playerRepository.findById(host.getUserId())).isEmpty();
         assertThat(roomRepository.findById(roomId)).isEmpty();
+        verify(waitingBotRoomCleanupService).scheduleDrainIfWaitingBotOnly(roomId);
     }
 
     @Test
@@ -143,5 +158,33 @@ class PendingRoomJoinOrchestratorTest {
         // then
         assertThat(result.canceledScheduledTaskCount()).isEqualTo(1);
         verify(scheduledFuture).cancel(false);
+    }
+
+    @Test
+    void pending_join_timeout으로_마지막_사람이_빠지면_bot_cleanup을_트리거한다() {
+        // given
+        User host = userRepository.save(User.create("host-session", "호스트", UserRole.GUEST));
+        User pendingGuest = userRepository.save(User.create("pending-session", "대기손님", UserRole.GUEST));
+        User bot = userRepository.save(User.create(null, "[봇] 손님", UserRole.BOT));
+        String roomId = roomService.createRoom("방", 6, host.getUserId()).roomId();
+        roomService.confirmJoin(roomId, host.getUserId());
+        playerRepository.create(activePlayer(bot.getUserId(), roomId, bot.getNickname()));
+        roomService.joinRoom(roomId, pendingGuest.getUserId());
+        roomService.leaveRoom(roomId, host.getUserId());
+
+        AtomicReference<Runnable> scheduledTask = new AtomicReference<>();
+        when(taskScheduler.schedule(any(Runnable.class), any(Instant.class))).thenAnswer(invocation -> {
+            scheduledTask.set(invocation.getArgument(0));
+            return mock(ScheduledFuture.class);
+        });
+
+        // when
+        pendingRoomJoinOrchestrator.schedulePendingJoinTimeout(roomId, pendingGuest.getUserId());
+        scheduledTask.get().run();
+
+        // then
+        assertThat(roomRepository.findById(roomId)).isPresent();
+        assertThat(roomRepository.findById(roomId).orElseThrow().isClosing()).isTrue();
+        verify(waitingBotRoomCleanupService).scheduleDrainIfWaitingBotOnly(roomId);
     }
 }

@@ -49,14 +49,17 @@ import com.gulab.sigkillserver.domain.room.model.Player;
 import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
+import com.gulab.sigkillserver.domain.room.service.RoomClosingStateManager;
 import com.gulab.sigkillserver.domain.user.model.User;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -133,7 +136,11 @@ public class GameService {
             Room room = getRoomOrThrow(roomId);
             validateGameInProgress(room, latestGame);
 
-            List<GamePlayer> gamePlayers = gamePlayerRepository.getByGameId(gameId);
+            List<GamePlayer> gamePlayers = pruneDepartedGamePlayers(
+                    roomId,
+                    latestGame.getGameId(),
+                    gamePlayerRepository.getByGameId(gameId)
+            );
             gamePlayers.stream().filter(gp -> userId.equals(gp.getUserId()))
                     .findFirst()
                     .orElseThrow(() -> new CustomException(GAME_PLAYER_NOT_FOUND))
@@ -361,6 +368,7 @@ public class GameService {
 
             // player 모두 준비 해제
             playerRepository.findAllByRoomId(roomId).forEach(Player::unready);
+            RoomClosingStateManager.updateClosingState(room, playerRepository, userRepository);
 
             return gameEndEvent;
         });
@@ -412,6 +420,22 @@ public class GameService {
     private Room getRoomOrThrow(String roomId) {
         return roomRepository.findById(roomId)
                 .orElseThrow(() -> new CustomException(ROOM_NOT_FOUND));
+    }
+
+    private List<GamePlayer> pruneDepartedGamePlayers(String roomId, Long gameId, List<GamePlayer> gamePlayers) {
+        Set<Long> currentPlayerIds = new HashSet<>();
+        playerRepository.findAllByRoomId(roomId).stream()
+                .map(Player::getUserId)
+                .forEach(currentPlayerIds::add);
+
+        gamePlayers.stream()
+                .map(GamePlayer::getUserId)
+                .filter(gamePlayerUserId -> !currentPlayerIds.contains(gamePlayerUserId))
+                .forEach(gamePlayerUserId -> gamePlayerRepository.deleteByGameIdAndUserId(gameId, gamePlayerUserId));
+
+        return gamePlayers.stream()
+                .filter(gamePlayer -> currentPlayerIds.contains(gamePlayer.getUserId()))
+                .toList();
     }
 
     private Game getGameOrThrow(Long gameId) {

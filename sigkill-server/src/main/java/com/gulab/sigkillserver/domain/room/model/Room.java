@@ -14,16 +14,18 @@ public class Room extends BaseEntity {
     private final Integer capacity;
     private Long hostId;
     private RoomStatus status;
+    private boolean closing;
 
     /**
      * private 생성자
      */
-    private Room(String roomId, String roomTitle, Long hostId, Integer capacity, RoomStatus status) {
+    private Room(String roomId, String roomTitle, Long hostId, Integer capacity, RoomStatus status, boolean closing) {
         this.roomId = roomId;
         this.roomTitle = roomTitle;
         this.hostId = hostId;
         this.capacity = capacity;
         this.status = status;
+        this.closing = closing;
     }
 
     /**
@@ -36,7 +38,7 @@ public class Room extends BaseEntity {
      * @return 생성된 Room 객체
      */
     public static Room create(String id, String title, Long hostId, Integer capacity) {
-        return new Room(id, title, hostId, capacity, RoomStatus.WAITING);
+        return new Room(id, title, hostId, capacity, RoomStatus.WAITING, false);
     }
 
     public boolean isInGame() {
@@ -48,6 +50,7 @@ public class Room extends BaseEntity {
      */
     public void startGame() {
         this.status = RoomStatus.INGAME;
+        this.closing = false;
     }
 
     /**
@@ -55,6 +58,7 @@ public class Room extends BaseEntity {
      */
     public void endGame() {
         this.status = RoomStatus.WAITING;
+        this.closing = false;
     }
 
     /**
@@ -62,5 +66,13 @@ public class Room extends BaseEntity {
      */
     public void changeHost(Long newHostId) {
         this.hostId = newHostId;
+    }
+
+    public void markClosing() {
+        this.closing = true;
+    }
+
+    public void clearClosing() {
+        this.closing = false;
     }
 }

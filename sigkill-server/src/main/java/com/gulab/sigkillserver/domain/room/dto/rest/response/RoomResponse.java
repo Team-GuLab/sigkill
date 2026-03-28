@@ -14,7 +14,7 @@ public record RoomResponse(
         boolean canJoin
 ) {
     public static RoomResponse of(Room room, int playerCount) {
-        boolean canJoin = !room.isInGame() && playerCount < room.getCapacity();
+        boolean canJoin = !room.isClosing() && !room.isInGame() && playerCount < room.getCapacity();
         return new RoomResponse(
                 room.getRoomId(),
                 room.getRoomTitle(),

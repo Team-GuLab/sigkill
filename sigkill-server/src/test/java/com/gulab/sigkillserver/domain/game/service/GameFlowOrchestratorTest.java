@@ -29,6 +29,7 @@ import java.util.concurrent.ScheduledFuture;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.TaskScheduler;
 
@@ -38,12 +39,14 @@ class GameFlowOrchestratorTest {
     private final RoomRepository roomRepository = mock(RoomRepository.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
     private final TaskScheduler gameTaskScheduler = mock(TaskScheduler.class);
+    private final ApplicationEventPublisher applicationEventPublisher = mock(ApplicationEventPublisher.class);
 
     private final GameFlowOrchestrator gameFlowOrchestrator = new GameFlowOrchestrator(
             gameService,
             roomRepository,
             messagingTemplate,
-            gameTaskScheduler
+            gameTaskScheduler,
+            applicationEventPublisher
     );
 
     @SuppressWarnings("unchecked")
