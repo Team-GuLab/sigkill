@@ -332,7 +332,33 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>7. 게임 시작</h2>
+                <h2>7. 봇 추가</h2>
+                <span class="endpoint">SEND /app/room/bot</span>
+            </div>
+            <div class="hint">
+                방장 세션에서만 실행 가능합니다. 성공 시 우측 Room 이벤트 패널에서
+                <code>PLAYER_JOIN</code> 후 <code>PLAYER_READY</code> 순서를 확인하세요.
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label for="botRoomId">roomId</label>
+                    <input id="botRoomId" placeholder="예: 1001" type="text"/>
+                </div>
+                <div>
+                    <label for="botPayloadPreview">payload</label>
+                    <input id="botPayloadPreview" readonly type="text"/>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="botBtn">BOT 추가 실행</button>
+            </div>
+            <div class="hint">표시: SEND JSON + Room 구독 정보</div>
+            <pre class="panel" id="botResponse">-</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>8. 게임 시작</h2>
                 <span class="endpoint">SEND /app/room/start</span>
             </div>
             <div class="grid-2">
@@ -354,7 +380,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>8. Game 토픽 구독 + LOAD 전송</h2>
+                <h2>9. Game 토픽 구독 + LOAD 전송</h2>
                 <span class="endpoint">AUTO SUBSCRIBE /topic/game/{gameId} + SEND /app/game/load</span>
             </div>
             <div class="hint">
@@ -407,7 +433,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>9. 정답 제출</h2>
+                <h2>10. 정답 제출</h2>
                 <span class="endpoint">SEND /app/game/submit</span>
             </div>
             <div class="hint">
@@ -443,7 +469,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>10. 방 나가기 + WS 연결 해제</h2>
+                <h2>11. 방 나가기 + WS 연결 해제</h2>
                 <span class="endpoint">SEND /app/room/leave + DISCONNECT</span>
             </div>
             <div class="grid-2">
@@ -465,7 +491,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h2>11. Ping / Pong 확인</h2>
+                <h2>12. Ping / Pong 확인</h2>
                 <span class="endpoint">SEND /app/ping | SUBSCRIBE /user/queue/pong</span>
             </div>
             <div class="actions">

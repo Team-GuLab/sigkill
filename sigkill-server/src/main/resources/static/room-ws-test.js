@@ -11,6 +11,7 @@
     const snapshotBtn = document.getElementById("snapshotBtn");
     const readyBtn = document.getElementById("readyBtn");
     const unreadyBtn = document.getElementById("unreadyBtn");
+    const botBtn = document.getElementById("botBtn");
     const startBtn = document.getElementById("startBtn");
     const gameLoadBtn = document.getElementById("gameLoadBtn");
     const submitChoiceBtn = document.getElementById("submitChoiceBtn");
@@ -27,6 +28,7 @@
     const joinRoomIdInput = document.getElementById("joinRoomId");
     const snapshotRoomIdInput = document.getElementById("snapshotRoomId");
     const readyRoomIdInput = document.getElementById("readyRoomId");
+    const botRoomIdInput = document.getElementById("botRoomId");
     const startRoomIdInput = document.getElementById("startRoomId");
     const startQuizRoomIdInput = document.getElementById("startQuizRoomId");
     const startQuizGameIdInput = document.getElementById("startQuizGameId");
@@ -40,6 +42,7 @@
     const errorTopicPreviewInput = document.getElementById("errorTopicPreview");
     const snapshotPayloadPreviewInput = document.getElementById("snapshotPayloadPreview");
     const readyPayloadPreviewInput = document.getElementById("readyPayloadPreview");
+    const botPayloadPreviewInput = document.getElementById("botPayloadPreview");
     const startPayloadPreviewInput = document.getElementById("startPayloadPreview");
     const quizStartDestinationInput = document.getElementById("quizStartDestination");
     const quizStartPayloadPreviewInput = document.getElementById("quizStartPayloadPreview");
@@ -57,6 +60,7 @@
     const createWsResultEl = document.getElementById("createWsResult");
     const snapshotResponseEl = document.getElementById("snapshotResponse");
     const readyResponseEl = document.getElementById("readyResponse");
+    const botResponseEl = document.getElementById("botResponse");
     const startResponseEl = document.getElementById("startResponse");
     const quizStartResponseEl = document.getElementById("quizStartResponse");
     const gameLoadResponseEl = document.getElementById("gameLoadResponse");
@@ -181,6 +185,9 @@
         if (sourceInput !== readyRoomIdInput) {
             readyRoomIdInput.value = roomId;
         }
+        if (sourceInput !== botRoomIdInput) {
+            botRoomIdInput.value = roomId;
+        }
         if (sourceInput !== startRoomIdInput) {
             startRoomIdInput.value = roomId;
         }
@@ -212,6 +219,9 @@
 
         const readyRoomId = readyRoomIdInput.value.trim();
         readyPayloadPreviewInput.value = readyRoomId ? JSON.stringify({roomId: readyRoomId}) : "{\"roomId\":\"{roomId}\"}";
+
+        const botRoomId = botRoomIdInput.value.trim();
+        botPayloadPreviewInput.value = botRoomId ? JSON.stringify({roomId: botRoomId}) : "{\"roomId\":\"{roomId}\"}";
 
         const startRoomId = startRoomIdInput.value.trim();
         startPayloadPreviewInput.value = startRoomId ? JSON.stringify({roomId: startRoomId}) : "{\"roomId\":\"{roomId}\"}";
@@ -305,6 +315,7 @@
         joinRoomIdInput.value = roomId;
         snapshotRoomIdInput.value = roomId;
         readyRoomIdInput.value = roomId;
+        botRoomIdInput.value = roomId;
         startRoomIdInput.value = roomId;
         startQuizRoomIdInput.value = roomId;
         leaveRoomIdInput.value = roomId;
@@ -625,12 +636,30 @@
         log("6) " + command.toUpperCase() + " 전송 완료");
     }
 
+    async function executeAddBot() {
+        const roomId = getValueOrThrow(botRoomIdInput, "roomId");
+        normalizeRoomIdAcrossSections(botRoomIdInput);
+
+        await connectStompIfNeeded();
+        subscribeErrorQueueOnce();
+        subscribePongQueueOnce();
+        const roomSubscribeResult = subscribeRoomTopic(roomId);
+        const sendResult = sendRoomCommand("bot", roomId);
+
+        setPanel(botResponseEl, {
+            ...sendResult,
+            roomSubscription: roomSubscribeResult,
+            expectedEvents: ["PLAYER_JOIN", "PLAYER_READY"]
+        });
+        log("7) BOT 추가 전송 완료");
+    }
+
     function executeStartGame() {
         const roomId = getValueOrThrow(startRoomIdInput, "roomId");
         normalizeRoomIdAcrossSections(startRoomIdInput);
         const sendResult = sendRoomCommand("start", roomId);
         setPanel(startResponseEl, sendResult);
-        log("7) START 전송 완료");
+        log("8) START 전송 완료");
     }
 
     async function executeGameLoad() {
@@ -649,7 +678,7 @@
             ...sendResult,
             gameSubscription: gameSubscribeResult
         });
-        log("8) GAME_LOAD 전송 완료");
+        log("9) GAME_LOAD 전송 완료");
     }
 
     async function executeSubmitChoice() {
@@ -677,7 +706,7 @@
             ...sendResult,
             gameSubscription: gameSubscribeResult
         });
-        log("9) 정답 제출 전송 완료");
+        log("10) 정답 제출 전송 완료");
     }
 
     function disconnectStomp() {
@@ -717,9 +746,9 @@
             setPanel(leaveResponseEl, sendResult);
             await new Promise((resolve) => setTimeout(resolve, 150));
             disconnectStomp();
-            log("10) LEAVE 전송 + WS 연결 해제 완료");
+            log("11) LEAVE 전송 + WS 연결 해제 완료");
         } else {
-            log("10) WS 미연결 상태로 연결해제 단계만 스킵");
+            log("11) WS 미연결 상태로 연결해제 단계만 스킵");
         }
     }
 
@@ -737,6 +766,7 @@
     joinRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(joinRoomIdInput));
     snapshotRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(snapshotRoomIdInput));
     readyRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(readyRoomIdInput));
+    botRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(botRoomIdInput));
     startRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startRoomIdInput));
     startQuizRoomIdInput.addEventListener("input", () => normalizeRoomIdAcrossSections(startQuizRoomIdInput));
     startQuizGameIdInput.addEventListener("input", refreshComputedFields);
@@ -752,6 +782,7 @@
     bindAsync(snapshotBtn, executeSnapshot);
     bindAsync(readyBtn, async () => executeReadyLike("ready"));
     bindAsync(unreadyBtn, async () => executeReadyLike("unready"));
+    bindAsync(botBtn, executeAddBot);
     bindAsync(startBtn, async () => executeStartGame());
     bindAsync(gameLoadBtn, executeGameLoad);
     bindAsync(submitChoiceBtn, executeSubmitChoice);
