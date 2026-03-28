@@ -3,7 +3,9 @@ package com.gulab.sigkillserver.domain.bot.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,8 +34,8 @@ import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.scheduling.TaskScheduler;
 
 class WaitingBotRoomCleanupServiceTest {
@@ -45,6 +47,8 @@ class WaitingBotRoomCleanupServiceTest {
     private RoomLockManager roomLockManager;
     private TaskScheduler botTaskScheduler;
     private BotUserService botUserService;
+    private PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator;
+    private SimpMessagingTemplate messagingTemplate;
     private WaitingBotRoomCleanupService waitingBotRoomCleanupService;
 
     @BeforeEach
@@ -75,14 +79,16 @@ class WaitingBotRoomCleanupServiceTest {
         );
         botTaskScheduler = mock(TaskScheduler.class);
         botUserService = new BotUserService(userRepository);
+        pendingRoomJoinOrchestrator = mock(PendingRoomJoinOrchestrator.class);
+        messagingTemplate = mock(SimpMessagingTemplate.class);
         waitingBotRoomCleanupService = new WaitingBotRoomCleanupService(
                 roomRepository,
                 playerRepository,
                 botUserService,
                 roomService,
                 roomLockManager,
-                mock(PendingRoomJoinOrchestrator.class),
-                mock(SimpMessagingTemplate.class),
+                pendingRoomJoinOrchestrator,
+                messagingTemplate,
                 botTaskScheduler
         );
     }
@@ -154,5 +160,58 @@ class WaitingBotRoomCleanupServiceTest {
                 .isInstanceOf(CustomException.class)
                 .satisfies(throwable -> assertThat(((CustomException) throwable).getErrorCode().getCode())
                         .isEqualTo(RoomErrorCode.ROOM_CLOSING.name()));
+    }
+
+    @Test
+    void drainRoom_실패시_retry를_스케줄해_정리를_재개한다() {
+        // given
+        var botHost = botUserService.createBotUser();
+        var botGuest = botUserService.createBotUser();
+        Room room = Room.create("1458", "재시도 봇 방", botHost.getUserId(), 6);
+        roomRepository.save(room);
+        playerRepository.create(activePlayer(botHost.getUserId(), room.getRoomId(), botHost.getNickname()));
+        playerRepository.create(activePlayer(botGuest.getUserId(), room.getRoomId(), botGuest.getNickname()));
+
+        RoomService retryingRoomService = spy(roomService);
+        WaitingBotRoomCleanupService retryingCleanupService = new WaitingBotRoomCleanupService(
+                roomRepository,
+                playerRepository,
+                botUserService,
+                retryingRoomService,
+                roomLockManager,
+                pendingRoomJoinOrchestrator,
+                messagingTemplate,
+                botTaskScheduler
+        );
+        List<Runnable> scheduledTasks = new ArrayList<>();
+        when(botTaskScheduler.schedule(any(Runnable.class), any(Instant.class)))
+                .thenAnswer(invocation -> {
+                    scheduledTasks.add(invocation.getArgument(0));
+                    return mockScheduledFuture();
+                });
+        doThrow(new IllegalStateException("transient drain failure"))
+                .doCallRealMethod()
+                .when(retryingRoomService)
+                .leaveRoom(room.getRoomId(), botHost.getUserId());
+
+        // when
+        retryingCleanupService.scheduleDrainIfWaitingBotOnly(room.getRoomId());
+        scheduledTasks.get(0).run();
+
+        // then
+        assertThat(scheduledTasks).hasSize(2);
+        assertThat(roomRepository.findById(room.getRoomId())).isPresent();
+        assertThat(roomRepository.findById(room.getRoomId()).orElseThrow().isClosing()).isTrue();
+        assertThat(playerRepository.findAllByRoomId(room.getRoomId())).hasSize(2);
+
+        // when
+        scheduledTasks.get(1).run();
+        scheduledTasks.get(2).run();
+
+        // then
+        assertThat(roomRepository.findById(room.getRoomId())).isEmpty();
+        assertThat(playerRepository.findAllByRoomId(room.getRoomId())).isEmpty();
+        assertThat(userRepository.findById(botHost.getUserId())).isEmpty();
+        assertThat(userRepository.findById(botGuest.getUserId())).isEmpty();
     }
 }

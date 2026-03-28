@@ -235,6 +235,27 @@ class BotOrchestratorTest {
             assertThat(userRepository.findAll())
                     .allMatch(user -> user.getRole() != UserRole.BOT);
         }
+
+        @Test
+        void closing_상태_방에는_봇을_추가하지_않고_ROOM_CLOSING으로_실패한다() {
+            // given
+            User host = createGuestUser("host-session", "호스트");
+            String roomId = createActiveRoom(host);
+            roomRepository.findById(roomId).orElseThrow().markClosing();
+            int userCountBefore = userRepository.findAll().size();
+            int playerCountBefore = playerRepository.countByRoomId(roomId);
+
+            // when then
+            assertThatThrownBy(() -> botOrchestrator.addBot(roomId, host.getUserId()))
+                    .isInstanceOf(CustomException.class)
+                    .satisfies(throwable -> assertThat(((CustomException) throwable).getErrorCode().getCode())
+                            .isEqualTo(RoomErrorCode.ROOM_CLOSING.name()));
+
+            assertThat(userRepository.findAll()).hasSize(userCountBefore);
+            assertThat(playerRepository.countByRoomId(roomId)).isEqualTo(playerCountBefore);
+            assertThat(userRepository.findAll())
+                    .allMatch(user -> user.getRole() != UserRole.BOT);
+        }
     }
 
     @Nested

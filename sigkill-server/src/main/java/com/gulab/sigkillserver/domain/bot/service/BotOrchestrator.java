@@ -5,6 +5,7 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_ROO
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ONLY_HOST_CAN_ADD_BOT;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CLOSING;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_IN_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
@@ -254,6 +255,9 @@ public class BotOrchestrator {
     private void validateBotAddRequest(Room room, Player requester) {
         if (!room.getHostId().equals(requester.getUserId())) {
             throw new CustomException(ONLY_HOST_CAN_ADD_BOT);
+        }
+        if (room.isClosing()) {
+            throw new CustomException(ROOM_CLOSING);
         }
         if (room.isInGame()) {
             throw new CustomException(ROOM_IN_GAME);

@@ -11,6 +11,7 @@ import com.gulab.sigkillserver.domain.room.service.RoomService;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -28,6 +29,8 @@ public class WaitingBotRoomCleanupService {
 
     private static final long MIN_BOT_LEAVE_DELAY_MILLIS = 500L;
     private static final long MAX_BOT_LEAVE_DELAY_MILLIS = 1_500L;
+    private static final long DRAIN_RETRY_BASE_DELAY_MILLIS = 1_000L;
+    private static final long DRAIN_RETRY_MAX_DELAY_MILLIS = 8_000L;
 
     private final RoomRepository roomRepository;
     private final PlayerRepository playerRepository;
@@ -40,6 +43,7 @@ public class WaitingBotRoomCleanupService {
     private final TaskScheduler botTaskScheduler;
 
     private final Set<String> drainingRoomIds = ConcurrentHashMap.newKeySet();
+    private final Map<String, Integer> drainFailureCounts = new ConcurrentHashMap<>();
 
     public void scheduleDrainIfWaitingBotOnly(String roomId) {
         boolean shouldSchedule = roomLockManager.executeWithLock(roomId, () -> {
@@ -67,29 +71,23 @@ public class WaitingBotRoomCleanupService {
         try {
             DrainResult drainResult = roomLockManager.executeWithLock(roomId, () -> drainOneBot(roomId));
             if (drainResult == null) {
-                drainingRoomIds.remove(roomId);
+                completeDrain(roomId);
                 return;
             }
 
             pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(drainResult.botUserId());
             botUserService.deleteBotUser(drainResult.botUserId());
-
-            if (drainResult.wasActive() || drainResult.leaveRoomResult().hasHostChangedEvent()) {
-                messagingTemplate.convertAndSend("/topic/room/" + roomId, drainResult.leaveRoomResult().playerLeftEvent());
-                if (drainResult.leaveRoomResult().hasHostChangedEvent()) {
-                    messagingTemplate.convertAndSend("/topic/room/" + roomId, drainResult.leaveRoomResult().hostChangedEvent());
-                }
-            }
+            drainFailureCounts.remove(roomId);
+            broadcastDrainEvents(roomId, drainResult);
 
             if (drainResult.shouldContinue()) {
                 scheduleDrain(roomId, randomDelay(MIN_BOT_LEAVE_DELAY_MILLIS, MAX_BOT_LEAVE_DELAY_MILLIS));
                 return;
             }
 
-            drainingRoomIds.remove(roomId);
+            completeDrain(roomId);
         } catch (RuntimeException e) {
-            drainingRoomIds.remove(roomId);
-            log.warn("bot.cleanup waiting-room-drain failed - roomId={}, message={}", roomId, e.getMessage());
+            handleDrainFailure(roomId, e);
         }
     }
 
@@ -149,6 +147,58 @@ public class WaitingBotRoomCleanupService {
         if (room != null) {
             room.clearClosing();
         }
+    }
+
+    private void broadcastDrainEvents(String roomId, DrainResult drainResult) {
+        if (!drainResult.wasActive() && !drainResult.leaveRoomResult().hasHostChangedEvent()) {
+            return;
+        }
+
+        try {
+            messagingTemplate.convertAndSend("/topic/room/" + roomId, drainResult.leaveRoomResult().playerLeftEvent());
+            if (drainResult.leaveRoomResult().hasHostChangedEvent()) {
+                messagingTemplate.convertAndSend("/topic/room/" + roomId, drainResult.leaveRoomResult().hostChangedEvent());
+            }
+        } catch (RuntimeException e) {
+            log.warn("bot.cleanup waiting-room-drain broadcast failed - roomId={}", roomId, e);
+        }
+    }
+
+    private void handleDrainFailure(String roomId, RuntimeException e) {
+        int failureCount = drainFailureCounts.merge(roomId, 1, Integer::sum);
+        if (!shouldRetryDrain(roomId)) {
+            completeDrain(roomId);
+            log.warn("bot.cleanup waiting-room-drain failed without retry - roomId={}, failureCount={}",
+                    roomId, failureCount, e);
+            return;
+        }
+
+        long retryDelayMillis = retryDelayMillis(failureCount);
+        log.warn("bot.cleanup waiting-room-drain failed - roomId={}, failureCount={}, retryDelayMillis={}",
+                roomId, failureCount, retryDelayMillis, e);
+        scheduleDrain(roomId, retryDelayMillis);
+    }
+
+    private boolean shouldRetryDrain(String roomId) {
+        return roomLockManager.executeWithLock(roomId, () -> {
+            Room room = roomRepository.findById(roomId).orElse(null);
+            if (!isWaitingBotOnlyRoom(room)) {
+                clearClosing(room);
+                return false;
+            }
+            room.markClosing();
+            return true;
+        });
+    }
+
+    private long retryDelayMillis(int failureCount) {
+        long multiplier = 1L << Math.min(Math.max(failureCount - 1, 0), 3);
+        return Math.min(DRAIN_RETRY_BASE_DELAY_MILLIS * multiplier, DRAIN_RETRY_MAX_DELAY_MILLIS);
+    }
+
+    private void completeDrain(String roomId) {
+        drainingRoomIds.remove(roomId);
+        drainFailureCounts.remove(roomId);
     }
 
     private long randomDelay(long minDelayMillis, long maxDelayMillis) {

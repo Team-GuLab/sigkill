@@ -248,8 +248,10 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 추가 규칙:
 
 - 퇴장한 사용자가 방장이면 같은 채널로 `HOST_CHANGED`를 추가 전송한다.
+  단, 새 방장 후보가 pending(입장 확정 전) 상태면 `HOST_CHANGED`는 즉시 전송되지 않고, 이후 `confirmJoin` 시점의 `PLAYER_JOIN`에서 `HOST` 역할로 관찰된다.
 - 마지막 1명이 퇴장하면 방이 삭제되며 `HOST_CHANGED`는 전송되지 않는다.
 - 클라이언트가 명시적으로 `leave`를 보내지 않고 연결이 끊겨도 서버는 자동 퇴장 처리 후 동일 이벤트를 브로드캐스트한다.
+  단, pending 상태 플레이어는 일반적으로 `PLAYER_LEFT`가 브로드캐스트되지 않으며, pending 호스트 퇴장처럼 방장 이관이 함께 일어나는 경우에만 `PLAYER_LEFT`와 `HOST_CHANGED`가 함께 관찰될 수 있다.
 - 마지막 사람이 나가고 waiting room에 봇만 남으면 방은 내부적으로 closing 상태로 전환되며 새 입장은 `ROOM_CLOSING`으로 거부된다.
 - `leave` 또는 연결 종료 후 서버는 game topic으로 synthetic `GAME_LOADED`를 만들지 않는다.
 
