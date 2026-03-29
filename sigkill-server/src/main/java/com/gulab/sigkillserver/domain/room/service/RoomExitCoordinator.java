@@ -52,7 +52,7 @@ public class RoomExitCoordinator {
 
     private void broadcastRoomExit(String roomId, Player player, LeaveRoomResult leaveRoomResult) {
         boolean wasActive = player != null && player.isActive();
-        if (!wasActive && !leaveRoomResult.hasHostChangedEvent()) {
+        if (!wasActive) {
             return;
         }
 

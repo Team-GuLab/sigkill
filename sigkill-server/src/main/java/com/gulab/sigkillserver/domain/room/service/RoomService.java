@@ -7,6 +7,7 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TIT
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_PLAYERS_TO_START;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_ROOM_NUMBER;
+import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_ACTIVE;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
@@ -137,6 +138,12 @@ public class RoomService {
 
     private int getPlayerCountInRoom(String roomId) {
         return playerRepository.countByRoomId(roomId);
+    }
+
+    private int getActivePlayerCountInRoom(String roomId) {
+        return (int) playerRepository.findAllByRoomId(roomId).stream()
+                .filter(Player::isActive)
+                .count();
     }
 
     private boolean canJoinRoom(Room room) {
@@ -270,6 +277,7 @@ public class RoomService {
             if (player.isActive()) {
                 return Optional.empty();
             }
+            validateRoomNotInGame(room);
             player.activate();
             return Optional.of(PlayerJoinEvent.of(room, PlayerInfo.of(player, room.getHostId())));
         });
@@ -327,6 +335,7 @@ public class RoomService {
 
     private List<PlayerInfo> buildPlayerInfoList(Room room) {
         return playerRepository.findAllByRoomId(room.getRoomId()).stream()
+                .filter(Player::isActive)
                 .map(p -> PlayerInfo.of(p, room.getHostId()))
                 .toList();
     }
@@ -426,6 +435,7 @@ public class RoomService {
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
             nickname.set(player.getNickname());
             roomTitle.set(room.getRoomTitle());
+            validatePlayerActive(player);
             validatePlayerNotHost(player, room);
             validateRoomNotInGame(room);
 
@@ -449,6 +459,9 @@ public class RoomService {
     private boolean isAllGuestsReady(Room room) {
         List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
         for (var p : players) {
+            if (!p.isActive()) {
+                continue;
+            }
             if (room.getHostId().equals(p.getUserId())) {
                 continue; // 호스트는 준비 상태가 없음
             }
@@ -463,6 +476,12 @@ public class RoomService {
     private void validatePlayerNotHost(Player player, Room room) {
         if (room.getHostId().equals(player.getUserId())) {
             throw new CustomException(HOST_CANNOT_READY); // 호스트는 준비 상태가 없음
+        }
+    }
+
+    private void validatePlayerActive(Player player) {
+        if (!player.isActive()) {
+            throw new CustomException(PLAYER_NOT_ACTIVE);
         }
     }
 
@@ -484,6 +503,7 @@ public class RoomService {
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
             nickname.set(player.getNickname());
             roomTitle.set(room.getRoomTitle());
+            validatePlayerActive(player);
             validatePlayerNotHost(player, room);
             validateRoomNotInGame(room);
             player.unready();
@@ -507,6 +527,7 @@ public class RoomService {
             hostNickname.set(player.getNickname());
             roomTitle.set(room.getRoomTitle());
             validateRoomNotInGame(room);
+            validatePlayerActive(player);
             validatePlayerHost(player, room);
             validatePlayerCountOverMinimum(room);
             if (!isAllGuestsReady(room)) {
@@ -520,7 +541,7 @@ public class RoomService {
     }
 
     private void validatePlayerCountOverMinimum(Room room) {
-        int playerCount = getPlayerCountInRoom(room.getRoomId());
+        int playerCount = getActivePlayerCountInRoom(room.getRoomId());
         if (playerCount < MIN_PLAYERS_TO_START) {
             throw new CustomException(NOT_ENOUGH_PLAYERS_TO_START);
         }
