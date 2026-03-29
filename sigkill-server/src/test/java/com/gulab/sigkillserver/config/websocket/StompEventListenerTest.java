@@ -67,7 +67,7 @@ class StompEventListenerTest {
     }
 
     @Test
-    void disconnect_시_pending_플레이어는_브로드캐스트하지_않는다() {
+    void disconnect_시_pending_플레이어도_자동_퇴장_처리를_위임한다() {
         // given
         Long userId = 1L;
         Player pendingPlayer = Player.create(userId, "1001", "pending");
@@ -83,7 +83,7 @@ class StompEventListenerTest {
     }
 
     @Test
-    void disconnect_시_pending_호스트는_호스트_변경_이벤트와_퇴장_이벤트를_브로드캐스트한다() {
+    void disconnect_시_pending_호스트도_자동_퇴장_처리를_위임한다() {
         // given
         Long userId = 1L;
         Player pendingHost = Player.create(userId, "1001", "pendingHost");
