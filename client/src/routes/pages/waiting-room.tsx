@@ -10,6 +10,7 @@ import { WaitingRoomSkeleton } from "@/components/room/waiting-room-skeleton";
 import { GameStartOverlay } from "@/components/room/game-start-overlay";
 import { useRoomInfo, usePlayers } from "@/store/room-store";
 import LeaveButton from "@/components/room/leave-button";
+import AddBotButton from "@/components/room/add-bot-button";
 
 export default function WaitingRoom() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -60,8 +61,11 @@ export default function WaitingRoom() {
 
         {/* 플레이어 목록 */}
         <section className="flex-1">
-          <h2 className="bg-background sticky top-0 z-10 mb-3 py-2 text-sm font-semibold">
-            참가자 ({players.length}/{roomInfo?.capacity || 0}명)
+          <h2 className="bg-background sticky top-0 z-10 mb-3 flex items-center py-2 text-sm font-semibold">
+            <span className="flex-1">
+              참가자 ({players.length}/{roomInfo?.capacity || 0}명)
+            </span>
+            {isHost && <AddBotButton roomId={roomId} />}
           </h2>
           <PlayerList
             players={players}
