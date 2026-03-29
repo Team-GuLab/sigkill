@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-} from "react";
+import { createContext, useCallback, useContext, useRef } from "react";
 import {
   connectWebSocket,
   disconnectWebSocket,
@@ -57,31 +51,6 @@ export function WebSocketSessionProvider({
       resetRoom();
     }, 100);
   }, [resetRoom]);
-
-  // // 백그라운드 복귀 시 연결 상태 확인 및 재연결
-  // useEffect(() => {
-  //   const handleVisibilityChange = async () => {
-  //     if (document.visibilityState !== "visible") return;
-  //     if (!currentRoomIdRef.current) return;
-
-  //     const client = getClient();
-  //     if (client.active && client.connected) return;
-
-  //     try {
-  //       await connectWebSocket();
-  //       console.log("백그라운드 복귀 후 WebSocket 재연결 성공");
-  //       // connectWebSocket의 onConnect에서 resubscribeAll()이 호출되므로
-  //       // 구독 복구 후 스냅샷을 재요청해 서버 상태를 동기화
-  //       requestSnapshot();
-  //     } catch (error) {
-  //       console.error("백그라운드 복귀 후 재연결 실패:", error);
-  //     }
-  //   };
-
-  //   document.addEventListener("visibilitychange", handleVisibilityChange);
-  //   return () =>
-  //     document.removeEventListener("visibilitychange", handleVisibilityChange);
-  // }, [requestSnapshot]);
 
   return (
     <WebSocketSessionContext
