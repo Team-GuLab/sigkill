@@ -3,16 +3,18 @@ import { subscribeGame } from "@/api/game/subscribe-game";
 import { handleGameMessage } from "@/api/game/handle-game-message";
 import { getClient, publishMessage } from "@/app/config/web-socket-client";
 
-interface UseGameSocketParams {
+interface UseSubscribeGameParams {
   gameId: number;
 }
 
 /**
- * 게임룸 소켓 연결 및 상태 관리
- * @param gameId - 게임 ID
+ * 게임룸 구독 관리
+ * - 연결 자체는 WebSocketSessionProvider가 담당
+ * - 대기방->게임방 전환 시 WebSocket 연결과 room/error 구독은 유지된 상태로 진입
+ * - 이 훅은 game 구독과 메시지 처리만 담당
  */
-export const useGameSocket = ({ gameId }: UseGameSocketParams) => {
-  const unsubscribe = useRef<(() => void) | undefined>(undefined);
+export const useSubscribeGame = ({ gameId }: UseSubscribeGameParams) => {
+  const unsubscribeGame = useRef<(() => void) | undefined>(undefined);
 
   useEffect(() => {
     if (!gameId) return;
@@ -24,7 +26,7 @@ export const useGameSocket = ({ gameId }: UseGameSocketParams) => {
       return;
     }
 
-    unsubscribe.current = subscribeGame(gameId, message => {
+    unsubscribeGame.current = subscribeGame(gameId, message => {
       handleGameMessage(message);
     });
 
@@ -32,9 +34,7 @@ export const useGameSocket = ({ gameId }: UseGameSocketParams) => {
     publishMessage("/app/game/load", { gameId });
 
     return () => {
-      if (unsubscribe.current) {
-        unsubscribe.current();
-      }
+      unsubscribeGame.current?.();
     };
-  }, []);
+  }, [gameId]);
 };
