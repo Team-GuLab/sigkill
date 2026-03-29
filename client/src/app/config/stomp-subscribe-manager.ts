@@ -46,7 +46,8 @@ export const subscribeManager = <T>(
 };
 
 /**
- * TODO: WebSocket 재연결 시 활성 구독을 복구
+ * WebSocket 재연결 시 활성 구독을 복구
+ * connectWebSocket의 onConnected 콜백에서 호출
  */
 export const resubscribeAll = () => {
   const client = getClient();

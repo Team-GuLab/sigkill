@@ -5,7 +5,7 @@ import { MAX_CAPACITY } from "@/constants/room";
 import { useUser } from "@/store/user-store";
 import GameStartButton from "@/components/room/game-start-button";
 import ReadyButton from "@/components/room/ready-button";
-import { useSubscribeRoom } from "@/hooks/room/use-subscribe-room";
+import { useRoomSocket } from "@/hooks/room/use-room-socket";
 import { WaitingRoomSkeleton } from "@/components/room/waiting-room-skeleton";
 import { GameStartOverlay } from "@/components/room/game-start-overlay";
 import { useRoomInfo, usePlayers } from "@/store/room-store";
@@ -17,7 +17,7 @@ export default function WaitingRoom() {
   const user = useUser();
   const myUserId = user!.userId;
 
-  const { isPending: isRoomSocketPending, isGameStarting } = useSubscribeRoom({
+  const { isPending: isRoomSocketPending, isGameStarting } = useRoomSocket({
     roomId,
     myUserId,
   });

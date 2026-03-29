@@ -1,6 +1,6 @@
 import { useGameId, useResetGame } from "@/store/game-store";
 import { useResetRoom } from "@/store/room-store";
-import { useSubscribeGame } from "@/hooks/game/use-subscribe-game";
+import { useGameSocket } from "@/hooks/game/use-game-socket";
 import QuizBanner from "@/components/game/quiz-banner";
 import QuizTimer from "@/components/game/quiz-timer";
 import PlayerField from "@/components/game/player-field";
@@ -15,7 +15,7 @@ export default function GameRoom() {
   const resetGame = useResetGame();
   const resetRoom = useResetRoom();
 
-  useSubscribeGame({ gameId: gameId ?? 0 });
+  useGameSocket({ gameId: gameId ?? 0 });
 
   useEffect(() => {
     return () => {

@@ -1,4 +1,5 @@
 import { getClient } from "./stomp-client";
+import { resubscribeAll } from "./stomp-subscribe-manager";
 
 /**
  * WebSocket 연결
@@ -11,6 +12,8 @@ export const connectWebSocket = async (): Promise<void> => {
     wsClient.onConnect = () => {
       console.log("Connected to WebSocket");
       resolve();
+      // 재연결 시 기존 STOMP 구독 복구
+      resubscribeAll();
     };
 
     wsClient.onStompError = frame => {

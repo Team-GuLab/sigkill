@@ -13,7 +13,6 @@ import { AppError } from "@/api/axios";
 import { useGameRoomId } from "@/store/game-store";
 import { ROUTE_PATHS, ROUTE_GENERATORS } from "./paths";
 import GameLayout from "./layouts/game";
-import WebSocketSessionLayout from "./layouts/web-socket-session";
 
 function WaitingRoomRoute() {
   const navigate = useNavigate();
@@ -90,36 +89,20 @@ const router = createBrowserRouter([
             path: ROUTE_PATHS.ROOM_LIST,
             element: <RoomListPage />,
           },
+          {
+            path: ROUTE_PATHS.WAITING_ROOM,
+            element: <WaitingRoomRoute />,
+          },
         ],
       },
     ],
   },
   {
-    // WebSocket 세션 포함 레이아웃
-    element: <WebSocketSessionLayout />,
+    element: <GameLayout />,
     children: [
       {
-        element: <DefaultLayout />,
-        children: [
-          {
-            element: <WithProfileLayout />,
-            children: [
-              {
-                path: ROUTE_PATHS.WAITING_ROOM,
-                element: <WaitingRoomRoute />,
-              },
-            ],
-          },
-        ],
-      },
-      {
-        element: <GameLayout />,
-        children: [
-          {
-            path: ROUTE_PATHS.GAME_ROOM,
-            element: <GameRoomRoute />,
-          },
-        ],
+        path: ROUTE_PATHS.GAME_ROOM,
+        element: <GameRoomRoute />,
       },
     ],
   },
