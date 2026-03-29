@@ -110,7 +110,9 @@ public class GameService {
             game = gameRepository.save(game);
 
             // Player 객체 생성
-            List<Player> players = playerRepository.findAllByRoomId(lockedRoom.getRoomId());
+            List<Player> players = playerRepository.findAllByRoomId(lockedRoom.getRoomId()).stream()
+                    .filter(Player::isActive)
+                    .toList();
             for (Player p : players) {
                 GamePlayer gp = GamePlayer.create(p.getUserId(), game.getGameId(), p.getNickname());
                 gamePlayerRepository.save(gp);

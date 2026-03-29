@@ -141,6 +141,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
     - `/topic/room/{roomId}` 구독 직후 가장 먼저 전송해야 함
 - 서버 동작:
     - 같은 사용자의 같은 방 REST 재호출은 성공으로 재응답하지만 `PENDING` timeout은 유지한다
+    - `confirmJoin` 전의 `PENDING` 상태는 내부 예약이며 snapshot/room 이벤트에서 공개되지 않는다
     - 첫 성공 호출에만 `PLAYER_JOIN`을 브로드캐스트한다
     - 이미 `ACTIVE`인 사용자의 재호출은 no-op 이다
     - REST 후 10초 안에 이 요청이 오지 않으면 서버가 `PENDING` 플레이어를 자동 정리한다
@@ -180,7 +181,8 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 - 요청 payload는 `RoomIdCommand`
 - 선행 조건: REST `POST /api/v1/rooms/{roomId}/join` 또는 `POST /api/v1/rooms`가 먼저 성공해야 함
 - `SEND /app/room/join` 전의 `PENDING` 상태에서도 호출할 수 있다
-- 응답의 `players` 목록에는 현재 방 멤버 전체가 포함되며, `PENDING` 플레이어도 포함될 수 있다
+- 응답의 `players` 목록에는 `ACTIVE`로 확정된 플레이어만 포함된다
+- 따라서 `PENDING` 플레이어는 snapshot 요청자 자신이라도 응답의 `players` 목록에는 나타나지 않는다
 
 응답 예시:
 
@@ -251,7 +253,7 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
   단, 새 방장 후보가 pending(입장 확정 전) 상태면 `HOST_CHANGED`는 즉시 전송되지 않고, 이후 `confirmJoin` 시점의 `PLAYER_JOIN`에서 `HOST` 역할로 관찰된다.
 - 마지막 1명이 퇴장하면 방이 삭제되며 `HOST_CHANGED`는 전송되지 않는다.
 - 클라이언트가 명시적으로 `leave`를 보내지 않고 연결이 끊겨도 서버는 자동 퇴장 처리 후 동일 이벤트를 브로드캐스트한다.
-  단, pending 상태 플레이어는 일반적으로 `PLAYER_LEFT`가 브로드캐스트되지 않으며, pending 호스트 퇴장처럼 방장 이관이 함께 일어나는 경우에만 `PLAYER_LEFT`와 `HOST_CHANGED`가 함께 관찰될 수 있다.
+- `PENDING` 플레이어는 room topic의 공개 멤버가 아니므로, 명시 퇴장/자동 퇴장/timeout 정리 어느 경우에도 `PLAYER_LEFT`나 `HOST_CHANGED`를 브로드캐스트하지 않는다.
 - 마지막 사람이 나가고 waiting room에 봇만 남으면 방은 내부적으로 closing 상태로 전환되며 새 입장은 `ROOM_CLOSING`으로 거부된다.
 - `leave` 또는 연결 종료 후 서버는 game topic으로 synthetic `GAME_LOADED`를 만들지 않는다.
 
@@ -300,7 +302,8 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 
 `allReady` 규칙:
 
-- 호스트를 제외한 모든 플레이어가 `READY`면 `true`
+- 호스트를 제외한 모든 `ACTIVE` 플레이어가 `READY`면 `true`
+- `PENDING` 플레이어는 준비 상태를 변경할 수 없고 `PLAYER_READY` 이벤트도 발생시키지 않는다
 - 봇 추가 성공 시에는 `PLAYER_JOIN` 뒤 지연된 `PLAYER_READY`가 추가로 전송될 수 있다
 
 ### 5.5 플레이어 준비 취소
@@ -320,6 +323,8 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
   }
 }
 ```
+
+- `PENDING` 플레이어는 준비 취소를 요청할 수 없으며 `PLAYER_UNREADY` 이벤트도 발생시키지 않는다
 
 ### 5.6 Ping / Pong (연결 상태 확인)
 
@@ -348,8 +353,9 @@ Game 이벤트 응답은 공통 Envelope를 사용한다.
 - SUBSCRIBE: `/topic/room/{roomId}`
 - Response type: `GAME_START`
 - 권한/조건:
-    - 방장만 시작 가능
-    - 게임 시작 시 호스트를 제외한 모든 플레이어가 `READY`여야 함
+    - `ACTIVE` 상태의 방장만 시작 가능
+    - 게임 시작 시 호스트를 제외한 모든 `ACTIVE` 플레이어가 `READY`여야 함
+    - `PENDING` 플레이어는 최소 인원, 준비 판정, `GAME_START.payload.players`에 포함되지 않는다
 
 요청 예시:
 
@@ -691,7 +697,7 @@ Response type: `ERROR`
 주요 코드:
 
 - 비즈니스: `ROOM_NOT_FOUND`, `ROOM_FULL`, `ROOM_IN_GAME`, `HOST_CANNOT_READY`, `PLAYER_NOT_IN_ANY_ROOM`,
-  `PLAYER_NOT_IN_ROOM`,
+  `PLAYER_NOT_IN_ROOM`, `PLAYER_NOT_ACTIVE`,
   `NOT_ENOUGH_PLAYERS_TO_START`,
   `PLAYERS_NOT_READY`,
   `USER_ALREADY_IN_ROOM`,

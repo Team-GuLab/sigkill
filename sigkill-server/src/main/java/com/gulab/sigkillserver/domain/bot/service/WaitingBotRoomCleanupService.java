@@ -150,7 +150,7 @@ public class WaitingBotRoomCleanupService {
     }
 
     private void broadcastDrainEvents(String roomId, DrainResult drainResult) {
-        if (!drainResult.wasActive() && !drainResult.leaveRoomResult().hasHostChangedEvent()) {
+        if (!drainResult.wasActive()) {
             return;
         }
 
