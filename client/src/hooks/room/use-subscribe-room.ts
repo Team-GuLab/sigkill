@@ -1,68 +1,61 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import {
-  connectWebSocket,
-  disconnectWebSocket,
-  getClient,
-  publishMessage,
-} from "@/app/config/web-socket-client";
 import { subscribeRoom } from "@/api/room/subscribe-room";
 import { handleRoomMessage } from "@/api/room/handle-room-message";
 import { subscribeError } from "@/api/error/subscribe-error";
 import { handleErrorMessage } from "@/api/error/handle-error-message";
 import { ROUTE_PATHS } from "@/routes/paths";
 import { useGameTransition } from "@/store/game-store";
-import { useResetRoom } from "@/store/room-store";
+import { useWebSocketSession } from "@/app/provider/web-socket-session-provider";
+import { getClient, publishMessage } from "@/app/config/web-socket-client";
 
-/**
- * 대기방 웹소켓 연결 및 상태 관리
- * @param roomId - 방 ID
- * @param myUserId - 내 유저 ID
- */
-interface UseRoomSocketProps {
+interface UseSubscribeRoomProps {
   roomId: string | undefined;
   myUserId: number;
 }
 
-export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
+/**
+ * 대기방 구독 관리
+ */
+export const useSubscribeRoom = ({
+  roomId,
+  myUserId,
+}: UseSubscribeRoomProps) => {
   const navigate = useNavigate();
   const transition = useGameTransition();
+  const { connectSession, scheduleDisconnect } = useWebSocketSession();
+
   const [isPending, setIsPending] = useState(false);
   const [isGameStarting, setIsGameStarting] = useState(false);
-  const resetRoom = useResetRoom();
 
-  const isGameStarted = useRef(false);
   const roomUnsubscribe = useRef<(() => void) | undefined>(undefined);
   const errorUnsubscribe = useRef<(() => void) | undefined>(undefined);
+  // 게임방 전환 여부 추적: true이면 cleanup에서 구독 유지 + disconnect 생략
+  const isTransitioningToGame = useRef(false);
 
   useEffect(() => {
     if (!roomId) return;
 
-    const setupConnection = async () => {
+    isTransitioningToGame.current = false;
+
+    const setup = async () => {
       try {
         setIsPending(true);
+        await connectSession(roomId);
+
+        // 비정상 종료 감지
         const client = getClient();
-
-        // 이미 연결된 웹소켓이 있는 경우 재사용, 그렇지 않으면 새로 연결
-        if (!client.active) {
-          await connectWebSocket();
-        }
-
-        // 연결 종료 감지 (비정상 종료 포함)
         client.onWebSocketClose = event => {
-          console.log("WebSocket closed. Code:", event.code);
           if (event.code !== 1000) {
             toast.error("연결이 종료되었습니다.");
             navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
           }
         };
 
-        // subscribeManager가 동일 destination 중복 구독을 자동으로 방지하므로
-        // 재진입 시에도 이전 구독이 먼저 해제되고 새로 등록됨
         roomUnsubscribe.current = subscribeRoom(roomId, message => {
           if (message.type === "GAME_START") {
-            isGameStarted.current = true;
+            isTransitioningToGame.current = true;
             transition({
               type: "GAME_START",
               roomId: message.roomId,
@@ -73,7 +66,6 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
             navigate(`/game/${message.gameId}`, { replace: true });
             return;
           }
-
           handleRoomMessage(message, myUserId);
         });
 
@@ -83,8 +75,7 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
 
         publishMessage("/app/room/join", { roomId });
         publishMessage("/app/room/snapshot", { roomId });
-      } catch (error) {
-        console.error("Connection failed:", error);
+      } catch {
         navigate(ROUTE_PATHS.ROOM_LIST, { replace: true });
         toast.error("연결 중 오류로 인해 방 목록으로 이동합니다.");
       } finally {
@@ -92,22 +83,26 @@ export const useRoomSocket = ({ roomId, myUserId }: UseRoomSocketProps) => {
       }
     };
 
-    setupConnection();
+    setup();
 
     return () => {
-      // 게임이 시작된 경우: 구독을 유지하고 웹소켓도 유지
-      // (게임 화면에서 계속 사용)
-      if (isGameStarted.current) {
+      if (isTransitioningToGame.current) {
+        // 게임방 전환: 마운트 시 수행한 기존 구독 유지
         return;
       }
-
-      // 게임이 시작되지 않은 경우 완전 정리
+      // 방 목록 등 다른 곳으로 이동: 구독 해제 후 연결 종료
       roomUnsubscribe.current?.();
       errorUnsubscribe.current?.();
-      disconnectWebSocket();
-      resetRoom();
+      scheduleDisconnect();
     };
-  }, [roomId, myUserId, navigate, resetRoom]);
+  }, [
+    roomId,
+    myUserId,
+    navigate,
+    connectSession,
+    scheduleDisconnect,
+    transition,
+  ]);
 
   return { isPending, isGameStarting };
 };
