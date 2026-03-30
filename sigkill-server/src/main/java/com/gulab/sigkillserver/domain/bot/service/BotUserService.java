@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class BotUserService {
 
-    private static final String BOT_NICKNAME_PREFIX = "[봇] ";
+    private static final String BOT_NICKNAME_PREFIX = "[봇]";
 
     private final UserRepository userRepository;
 
