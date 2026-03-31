@@ -7,12 +7,14 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_TIT
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_CAPACITY;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_PLAYERS_TO_START;
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_ROOM_NUMBER;
+import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_ACTIVE;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.NOT_ENOUGH_PLAYERS_TO_START;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ONLY_HOST_CAN_START_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYERS_NOT_READY;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CLOSING;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
@@ -45,6 +47,7 @@ import com.gulab.sigkillserver.domain.room.model.Room;
 import com.gulab.sigkillserver.domain.room.repository.PlayerRepository;
 import com.gulab.sigkillserver.domain.room.repository.RoomRepository;
 import com.gulab.sigkillserver.domain.user.model.User;
+import com.gulab.sigkillserver.domain.user.model.UserRole;
 import com.gulab.sigkillserver.domain.user.repository.UserRepository;
 import java.util.Collections;
 import java.util.Comparator;
@@ -137,8 +140,14 @@ public class RoomService {
         return playerRepository.countByRoomId(roomId);
     }
 
+    private int getActivePlayerCountInRoom(String roomId) {
+        return (int) playerRepository.findAllByRoomId(roomId).stream()
+                .filter(Player::isActive)
+                .count();
+    }
+
     private boolean canJoinRoom(Room room) {
-        return !room.isInGame() && !isRoomFull(room);
+        return !room.isClosing() && !room.isInGame() && !isRoomFull(room);
     }
 
     private void validatePaginationParameters(int page, int size) {
@@ -268,6 +277,7 @@ public class RoomService {
             if (player.isActive()) {
                 return Optional.empty();
             }
+            validateRoomNotInGame(room);
             player.activate();
             return Optional.of(PlayerJoinEvent.of(room, PlayerInfo.of(player, room.getHostId())));
         });
@@ -302,6 +312,9 @@ public class RoomService {
     }
 
     private void validateRoomJoinable(Room room) {
+        if (room.isClosing()) {
+            throw new CustomException(ROOM_CLOSING);
+        }
         if (room.isInGame()) {
             throw new CustomException(ROOM_IN_GAME);
         }
@@ -322,6 +335,7 @@ public class RoomService {
 
     private List<PlayerInfo> buildPlayerInfoList(Room room) {
         return playerRepository.findAllByRoomId(room.getRoomId()).stream()
+                .filter(Player::isActive)
                 .map(p -> PlayerInfo.of(p, room.getHostId()))
                 .toList();
     }
@@ -357,11 +371,22 @@ public class RoomService {
                     roomDeleted.set(true);
                     return LeaveRoomResult.of(playerLeftEvent);
                 }
-                HostChangedEvent hostChangedEvent = changeHost(room, player, remainingPlayers);
+                Player newHost = changeHost(room, remainingPlayers);
+                RoomClosingStateManager.updateClosingState(room, playerRepository, userRepository);
+                if (!newHost.isActive()) {
+                    return LeaveRoomResult.of(playerLeftEvent);
+                }
+                HostChangedEvent hostChangedEvent = HostChangedEvent.of(
+                        newHost,
+                        player,
+                        room.getHostId(),
+                        HOST_CHANGED_REASON_HOST_LEFT
+                );
                 hostChanged.set(true);
                 return LeaveRoomResult.of(playerLeftEvent, hostChangedEvent);
             }
 
+            RoomClosingStateManager.updateClosingState(room, playerRepository, userRepository);
             return LeaveRoomResult.of(playerLeftEvent);
         });
 
@@ -373,13 +398,29 @@ public class RoomService {
     /**
      * 호스트 변경
      */
-    private HostChangedEvent changeHost(Room room, Player previousHost, List<Player> remainingPlayers) {
-        Player newHost = remainingPlayers.stream()
-                .min(Comparator.comparing(Player::getCreatedAt))
-                .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
+    private Player changeHost(Room room, List<Player> remainingPlayers) {
+        Player newHost = selectNextHost(remainingPlayers);
         newHost.unready();
         room.changeHost(newHost.getUserId());
-        return HostChangedEvent.of(newHost, previousHost, room.getHostId(), HOST_CHANGED_REASON_HOST_LEFT);
+        return newHost;
+    }
+
+    private Player selectNextHost(List<Player> remainingPlayers) {
+        Comparator<Player> hostPriorityComparator = Comparator
+                .comparing(Player::isActive).reversed()
+                .thenComparing(this::isHumanPlayer, Comparator.reverseOrder())
+                .thenComparing(Player::getCreatedAt);
+
+        return remainingPlayers.stream()
+                .min(hostPriorityComparator)
+                .orElseThrow(() -> new CustomException(PLAYER_NOT_IN_ANY_ROOM));
+    }
+
+    private boolean isHumanPlayer(Player player) {
+        return userRepository.findById(player.getUserId())
+                .map(User::getRole)
+                .map(role -> role != UserRole.BOT)
+                .orElse(true);
     }
 
     /**
@@ -394,6 +435,7 @@ public class RoomService {
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
             nickname.set(player.getNickname());
             roomTitle.set(room.getRoomTitle());
+            validatePlayerActive(player);
             validatePlayerNotHost(player, room);
             validateRoomNotInGame(room);
 
@@ -417,6 +459,9 @@ public class RoomService {
     private boolean isAllGuestsReady(Room room) {
         List<Player> players = playerRepository.findAllByRoomId(room.getRoomId());
         for (var p : players) {
+            if (!p.isActive()) {
+                continue;
+            }
             if (room.getHostId().equals(p.getUserId())) {
                 continue; // 호스트는 준비 상태가 없음
             }
@@ -431,6 +476,12 @@ public class RoomService {
     private void validatePlayerNotHost(Player player, Room room) {
         if (room.getHostId().equals(player.getUserId())) {
             throw new CustomException(HOST_CANNOT_READY); // 호스트는 준비 상태가 없음
+        }
+    }
+
+    private void validatePlayerActive(Player player) {
+        if (!player.isActive()) {
+            throw new CustomException(PLAYER_NOT_ACTIVE);
         }
     }
 
@@ -452,6 +503,7 @@ public class RoomService {
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
             nickname.set(player.getNickname());
             roomTitle.set(room.getRoomTitle());
+            validatePlayerActive(player);
             validatePlayerNotHost(player, room);
             validateRoomNotInGame(room);
             player.unready();
@@ -475,6 +527,7 @@ public class RoomService {
             hostNickname.set(player.getNickname());
             roomTitle.set(room.getRoomTitle());
             validateRoomNotInGame(room);
+            validatePlayerActive(player);
             validatePlayerHost(player, room);
             validatePlayerCountOverMinimum(room);
             if (!isAllGuestsReady(room)) {
@@ -488,7 +541,7 @@ public class RoomService {
     }
 
     private void validatePlayerCountOverMinimum(Room room) {
-        int playerCount = getPlayerCountInRoom(room.getRoomId());
+        int playerCount = getActivePlayerCountInRoom(room.getRoomId());
         if (playerCount < MIN_PLAYERS_TO_START) {
             throw new CustomException(NOT_ENOUGH_PLAYERS_TO_START);
         }

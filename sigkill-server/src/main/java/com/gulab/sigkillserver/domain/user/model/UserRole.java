@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum UserRole {
     GUEST("ROLE_GUEST", "게스트"),
+    BOT("ROLE_BOT", "봇"),
     USER("ROLE_USER", "일반 사용자"),
     ADMIN("ROLE_ADMIN", "관리자");
 

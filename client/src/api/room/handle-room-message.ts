@@ -28,12 +28,18 @@ export const handleRoomMessage = (
 
     case "PLAYER_JOIN": {
       const { user } = useUserStore.getState();
-      const { roomInfo, setRoomInfo } = useRoomStore.getState();
+      const { roomInfo, setRoomInfo, players, setPlayers } =
+        useRoomStore.getState();
 
       if (!roomInfo) {
         if (!isInGame)
           toast.success(`방 "${message.room.roomTitle}"에 입장했습니다!`);
         setRoomInfo(message.room);
+      }
+
+      // 중복 방지 후 목록에 추가 (스냅샷에 없는 경우)
+      if (!players.some(p => p.userId === message.player.userId)) {
+        setPlayers([...players, message.player]);
       }
 
       if (!isInGame && message.player.userId !== user?.userId) {

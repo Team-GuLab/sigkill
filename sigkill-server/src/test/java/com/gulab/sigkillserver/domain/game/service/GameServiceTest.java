@@ -109,6 +109,10 @@ class GameServiceTest {
         return userRepository.save(User.create(sessionId, nickname, UserRole.GUEST));
     }
 
+    private User saveBotUser(String nickname) {
+        return userRepository.save(User.create(null, nickname, UserRole.BOT));
+    }
+
     private Room saveRoom(String roomId) {
         Room room = Room.create(roomId, "테스트 방", 1L, 6);
         roomRepository.save(room);
@@ -240,6 +244,25 @@ class GameServiceTest {
             assertThat(result.payload().players())
                     .extracting(player -> player.isLoaded())
                     .containsOnly(true);
+        }
+
+        @Test
+        void 중도_퇴장한_플레이어는_GAME_LOADED_목록과_allLoaded_계산에서_제외된다() {
+            // given
+            LoadGameFixture fixture = prepareLoadGameFixture("1544");
+            playerRepository.deleteById(fixture.host().getUserId());
+
+            // when
+            GameLoadEvent result = gameService.loadGame(fixture.guest().getUserId(), fixture.game().getGameId());
+
+            // then
+            assertThat(result.payload().allLoaded()).isTrue();
+            assertThat(result.payload().players())
+                    .extracting(player -> player.userId())
+                    .containsExactly(fixture.guest().getUserId());
+            assertThat(gamePlayerRepository.getByGameId(fixture.game().getGameId()))
+                    .extracting(gamePlayer -> gamePlayer.getUserId())
+                    .containsExactly(fixture.guest().getUserId());
         }
 
         @Test
@@ -1335,6 +1358,32 @@ class GameServiceTest {
             assertThat(result.payload().rankings())
                     .extracting(ranking -> ranking.rank())
                     .containsExactly(1, 1, 3);
+        }
+
+        @Test
+        void 게임_종료후_방에_봇만_남아있으면_room이_closing_상태가_된다() {
+            // given
+            User botHost = saveBotUser("[봇] host");
+            User botGuest = saveBotUser("[봇] guest");
+            Room room = Room.create("3034", "봇 방", botHost.getUserId(), 6);
+            roomRepository.save(room);
+            playerRepository.create(activePlayer(botHost.getUserId(), room.getRoomId(), botHost.getNickname()));
+            playerRepository.create(activePlayer(botGuest.getUserId(), room.getRoomId(), botGuest.getNickname()));
+            gameService.startGame(room);
+            Game game = gameRepository.findByRoomId(room.getRoomId()).orElseThrow();
+
+            gamePlayerRepository.getByGameId(game.getGameId()).forEach(gamePlayer -> {
+                if (gamePlayer.getUserId() == botGuest.getUserId()) {
+                    gamePlayer.kill();
+                }
+            });
+
+            // when
+            gameService.endGame(botHost.getUserId(), room.getRoomId(), game.getGameId());
+
+            // then
+            assertThat(room.isInGame()).isFalse();
+            assertThat(room.isClosing()).isTrue();
         }
     }
 }

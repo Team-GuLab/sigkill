@@ -1,5 +1,6 @@
 package com.gulab.sigkillserver.domain.room.controller;
 
+import com.gulab.sigkillserver.domain.bot.service.BotOrchestrator;
 import com.gulab.sigkillserver.domain.game.dto.stomp.event.GameStartEvent;
 import com.gulab.sigkillserver.domain.room.dto.rest.response.LeaveRoomResult;
 import com.gulab.sigkillserver.domain.room.dto.stomp.command.RoomIdCommand;
@@ -8,12 +9,14 @@ import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerReadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.PlayerUnreadyEvent;
 import com.gulab.sigkillserver.domain.room.dto.stomp.event.RoomSnapshotEvent;
 import com.gulab.sigkillserver.domain.room.service.PendingRoomJoinOrchestrator;
+import com.gulab.sigkillserver.domain.room.service.RoomExitCoordinator;
 import com.gulab.sigkillserver.domain.room.service.RoomService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -26,7 +29,10 @@ public class RoomWebSocketController {
 
     private final RoomService roomService;
     private final PendingRoomJoinOrchestrator pendingRoomJoinOrchestrator;
+    private final RoomExitCoordinator roomExitCoordinator;
+    private final BotOrchestrator botOrchestrator;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @MessageMapping("/room/snapshot")
     public void roomSnapshot(@Valid @Payload RoomIdCommand request, Principal principal) {
@@ -55,14 +61,7 @@ public class RoomWebSocketController {
     @MessageMapping("/room/leave")
     public void leaveRoom(@Valid @Payload RoomIdCommand request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-
-        LeaveRoomResult leaveRoomResult = roomService.leaveRoom(request.roomId(), userId);
-        pendingRoomJoinOrchestrator.cancelPendingJoinTimeout(userId);
-
-        messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), leaveRoomResult.playerLeftEvent());
-        if (leaveRoomResult.hasHostChangedEvent()) {
-            messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), leaveRoomResult.hostChangedEvent());
-        }
+        roomExitCoordinator.leaveRoom(request.roomId(), userId);
         log.debug("방 퇴장 브로드캐스트 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
 
@@ -95,7 +94,16 @@ public class RoomWebSocketController {
         GameStartEvent gameStartEvent = roomService.startGame(request.roomId(), userId);
 
         messagingTemplate.convertAndSend("/topic/room/" + request.roomId(), gameStartEvent);
+        applicationEventPublisher.publishEvent(gameStartEvent);
 
         log.debug("게임 시작 브로드캐스트 완료 - roomId: {}, userId: {}", request.roomId(), userId);
+    }
+
+    @MessageMapping("/room/bot")
+    public void addBot(@Valid @Payload RoomIdCommand request, Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+        botOrchestrator.addBot(request.roomId(), userId);
+
+        log.debug("봇 추가 처리 완료 - roomId: {}, userId: {}", request.roomId(), userId);
     }
 }

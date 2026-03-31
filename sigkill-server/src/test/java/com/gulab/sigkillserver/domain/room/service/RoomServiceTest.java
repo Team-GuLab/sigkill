@@ -120,6 +120,11 @@ class RoomServiceTest {
         return userRepository.save(user);
     }
 
+    private User createAndSaveBotUser(String nickname) {
+        User user = User.create(null, nickname, UserRole.BOT);
+        return userRepository.save(user);
+    }
+
     private RoomInfoResponse createActiveRoom(String roomTitle, Integer capacity, Long userId) {
         RoomInfoResponse roomInfoResponse = roomService.createRoom(roomTitle, capacity, userId);
         roomService.confirmJoin(roomInfoResponse.roomId(), userId);
@@ -265,6 +270,42 @@ class RoomServiceTest {
                     RoomErrorCode.ROOM_NUMBER_ERROR.name());
             assertThat(gameRepository.findByRoomId(TEST_ROOM_ID)).isEmpty();
         }
+
+        @Test
+        void pending_호스트는_게임을_시작할_수_없다() {
+            // given
+            User host = createAndSaveUser("pending-host-session", "호스트유저");
+            User guest = createAndSaveUser("active-guest-session", "게스트유저");
+            String roomId = roomService.createRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
+            playerRepository.create(activePlayer(guest.getUserId(), roomId, guest.getNickname()));
+            roomService.readyPlayer(roomId, guest.getUserId());
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.startGame(roomId, host.getUserId()),
+                    PlayerErrorCode.PLAYER_NOT_ACTIVE.name());
+            assertThat(gameRepository.findByRoomId(roomId)).isEmpty();
+        }
+
+        @Test
+        void game_start_payload에는_active_플레이어만_포함된다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User activeGuest = createAndSaveUser("active-guest-session", "게스트유저");
+            User pendingGuest = createAndSaveUser("pending-guest-session", "대기게스트");
+            String roomId = createActiveRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
+            joinActiveRoom(roomId, activeGuest.getUserId());
+            joinRoomResult(roomId, pendingGuest.getUserId());
+            roomService.readyPlayer(roomId, activeGuest.getUserId());
+
+            // when
+            GameStartEvent result = roomService.startGame(roomId, host.getUserId());
+
+            // then
+            assertThat(result.payload().players())
+                    .extracting(actor -> actor.userId())
+                    .containsExactlyInAnyOrder(host.getUserId(), activeGuest.getUserId());
+        }
     }
 
     @Nested
@@ -390,6 +431,22 @@ class RoomServiceTest {
             assertThat(response.rooms().get(1).roomId()).isEqualTo("1111");
             assertThat(response.rooms().get(2).roomId()).isEqualTo("4444"); // 그 다음 입장 불가 방
             assertThat(response.rooms().get(3).roomId()).isEqualTo("2222");
+        }
+
+        @Test
+        void closing_상태_방은_목록에서_canJoin이_false다() {
+            // given
+            User host = createAndSaveUser("closing-room-host-session", "호스트");
+            Room room = createAndSaveRoomWithHost("5555", "닫히는 방", 6, host);
+            room.markClosing();
+
+            // when
+            RoomListResponse response = roomService.fetchRooms(0, 10);
+
+            // then
+            assertThat(response.rooms()).hasSize(1);
+            assertThat(response.rooms().getFirst().roomId()).isEqualTo("5555");
+            assertThat(response.rooms().getFirst().canJoin()).isFalse();
         }
 
         @Test
@@ -1010,6 +1067,53 @@ class RoomServiceTest {
         }
 
         @Test
+        void 호스트_퇴장시_봇보다_사람_플레이어를_우선해서_새_방장으로_선출한다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User bot = createAndSaveBotUser("[봇] 테스트봇");
+            User humanGuest = createAndSaveUser("guest-session", "게스트유저");
+            Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
+            roomRepository.save(room);
+
+            playerRepository.create(activePlayer(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(activePlayer(bot.getUserId(), TEST_ROOM_ID, bot.getNickname()));
+            playerRepository.create(activePlayer(humanGuest.getUserId(), TEST_ROOM_ID, humanGuest.getNickname()));
+
+            // when
+            LeaveRoomResult result = roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
+
+            // then
+            assertThat(result.hasHostChangedEvent()).isTrue();
+            assertThat(result.hostChangedEvent().newHost().userId()).isEqualTo(humanGuest.getUserId());
+            assertThat(roomRepository.findById(TEST_ROOM_ID)).isPresent();
+            assertThat(roomRepository.findById(TEST_ROOM_ID).orElseThrow().getHostId()).isEqualTo(humanGuest.getUserId());
+        }
+
+        @Test
+        void 마지막_사람이_퇴장해_봇만_남은_waiting_방은_closing_상태가_되어_새_입장을_막는다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User bot = createAndSaveBotUser("[봇] 테스트봇");
+            User lateGuest = createAndSaveUser("late-guest-session", "늦은손님");
+            Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
+            roomRepository.save(room);
+
+            playerRepository.create(activePlayer(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(activePlayer(bot.getUserId(), TEST_ROOM_ID, bot.getNickname()));
+
+            // when
+            roomService.leaveRoom(TEST_ROOM_ID, host.getUserId());
+
+            // then
+            assertThat(roomRepository.findById(TEST_ROOM_ID)).isPresent();
+            assertThat(roomRepository.findById(TEST_ROOM_ID).orElseThrow().isClosing()).isTrue();
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.joinRoom(TEST_ROOM_ID, lateGuest.getUserId()),
+                    RoomErrorCode.ROOM_CLOSING.name()
+            );
+        }
+
+        @Test
         void 마지막_플레이어가_퇴장할_경우_방이_삭제된다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");
@@ -1173,6 +1277,20 @@ class RoomServiceTest {
                     () -> roomService.readyPlayer(TEST_ROOM_ID, guest.getUserId()),
                     RoomErrorCode.ROOM_IN_GAME.name());
         }
+
+        @Test
+        void pending_플레이어는_준비_완료할_수_없다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User pendingGuest = createAndSaveUser("pending-guest-session", "게스트유저");
+            String roomId = createActiveRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
+            joinRoomResult(roomId, pendingGuest.getUserId());
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.readyPlayer(roomId, pendingGuest.getUserId()),
+                    PlayerErrorCode.PLAYER_NOT_ACTIVE.name());
+        }
     }
 
     @Nested
@@ -1320,6 +1438,20 @@ class RoomServiceTest {
                     () -> roomService.unreadyPlayer(TEST_ROOM_ID, guest.getUserId()),
                     RoomErrorCode.ROOM_IN_GAME.name());
         }
+
+        @Test
+        void pending_플레이어는_준비_취소할_수_없다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User pendingGuest = createAndSaveUser("pending-guest-session", "게스트유저");
+            String roomId = createActiveRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
+            joinRoomResult(roomId, pendingGuest.getUserId());
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.unreadyPlayer(roomId, pendingGuest.getUserId()),
+                    PlayerErrorCode.PLAYER_NOT_ACTIVE.name());
+        }
     }
 
     @Nested
@@ -1375,7 +1507,7 @@ class RoomServiceTest {
         }
 
         @Test
-        void pending_플레이어도_snapshot_요청을_할_수_있다() {
+        void pending_플레이어도_snapshot_요청을_할_수_있지만_응답에서는_숨겨진다() {
             // given
             User host = createAndSaveUser("pending-host-session", "호스트");
             String roomId = roomService.createRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
@@ -1385,13 +1517,11 @@ class RoomServiceTest {
 
             // then
             assertThat(result.room().roomId()).isEqualTo(roomId);
-            assertThat(result.players())
-                    .extracting("userId")
-                    .containsExactly(host.getUserId());
+            assertThat(result.players()).isEmpty();
         }
 
         @Test
-        void snapshot은_pending_플레이어도_포함한다() {
+        void snapshot은_pending_플레이어를_제외한다() {
             // given
             User host = createAndSaveUser("snapshot-active-host-session", "호스트");
             User guest = createAndSaveUser("snapshot-pending-guest-session", "게스트");
@@ -1404,11 +1534,11 @@ class RoomServiceTest {
             // then
             assertThat(result.players())
                     .extracting("userId")
-                    .containsExactlyInAnyOrder(host.getUserId(), guest.getUserId());
+                    .containsExactly(host.getUserId());
         }
 
         @Test
-        void active_호스트가_나가면_pending_플레이어에게_방장이_이관된다() {
+        void active_호스트가_나가고_pending_플레이어만_남으면_방은_유지되고_HOST_CHANGED는_생략된다() {
             // given
             User host = createAndSaveUser("host-session", "호스트");
             User pendingGuest = createAndSaveUser("pending-guest-session", "게스트");
@@ -1422,27 +1552,50 @@ class RoomServiceTest {
             assertThat(roomRepository.findById(roomId)).isPresent();
             assertThat(roomRepository.findById(roomId).orElseThrow().getHostId()).isEqualTo(pendingGuest.getUserId());
             assertThat(playerRepository.findById(pendingGuest.getUserId())).isPresent();
-            assertThat(result.hasHostChangedEvent()).isTrue();
-            assertThat(result.hostChangedEvent().newHost().userId()).isEqualTo(pendingGuest.getUserId());
+            assertThat(result.hasHostChangedEvent()).isFalse();
+            assertThat(roomService.confirmJoin(roomId, pendingGuest.getUserId()))
+                    .isPresent()
+                    .get()
+                    .extracting(event -> event.player().role())
+                    .isEqualTo(PlayerRole.HOST);
         }
 
         @Test
-        void pending_게스트도_준비_후_게임을_시작할_수_있다() {
+        void active_봇이_있으면_pending_사람보다_우선해_방장을_이관한다() {
             // given
             User host = createAndSaveUser("host-session", "호스트");
-            User guest = createAndSaveUser("pending-guest-session", "게스트");
+            User activeBot = createAndSaveBotUser("[봇] 활성봇");
+            User pendingGuest = createAndSaveUser("pending-guest-session", "게스트");
             String roomId = createActiveRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
-            joinRoomResult(roomId, guest.getUserId());
-            roomService.readyPlayer(roomId, guest.getUserId());
+            playerRepository.create(activePlayer(activeBot.getUserId(), roomId, activeBot.getNickname()));
+            joinRoomResult(roomId, pendingGuest.getUserId());
 
             // when
-            GameStartEvent result = roomService.startGame(roomId, host.getUserId());
+            LeaveRoomResult result = roomService.leaveRoom(roomId, host.getUserId());
 
             // then
-            assertThat(result.roomId()).isEqualTo(roomId);
-            assertThat(result.payload().players())
-                    .extracting(actor -> actor.userId())
-                    .containsExactlyInAnyOrder(host.getUserId(), guest.getUserId());
+            assertThat(roomRepository.findById(roomId)).isPresent();
+            assertThat(roomRepository.findById(roomId).orElseThrow().getHostId()).isEqualTo(activeBot.getUserId());
+            assertThat(result.hasHostChangedEvent()).isTrue();
+            assertThat(result.hostChangedEvent().newHost().userId()).isEqualTo(activeBot.getUserId());
+        }
+
+        @Test
+        void 게임_시작후_pending_플레이어는_confirmJoin할_수_없다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트");
+            User activeGuest = createAndSaveUser("active-guest-session", "활성게스트");
+            User pendingGuest = createAndSaveUser("pending-guest-session", "게스트");
+            String roomId = createActiveRoom(TEST_ROOM_TITLE, TEST_CAPACITY, host.getUserId()).roomId();
+            joinActiveRoom(roomId, activeGuest.getUserId());
+            joinRoomResult(roomId, pendingGuest.getUserId());
+            roomService.readyPlayer(roomId, activeGuest.getUserId());
+            roomService.startGame(roomId, host.getUserId());
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.confirmJoin(roomId, pendingGuest.getUserId()),
+                    RoomErrorCode.ROOM_IN_GAME.name());
         }
     }
 }
