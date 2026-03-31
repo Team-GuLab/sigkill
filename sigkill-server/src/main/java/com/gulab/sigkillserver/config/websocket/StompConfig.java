@@ -20,6 +20,10 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 public class StompConfig extends AbstractSessionWebSocketMessageBrokerConfigurer {
 
     private static final long HEARTBEAT_INTERVAL_MILLIS = 10_000L;
+    private static final int MIN_CHANNEL_CORE_POOL_SIZE = 8;
+    private static final int MIN_CHANNEL_MAX_POOL_SIZE = 16;
+    private static final int CHANNEL_QUEUE_CAPACITY = 10_000;
+    private static final int CHANNEL_KEEP_ALIVE_SECONDS = 60;
     private final StompHandler stompHandler;
     private final AppProfileProperties appProfileProperties;
 
@@ -40,7 +44,7 @@ public class StompConfig extends AbstractSessionWebSocketMessageBrokerConfigurer
     @Bean
     public TaskScheduler stompHeartbeatTaskScheduler() {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(1);
+        scheduler.setPoolSize(2);
         scheduler.setThreadNamePrefix("stomp-heartbeat-");
         scheduler.initialize();
         return scheduler;
@@ -51,5 +55,24 @@ public class StompConfig extends AbstractSessionWebSocketMessageBrokerConfigurer
     public void configureClientInboundChannel(ChannelRegistration registration) {
         super.configureClientInboundChannel(registration);
         registration.interceptors(stompHandler);
+        configureClientChannelExecutor(registration);
+    }
+
+    @Override
+    public void configureClientOutboundChannel(ChannelRegistration registration) {
+        super.configureClientOutboundChannel(registration);
+        configureClientChannelExecutor(registration);
+    }
+
+    private void configureClientChannelExecutor(ChannelRegistration registration) {
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        int corePoolSize = Math.max(MIN_CHANNEL_CORE_POOL_SIZE, availableProcessors * 2);
+        int maxPoolSize = Math.max(MIN_CHANNEL_MAX_POOL_SIZE, availableProcessors * 4);
+
+        registration.taskExecutor()
+                .corePoolSize(corePoolSize)
+                .maxPoolSize(maxPoolSize)
+                .queueCapacity(CHANNEL_QUEUE_CAPACITY)
+                .keepAliveSeconds(CHANNEL_KEEP_ALIVE_SECONDS);
     }
 }
