@@ -75,7 +75,7 @@ function GameRoomRoute() {
   );
 }
 
-const router = createBrowserRouter([
+export const router = createBrowserRouter([
   {
     element: <DefaultLayout />,
     children: [
