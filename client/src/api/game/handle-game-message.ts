@@ -41,7 +41,9 @@ export const handleGameMessage = (message: GameWebSocketMessage) => {
     }
 
     case "GAME_END": {
-      transition({ type: "GAME_END", gameEnd: message.payload });
+      setTimeout(() => {
+        transition({ type: "GAME_END", gameEnd: message.payload });
+      }, 3000);
       break;
     }
 
