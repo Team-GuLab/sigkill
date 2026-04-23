@@ -3,17 +3,14 @@ import {
   connectWebSocket,
   disconnectWebSocket,
   getClient,
-  publishMessage,
 } from "@/app/config/web-socket-client";
 import { useResetRoom } from "@/store/room-store";
 
 interface WebSocketSessionContextValue {
-  /** 세션 연결: WaitingRoom 진입 시 호출 */
+  /** 세션 연결 수립 */
   connectSession: (roomId: string) => Promise<void>;
-  /** disconnect 예약: 방 목록 등으로 이동할 때 WaitingRoom 언마운트 시 호출 */
-  scheduleDisconnect: () => void;
-  /** 스냅샷 재요청: 재연결 후 서버 상태 동기화 */
-  requestSnapshot: () => void;
+  /** 세션 연결 해제 */
+  disconnectSession: () => void;
 }
 
 const WebSocketSessionContext =
@@ -25,15 +22,7 @@ export function WebSocketSessionProvider({
   children: React.ReactNode;
 }) {
   const currentRoomIdRef = useRef<string | null>(null);
-  const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resetRoom = useResetRoom();
-
-  const requestSnapshot = useCallback(() => {
-    const roomId = currentRoomIdRef.current;
-    if (roomId) {
-      publishMessage("/app/room/snapshot", { roomId });
-    }
-  }, []);
 
   const connectSession = useCallback(async (roomId: string) => {
     currentRoomIdRef.current = roomId;
@@ -43,21 +32,17 @@ export function WebSocketSessionProvider({
     }
   }, []);
 
-  const scheduleDisconnect = useCallback(() => {
-    disconnectTimerRef.current = setTimeout(async () => {
-      currentRoomIdRef.current = null;
-      await disconnectWebSocket();
-      console.log("WebSocket 연결이 종료되었습니다.");
-      resetRoom();
-    }, 100);
+  const disconnectSession = useCallback(async () => {
+    currentRoomIdRef.current = null;
+    await disconnectWebSocket();
+    resetRoom();
   }, [resetRoom]);
 
   return (
     <WebSocketSessionContext
       value={{
         connectSession,
-        scheduleDisconnect,
-        requestSnapshot,
+        disconnectSession,
       }}
     >
       {children}

@@ -24,7 +24,7 @@ export const useSubscribeRoom = ({
 }: UseSubscribeRoomProps) => {
   const navigate = useNavigate();
   const transition = useGameTransition();
-  const { connectSession, scheduleDisconnect } = useWebSocketSession();
+  const { connectSession, disconnectSession } = useWebSocketSession();
 
   const [isPending, setIsPending] = useState(false);
   const [isGameStarting, setIsGameStarting] = useState(false);
@@ -93,14 +93,14 @@ export const useSubscribeRoom = ({
       // 방 목록 등 다른 곳으로 이동: 구독 해제 후 연결 종료
       roomUnsubscribe.current?.();
       errorUnsubscribe.current?.();
-      scheduleDisconnect();
+      disconnectSession();
     };
   }, [
     roomId,
     myUserId,
     navigate,
     connectSession,
-    scheduleDisconnect,
+    disconnectSession,
     transition,
   ]);
 
