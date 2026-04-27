@@ -21,6 +21,7 @@ public enum RoomErrorCode implements CustomErrorCodeInterface {
     ROOM_FULL("방이 가득 찼습니다", HttpStatus.CONFLICT),
     ROOM_CLOSING("봇만 남아 곧 닫히는 방에는 입장할 수 없습니다", HttpStatus.CONFLICT),
     ROOM_IN_GAME("이미 게임이 진행 중인 방입니다", HttpStatus.CONFLICT),
+    CANNOT_LEAVE_DURING_GAME("게임이 진행 중인 방에서는 나갈 수 없습니다", HttpStatus.CONFLICT),
     HOST_CANNOT_READY("방장은 준비 상태를 변경할 수 없습니다", HttpStatus.BAD_REQUEST),
     ROOM_CREATE_ERROR("방 생성에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR),
     ROOM_NUMBER_ERROR("방 번호는 4자리 정수여야 합니다", HttpStatus.BAD_REQUEST),

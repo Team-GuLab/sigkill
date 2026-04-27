@@ -143,6 +143,33 @@ class PendingRoomJoinOrchestratorTest {
     }
 
     @Test
+    void expirePendingJoin은_게임중이어도_pending_플레이어를_정리한다() {
+        // given
+        User host = userRepository.save(User.create("in-game-host-session", "호스트", UserRole.GUEST));
+        User activeGuest = userRepository.save(User.create("in-game-active-guest-session", "참가자", UserRole.GUEST));
+        User pendingGuest = userRepository.save(User.create("in-game-pending-guest-session", "대기손님", UserRole.GUEST));
+        String roomId = roomService.createRoom("방", 3, host.getUserId()).roomId();
+        roomService.confirmJoin(roomId, host.getUserId());
+        roomService.joinRoom(roomId, activeGuest.getUserId());
+        roomService.confirmJoin(roomId, activeGuest.getUserId());
+        roomService.readyPlayer(roomId, activeGuest.getUserId());
+        roomService.joinRoom(roomId, pendingGuest.getUserId());
+        assertThat(playerRepository.findById(pendingGuest.getUserId()).orElseThrow().isPending()).isTrue();
+        assertThat(playerRepository.countByRoomId(roomId)).isEqualTo(3);
+        roomService.startGame(roomId, host.getUserId());
+
+        // when
+        boolean expired = roomService.expirePendingJoin(roomId, pendingGuest.getUserId());
+
+        // then
+        assertThat(expired).isTrue();
+        assertThat(playerRepository.findById(pendingGuest.getUserId())).isEmpty();
+        assertThat(playerRepository.countByRoomId(roomId)).isEqualTo(2);
+        assertThat(roomRepository.findById(roomId)).isPresent();
+        assertThat(roomRepository.findById(roomId).orElseThrow().isInGame()).isTrue();
+    }
+
+    @Test
     void clearAllPendingJoinTimeouts_호출시_예약된_작업을_모두_취소한다() {
         // given
         User host = userRepository.save(User.create("cleanup-host-session", "호스트", UserRole.GUEST));

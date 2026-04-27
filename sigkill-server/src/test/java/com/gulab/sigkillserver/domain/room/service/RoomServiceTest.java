@@ -947,6 +947,27 @@ class RoomServiceTest {
         }
 
         @Test
+        void 게임중인_방에서는_퇴장할_수_없다() {
+            // given
+            User host = createAndSaveUser("host-session", "호스트유저");
+            User guest = createAndSaveUser("guest-session", "게스트유저");
+            Room room = Room.create(TEST_ROOM_ID, TEST_ROOM_TITLE, host.getUserId(), TEST_CAPACITY);
+            roomRepository.save(room);
+
+            playerRepository.create(activePlayer(host.getUserId(), TEST_ROOM_ID, host.getNickname()));
+            playerRepository.create(activePlayer(guest.getUserId(), TEST_ROOM_ID, guest.getNickname()));
+            room.startGame();
+
+            // when then
+            assertThrowsCustomExceptionWithCode(
+                    () -> roomService.leaveRoom(TEST_ROOM_ID, guest.getUserId()),
+                    RoomErrorCode.CANNOT_LEAVE_DURING_GAME.name());
+            assertThat(roomRepository.findById(TEST_ROOM_ID)).isPresent();
+            assertThat(roomRepository.findById(TEST_ROOM_ID).orElseThrow().isInGame()).isTrue();
+            assertThat(playerRepository.countByRoomId(TEST_ROOM_ID)).isEqualTo(2);
+        }
+
+        @Test
         void 플레이어_정보가_없으면_퇴장할_수_없다() {
             // given
             User host = createAndSaveUser("host-session", "호스트유저");

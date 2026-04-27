@@ -10,12 +10,13 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_ROO
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_ACTIVE;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.CANNOT_LEAVE_DURING_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.HOST_CANNOT_READY;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.NOT_ENOUGH_PLAYERS_TO_START;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ONLY_HOST_CAN_START_GAME;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.PLAYERS_NOT_READY;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CLOSING;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CAPACITY_INVALID;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CLOSING;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CREATE_ERROR;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_ID_ALREADY_EXISTS;
@@ -255,8 +256,10 @@ public class RoomService {
             log.info("'{}' 방 참가됨 - action=room-joined, roomId={}, userId={}, userNickname={}",
                     joinRoomResult.roomInfoResponse().roomTitle(), roomId, userId, user.getNickname());
         } else {
-            log.debug("'{}' 방 참가 재요청 무시됨 - action=room-join-replayed, roomId={}, userId={}, userNickname={}, outcome={}",
-                    joinRoomResult.roomInfoResponse().roomTitle(), roomId, userId, user.getNickname(), joinRoomResult.outcome());
+            log.debug(
+                    "'{}' 방 참가 재요청 무시됨 - action=room-join-replayed, roomId={}, userId={}, userNickname={}, outcome={}",
+                    joinRoomResult.roomInfoResponse().roomTitle(), roomId, userId, user.getNickname(),
+                    joinRoomResult.outcome());
         }
 
         return joinRoomResult;
@@ -352,6 +355,9 @@ public class RoomService {
         LeaveRoomResult leaveRoomResult = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
+            if (room.isInGame() && player.isActive()) {
+                throw new CustomException(CANNOT_LEAVE_DURING_GAME);
+            }
             nickname.set(player.getNickname());
             roomTitle.set(room.getRoomTitle());
             PlayerLeftEvent playerLeftEvent = PlayerLeftEvent.of(player, room.getHostId());
@@ -390,7 +396,8 @@ public class RoomService {
             return LeaveRoomResult.of(playerLeftEvent);
         });
 
-        log.info("'{}' 방 퇴장 처리됨 - action=room-left, roomId={}, userId={}, userNickname={}, roomDeleted={}, hostChanged={}",
+        log.info(
+                "'{}' 방 퇴장 처리됨 - action=room-left, roomId={}, userId={}, userNickname={}, roomDeleted={}, hostChanged={}",
                 roomTitle.get(), roomId, userId, nickname.get(), roomDeleted.get(), hostChanged.get());
         return leaveRoomResult;
     }
