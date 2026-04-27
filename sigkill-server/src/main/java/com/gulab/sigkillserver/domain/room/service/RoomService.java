@@ -355,7 +355,7 @@ public class RoomService {
         LeaveRoomResult leaveRoomResult = roomLockManager.executeWithLock(roomId, () -> {
             Room room = getRoomOrThrow(roomId);
             Player player = getPlayerInRoomOrThrow(userId, room.getRoomId());
-            if (room.isInGame()) {
+            if (room.isInGame() && player.isActive()) {
                 throw new CustomException(CANNOT_LEAVE_DURING_GAME);
             }
             nickname.set(player.getNickname());

@@ -278,7 +278,7 @@ class BotOrchestratorTest {
 
             // when
             botOrchestrator.onGameStarted(gameStartEvent);
-            roomService.leaveRoom(roomId, host.getUserId());
+            playerRepository.deleteById(host.getUserId());
             scheduledTasks.getFirst().run();
 
             // then
