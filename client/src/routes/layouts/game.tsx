@@ -5,8 +5,8 @@ export default function GameLayout() {
   return (
     <>
       <Toaster position="top-center" />
-      <div className="bg-background flex h-screen flex-col px-4 pt-8 pb-6">
-        <div className="mx-auto flex w-full max-w-xl flex-1 flex-col overflow-hidden">
+      <div className="flex h-dvh justify-center bg-white">
+        <div className="bg-background flex w-110 flex-col overflow-hidden p-4">
           <Outlet />
         </div>
       </div>

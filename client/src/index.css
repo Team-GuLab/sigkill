@@ -258,7 +258,20 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body {
+    overscroll-behavior: none;
+  }
   body {
     @apply bg-background text-black select-none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  * {
+    touch-action: pan-x pan-y;
+  }
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
   }
 }
