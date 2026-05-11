@@ -6,7 +6,7 @@ export default function GameLayout() {
     <>
       <Toaster position="top-center" />
       <div className="flex h-dvh justify-center bg-white">
-        <div className="bg-background flex w-110 flex-col overflow-hidden p-4">
+        <div className="bg-background relative flex w-110 flex-col overflow-hidden p-4">
           <Outlet />
         </div>
       </div>
