@@ -19,6 +19,7 @@ public enum RoomErrorCode implements CustomErrorCodeInterface {
     ROOM_TITLE_INVALID(String.format("방 제목의 길이는 최대 %d자 입니다", MAX_TITLE_LENGTH), HttpStatus.BAD_REQUEST),
     ROOM_NOT_FOUND("방을 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     ROOM_FULL("방이 가득 찼습니다", HttpStatus.CONFLICT),
+    CANNOT_CREATE_BOT("봇을 생성할 수 없습니다", HttpStatus.CONFLICT),
     ROOM_CLOSING("봇만 남아 곧 닫히는 방에는 입장할 수 없습니다", HttpStatus.CONFLICT),
     ROOM_IN_GAME("이미 게임이 진행 중인 방입니다", HttpStatus.CONFLICT),
     CANNOT_LEAVE_DURING_GAME("게임이 진행 중인 방에서는 나갈 수 없습니다", HttpStatus.CONFLICT),
