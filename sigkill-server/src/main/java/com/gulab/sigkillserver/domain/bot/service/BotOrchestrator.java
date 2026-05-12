@@ -4,10 +4,7 @@ import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MAX_ROO
 import static com.gulab.sigkillserver.domain.room.constant.RoomConstants.MIN_ROOM_NUMBER;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ANY_ROOM;
 import static com.gulab.sigkillserver.domain.room.exception.PlayerErrorCode.PLAYER_NOT_IN_ROOM;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ONLY_HOST_CAN_ADD_BOT;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_CLOSING;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_FULL;
-import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_IN_GAME;
+import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.CANNOT_CREATE_BOT;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NOT_FOUND;
 import static com.gulab.sigkillserver.domain.room.exception.RoomErrorCode.ROOM_NUMBER_ERROR;
 
@@ -37,7 +34,6 @@ import com.gulab.sigkillserver.domain.user.model.User;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
@@ -74,6 +70,7 @@ public class BotOrchestrator {
     private final GamePlayerRepository gamePlayerRepository;
     private final WaitingBotRoomCleanupService waitingBotRoomCleanupService;
     private final SimpMessagingTemplate messagingTemplate;
+
     @Qualifier("botTaskScheduler")
     private final TaskScheduler botTaskScheduler;
 
@@ -254,16 +251,16 @@ public class BotOrchestrator {
 
     private void validateBotAddRequest(Room room, Player requester) {
         if (!room.getHostId().equals(requester.getUserId())) {
-            throw new CustomException(ONLY_HOST_CAN_ADD_BOT);
+            throw new CustomException(CANNOT_CREATE_BOT);
         }
         if (room.isClosing()) {
-            throw new CustomException(ROOM_CLOSING);
+            throw new CustomException(CANNOT_CREATE_BOT);
         }
         if (room.isInGame()) {
-            throw new CustomException(ROOM_IN_GAME);
+            throw new CustomException(CANNOT_CREATE_BOT);
         }
         if (playerRepository.countByRoomId(room.getRoomId()) >= room.getCapacity()) {
-            throw new CustomException(ROOM_FULL);
+            throw new CustomException(CANNOT_CREATE_BOT);
         }
     }
 
