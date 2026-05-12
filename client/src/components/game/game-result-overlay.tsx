@@ -34,7 +34,7 @@ function Confetti() {
   );
 
   return (
-    <div className="pointer-events-none fixed inset-0 overflow-hidden">
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
       {pieces.map(p => (
         <div
           key={p.id}
@@ -82,7 +82,7 @@ export default function GameResultOverlay() {
   };
 
   return (
-    <main className="fixed inset-0 z-50 flex flex-col bg-black/80 pb-6">
+    <main className="absolute inset-0 z-50 flex flex-col bg-black/80 pb-6">
       <Confetti />
 
       {/* 순위표 */}
